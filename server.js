@@ -86,6 +86,23 @@ app.post("/api/orders", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Sipariş eklenemedi" }); }
 });
 
+// ---------------- MÜŞTERİLER ---------------- //
+app.get("/api/customers", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM customers ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: "Müşteriler alınamadı" }); }
+});
+
+app.post("/api/customers", async (req, res) => {
+  try {
+    const { name, phone, email, address } = req.body;
+    if (!name) return res.status(400).json({ error: "Müşteri adı zorunlu" });
+    await pool.query("INSERT INTO customers (name, phone, email, address) VALUES ($1, $2, $3, $4)", [name, phone, email, address]);
+    res.json({ success: true, message: "Müşteri eklendi" });
+  } catch (err) { console.error(err); res.status(500).json({ error: "Müşteri eklenemedi" }); }
+});
+
 // ---------------- DEMO STATS ---------------- //
 app.get("/api/stats", (req, res) => {
   res.json({
