@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server-sqlite.js",
+    "dev": "node server-sqlite.js",
     "test": "node test-server.js",
     "setup": "node setup-sqlite.js"
   },
