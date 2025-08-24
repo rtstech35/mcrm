@@ -18,7 +18,7 @@ app.get("/admin", (req, res) => {
 
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: "postgresql://crm_e9g8_user:JjtttX2wVGYHxmlkxpsbfEcYVnuIqoRH@dpg-d2lemcfdiees73bvj4kg-a/crm_e9g8",
   ssl: { rejectUnauthorized: false }
 });
 
@@ -32,24 +32,42 @@ app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
     const existingUser = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
-    if (existingUser.rows.length > 0) return res.status(400).json({ error: "Kullanıcı zaten var" });
+    if (existingUser.rows.length > 0)
+      return res.status(400).json({ error: "Kullanıcı zaten var" });
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, hashedPassword]);
+    await pool.query(
+      "INSERT INTO users (username, password) VALUES ($1, $2)",
+      [username, hashedPassword]
+    );
     res.json({ success: true, message: "Kullanıcı eklendi" });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Kayıt sırasında hata" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Kayıt sırasında hata" });
+  }
 });
 
 app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     const result = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
-    if (result.rows.length === 0) return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+    if (result.rows.length === 0)
+      return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+
     const user = result.rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: "Şifre hatalı" });
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || "secretkey", { expiresIn: "1h" });
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "1h" }
+    );
     res.json({ token });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Giriş sırasında hata" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Giriş sırasında hata" });
+  }
 });
 
 // ---------------- ÜRÜNLER ---------------- //
@@ -57,33 +75,56 @@ app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products ORDER BY id DESC");
     res.json(result.rows);
-  } catch (err) { console.error(err); res.status(500).json({ error: "Ürünler alınamadı" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Ürünler alınamadı" });
+  }
 });
 
 app.post("/api/products", async (req, res) => {
   try {
     const { name, price, description } = req.body;
     if (!name || !price) return res.status(400).json({ error: "Ürün adı ve fiyat zorunlu" });
-    await pool.query("INSERT INTO products (name, price, description) VALUES ($1, $2, $3)", [name, price, description]);
+
+    await pool.query(
+      "INSERT INTO products (name, price, description) VALUES ($1, $2, $3)",
+      [name, price, description]
+    );
     res.json({ success: true, message: "Ürün eklendi" });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Ürün eklenemedi" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Ürün eklenemedi" });
+  }
 });
 
 // ---------------- SİPARİŞLER ---------------- //
 app.get("/api/orders", async (req, res) => {
   try {
-    const result = await pool.query("SELECT o.*, p.name as product_name FROM orders o LEFT JOIN products p ON o.product_id=p.id ORDER BY o.id DESC");
+    const result = await pool.query(
+      "SELECT o.*, p.name as product_name FROM orders o LEFT JOIN products p ON o.product_id=p.id ORDER BY o.id DESC"
+    );
     res.json(result.rows);
-  } catch (err) { console.error(err); res.status(500).json({ error: "Siparişler alınamadı" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Siparişler alınamadı" });
+  }
 });
 
 app.post("/api/orders", async (req, res) => {
   try {
     const { customer_name, product_id, quantity } = req.body;
-    if (!customer_name || !product_id || !quantity) return res.status(400).json({ error: "Tüm alanlar zorunlu" });
-    await pool.query("INSERT INTO orders (customer_name, product_id, quantity) VALUES ($1, $2, $3)", [customer_name, product_id, quantity]);
+    if (!customer_name || !product_id || !quantity)
+      return res.status(400).json({ error: "Tüm alanlar zorunlu" });
+
+    await pool.query(
+      "INSERT INTO orders (customer_name, product_id, quantity) VALUES ($1, $2, $3)",
+      [customer_name, product_id, quantity]
+    );
     res.json({ success: true, message: "Sipariş eklendi" });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Sipariş eklenemedi" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Sipariş eklenemedi" });
+  }
 });
 
 // ---------------- MÜŞTERİLER ---------------- //
@@ -91,16 +132,26 @@ app.get("/api/customers", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM customers ORDER BY id DESC");
     res.json(result.rows);
-  } catch (err) { console.error(err); res.status(500).json({ error: "Müşteriler alınamadı" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Müşteriler alınamadı" });
+  }
 });
 
 app.post("/api/customers", async (req, res) => {
   try {
     const { name, phone, email, address } = req.body;
     if (!name) return res.status(400).json({ error: "Müşteri adı zorunlu" });
-    await pool.query("INSERT INTO customers (name, phone, email, address) VALUES ($1, $2, $3, $4)", [name, phone, email, address]);
+
+    await pool.query(
+      "INSERT INTO customers (name, phone, email, address) VALUES ($1, $2, $3, $4)",
+      [name, phone, email, address]
+    );
     res.json({ success: true, message: "Müşteri eklendi" });
-  } catch (err) { console.error(err); res.status(500).json({ error: "Müşteri eklenemedi" }); }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Müşteri eklenemedi" });
+  }
 });
 
 // ---------------- DEMO STATS ---------------- //
