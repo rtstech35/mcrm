@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Üretim Takibi - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        .production-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: white;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .quantity-input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status-indicator {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-ok { background: #d4edda; color: #155724; }
+        .status-shortage { background: #f8d7da; color: #721c24; }
+        .status-excess { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Üretim Takibi</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Miktar Düzenleme</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%; margin-bottom: 1rem;">← Geri Dön</button>
+            <button onclick="completeProduction()" class="btn" style="width: 100%; background: #28a745;">Üretimi Tamamla</button>
+            <button onclick="generateInvoice()" class="btn" style="width: 100%; background: #17a2b8; margin-top: 0.5rem;">Satış Fişi Oluştur</button>
+        </div>
+
+        <div class="content">
+            <!-- Sipariş Bilgileri -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h2 id="orderTitle">Üretim Takibi</h2>
+                <div id="orderSummary">Sipariş bilgileri yükleniyor...</div>
+            </div>
+
+            <!-- Üretim Kalemleri -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3>Üretim Kalemleri</h3>
+                    <button class="btn" onclick="resetAllQuantities()" style="background: #6c757d;">Tümünü Sıfırla</button>
+                </div>
+                <div id="productionItems">Kalemler yükleniyor...</div>
+            </div>
+
+            <!-- Üretim Özeti -->
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">Üretim Özeti</h3>
+                <div id="productionSummary">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 id="totalOrdered" style="color: #667eea;">0</h4>
+                            <p>Sipariş Edilen</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 id="totalProduced" style="color: #48bb78;">0</h4>
+                            <p>Üretilen</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 id="totalDifference" style="color: #ed8936;">0</h4>
+                            <p>Fark</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let orderId = null;
+        let orderData = null;
+        let productionData = [];
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getOrderIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            orderId = urlParams.get('id');
+            
+            if (orderId) {
+                loadProductionData();
+            } else {
+                alert('Sipariş ID bulunamadı');
+                goBack();
+            }
+        }
+
+        async function loadProductionData() {
+            try {
+                // Sipariş bilgilerini al
+                const orders = await apiCall('/api/orders');
+                orderData = orders.find(o => o.id == orderId);
+                
+                if (!orderData) {
+                    throw new Error('Sipariş bulunamadı');
+                }
+
+                // Sipariş kalemlerini al
+                const orderItems = await apiCall(`/api/order-items/${orderId}`);
+                
+                // Üretim verilerini hazırla
+                productionData = orderItems.map(item => ({
+                    ...item,
+                    produced_quantity: item.quantity, // Başlangıçta sipariş miktarı kadar
+                    original_quantity: item.quantity
+                }));
+
+                displayProductionData();
+
+            } catch (error) {
+                console.error('Üretim verileri yüklenemedi:', error);
+                alert('Üretim verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function displayProductionData() {
+            // Sipariş özeti
+            document.getElementById('orderTitle').textContent = `Üretim Takibi - Sipariş #${orderData.order_number}`;
+            document.getElementById('orderSummary').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div><strong>Müşteri:</strong> ${orderData.customer_name || 'Bilinmiyor'}</div>
+                    <div><strong>Sipariş Tarihi:</strong> ${new Date(orderData.order_date).toLocaleDateString('tr-TR')}</div>
+                    <div><strong>Teslimat:</strong> ${orderData.delivery_date ? new Date(orderData.delivery_date).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</div>
+                    <div><strong>Toplam:</strong> ${orderData.total_amount} TL</div>
+                </div>
+            `;
+
+            // Üretim kalemleri
+            let itemsHtml = '';
+            productionData.forEach((item, index) => {
+                const difference = item.produced_quantity - item.original_quantity;
+                const statusClass = difference === 0 ? 'status-ok' : difference < 0 ? 'status-shortage' : 'status-excess';
+                const statusText = difference === 0 ? 'Tamam' : difference < 0 ? `Eksik: ${Math.abs(difference)}` : `Fazla: ${difference}`;
+
+                itemsHtml += `
+                    <div class="production-item">
+                        <div>
+                            <h4>${item.product_name || `Ürün ID: ${item.product_id}`}</h4>
+                            <p style="color: #718096;">Birim Fiyat: ${item.unit_price} TL</p>
+                            <span class="status-indicator ${statusClass}">${statusText}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 2rem;">
+                            <div>
+                                <p style="margin: 0; font-size: 0.875rem; color: #718096;">Sipariş: ${item.original_quantity}</p>
+                            </div>
+                            <div class="quantity-controls">
+                                <button onclick="changeQuantity(${index}, -1)" class="btn" style="padding: 0.25rem 0.5rem;">-</button>
+                                <input type="number" class="quantity-input" value="${item.produced_quantity}" 
+                                       onchange="updateQuantity(${index}, this.value)" min="0">
+                                <button onclick="changeQuantity(${index}, 1)" class="btn" style="padding: 0.25rem 0.5rem;">+</button>
+                            </div>
+                            <div style="text-align: right; min-width: 100px;">
+                                <p style="margin: 0; font-weight: 600;">${(item.produced_quantity * item.unit_price).toFixed(2)} TL</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('productionItems').innerHTML = itemsHtml;
+            updateSummary();
+        }
+
+        function changeQuantity(index, change) {
+            productionData[index].produced_quantity = Math.max(0, productionData[index].produced_quantity + change);
+            displayProductionData();
+        }
+
+        function updateQuantity(index, value) {
+            productionData[index].produced_quantity = Math.max(0, parseInt(value) || 0);
+            displayProductionData();
+        }
+
+        function resetAllQuantities() {
+            if (confirm('Tüm miktarları sipariş miktarına sıfırlamak istediğinizden emin misiniz?')) {
+                productionData.forEach(item => {
+                    item.produced_quantity = item.original_quantity;
+                });
+                displayProductionData();
+            }
+        }
+
+        function updateSummary() {
+            const totalOrdered = productionData.reduce((sum, item) => sum + item.original_quantity, 0);
+            const totalProduced = productionData.reduce((sum, item) => sum + item.produced_quantity, 0);
+            const difference = totalProduced - totalOrdered;
+
+            document.getElementById('totalOrdered').textContent = totalOrdered;
+            document.getElementById('totalProduced').textContent = totalProduced;
+            document.getElementById('totalDifference').textContent = difference >= 0 ? `+${difference}` : difference;
+            document.getElementById('totalDifference').style.color = difference === 0 ? '#48bb78' : difference < 0 ? '#f56565' : '#ed8936';
+        }
+
+        async function completeProduction() {
+            if (confirm('Üretimi bu miktarlarla tamamlamak istediğinizden emin misiniz?')) {
+                try {
+                    // Üretim verilerini kaydet (gerçek uygulamada API'ye gönderilir)
+                    await apiCall(`/api/orders/${orderId}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: 'completed' })
+                    });
+                    
+                    alert('Üretim tamamlandı! Sipariş sevkiyata hazır.');
+                    goBack();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+
+        function generateInvoice() {
+            // Satış fişi oluşturma
+            const invoiceData = {
+                order_number: orderData.order_number,
+                customer_name: orderData.customer_name,
+                date: new Date().toLocaleDateString('tr-TR'),
+                items: productionData.map(item => ({
+                    product_name: item.product_name,
+                    quantity: item.produced_quantity,
+                    unit_price: item.unit_price,
+                    total: item.produced_quantity * item.unit_price
+                })),
+                total_amount: productionData.reduce((sum, item) => sum + (item.produced_quantity * item.unit_price), 0)
+            };
+
+            // Yeni pencerede fatura göster
+            const invoiceWindow = window.open('', '_blank');
+            invoiceWindow.document.write(`
+                <html>
+                <head><title>Satış Fişi - ${invoiceData.order_number}</title></head>
+                <body style="font-family: Arial, sans-serif; padding: 2rem;">
+                    <h2>SATIŞ FİŞİ</h2>
+                    <p><strong>Sipariş No:</strong> ${invoiceData.order_number}</p>
+                    <p><strong>Müşteri:</strong> ${invoiceData.customer_name}</p>
+                    <p><strong>Tarih:</strong> ${invoiceData.date}</p>
+                    <hr>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #f8f9fa;">
+                            <th style="border: 1px solid #ddd; padding: 8px;">Ürün</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Miktar</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Birim Fiyat</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Toplam</th>
+                        </tr>
+                        ${invoiceData.items.map(item => `
+                            <tr>
+                                <td style="border: 1px solid #ddd; padding: 8px;">${item.product_name}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${item.quantity}</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.unit_price} TL</td>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.total.toFixed(2)} TL</td>
+                            </tr>
+                        `).join('')}
+                        <tr style="background: #f8f9fa; font-weight: bold;">
+                            <td colspan="3" style="border: 1px solid #ddd; padding: 8px; text-align: right;">GENEL TOPLAM:</td>
+                            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${invoiceData.total_amount.toFixed(2)} TL</td>
+                        </tr>
+                    </table>
+                    <br>
+                    <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px;">Yazdır</button>
+                </body>
+                </html>
+            `);
+        }
+
+        function goBack() {
+            window.location.href = '/production.html';
+        }
+
+        // Sayfa yüklendiğinde üretim verilerini yükle
+        getOrderIdFromURL();
+    </script>
+</body>
+</html>

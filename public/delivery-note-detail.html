@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İrsaliye Detayı</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #007bff; color: white; padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; display: flex; flex-direction: column; }
+        .card { background: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 1rem; }
+        .btn:hover { background: #0056b3; }
+        .btn-back { background: #6c757d; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .items-table th, .items-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .items-table th { background: #f8f9fa; font-weight: 600; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.875rem; font-weight: 600; }
+        .status-invoiced { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>İrsaliye Detayı</h1>
+    </div>
+
+    <div class="container">
+        <div style="margin-bottom: 2rem;">
+            <a href="/admin.html" class="btn btn-back">← Admin Paneline Dön</a>
+        </div>
+
+        <!-- İrsaliye Bilgileri - Üst Kutu -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">📦 İrsaliye Bilgileri</h2>
+            <div id="deliveryInfo">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+
+        <!-- İrsaliye Kalemleri - Orta Kutu -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">📋 İrsaliye Kalemleri</h2>
+            <div id="deliveryItems">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+
+        <!-- İmza ve Notlar - Alt Kutu -->
+        <div class="card">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">✍️ İmza ve Notlar</h2>
+            <div id="signatureSection">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let deliveryNoteId = null;
+
+        if (!authToken) {
+            alert('Giriş yapmanız gerekiyor!');
+            window.location.href = '/admin.html';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getDeliveryNoteIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            deliveryNoteId = urlParams.get('id');
+            if (deliveryNoteId) {
+                loadDeliveryNoteData();
+            } else {
+                alert('İrsaliye ID bulunamadı');
+                window.location.href = '/admin.html';
+            }
+        }
+
+        async function loadDeliveryNoteData() {
+            try {
+                // İrsaliye bilgilerini al
+                const deliveryNotes = await apiCall('/api/cari/delivery-notes');
+                const deliveryNote = deliveryNotes.find(dn => dn.id == deliveryNoteId);
+                
+                if (!deliveryNote) {
+                    throw new Error('İrsaliye bulunamadı');
+                }
+
+                // İrsaliye kalemlerini al
+                const items = await apiCall(`/api/cari/delivery-notes/${deliveryNoteId}/items`);
+
+                // İrsaliye bilgilerini göster
+                document.getElementById('deliveryInfo').innerHTML = `
+                    <div class="info-grid">
+                        <div>
+                            <p><strong>İrsaliye No:</strong> ${deliveryNote.delivery_note_number}</p>
+                            <p><strong>Müşteri:</strong> ${deliveryNote.customer_name}</p>
+                            <p><strong>Teslimat Tarihi:</strong> ${new Date(deliveryNote.delivery_date).toLocaleDateString('tr-TR')}</p>
+                        </div>
+                        <div>
+                            <p><strong>Toplam Tutar:</strong> ${deliveryNote.total_amount} TL</p>
+                            <p><strong>Oluşturan:</strong> ${deliveryNote.created_by_name || 'Bilinmiyor'}</p>
+                            <p><strong>Durum:</strong> <span class="status-badge ${deliveryNote.is_invoiced ? 'status-invoiced' : 'status-pending'}">${deliveryNote.invoice_status}</span></p>
+                        </div>
+                    </div>
+                `;
+
+                // İrsaliye kalemlerini göster
+                let itemsHtml = `
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Ürün</th>
+                                <th>Miktar</th>
+                                <th>Birim</th>
+                                <th>Birim Fiyat</th>
+                                <th>Toplam</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                if (items.length === 0) {
+                    itemsHtml += `
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #666;">
+                                İrsaliye kalemi bulunamadı
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    items.forEach(item => {
+                        itemsHtml += `
+                            <tr>
+                                <td>${item.product_name || 'Bilinmiyor'}</td>
+                                <td>${item.quantity}</td>
+                                <td>${item.unit || 'adet'}</td>
+                                <td>${item.unit_price} TL</td>
+                                <td>${item.total_price} TL</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                itemsHtml += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9fa; font-weight: 600;">
+                                <td colspan="4">GENEL TOPLAM</td>
+                                <td>${deliveryNote.total_amount} TL</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+                document.getElementById('deliveryItems').innerHTML = itemsHtml;
+
+                // İmza ve notlar bölümü
+                let signatureHtml = '';
+                
+                if (deliveryNote.signature_data) {
+                    signatureHtml += `
+                        <div style="margin-bottom: 1rem;">
+                            <h4>Müşteri İmzası:</h4>
+                            <img src="${deliveryNote.signature_data}" style="border: 1px solid #ddd; border-radius: 8px; max-width: 400px; max-height: 200px;">
+                        </div>
+                    `;
+                }
+
+                if (deliveryNote.notes) {
+                    signatureHtml += `
+                        <div>
+                            <h4>Notlar:</h4>
+                            <p style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 0.5rem;">
+                                ${deliveryNote.notes}
+                            </p>
+                        </div>
+                    `;
+                }
+
+                if (!deliveryNote.signature_data && !deliveryNote.notes) {
+                    signatureHtml = `
+                        <p style="color: #666; text-align: center; padding: 2rem;">
+                            İmza veya not bulunmuyor
+                        </p>
+                    `;
+                }
+
+                document.getElementById('signatureSection').innerHTML = signatureHtml;
+
+            } catch (error) {
+                console.error('İrsaliye verileri yüklenemedi:', error);
+                alert('İrsaliye verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        // Sayfa yüklendiğinde irsaliye verilerini yükle
+        getDeliveryNoteIdFromURL();
+    </script>
+</body>
+</html>

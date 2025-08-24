@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Detayı - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Müşteri Detayı</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Detaylı bilgiler</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%; margin-bottom: 1rem;">← Geri Dön</button>
+            <button onclick="createVisit()" class="btn" style="width: 100%; background: #48bb78;">Yeni Ziyaret</button>
+            <button onclick="createOrder()" class="btn" style="width: 100%; background: #667eea; margin-top: 0.5rem;">Yeni Sipariş</button>
+        </div>
+
+        <div class="content">
+            <!-- Müşteri Bilgileri -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h2 style="margin-bottom: 1.5rem;">Müşteri Bilgileri</h2>
+                <div id="customerInfo">Müşteri bilgileri yükleniyor...</div>
+            </div>
+
+            <!-- Özet Kartları -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <h3 id="totalVisits" style="color: #667eea; font-size: 2rem;">0</h3>
+                    <p>Toplam Ziyaret</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalOrders" style="color: #48bb78; font-size: 2rem;">0</h3>
+                    <p>Toplam Sipariş</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalAmount" style="color: #ed8936; font-size: 2rem;">0 TL</h3>
+                    <p>Toplam Ciro</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="accountBalance" style="color: #f56565; font-size: 2rem;">0 TL</h3>
+                    <p>Cari Bakiye</p>
+                </div>
+            </div>
+
+            <!-- Sekmeler -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+                <button class="btn tab-btn active" onclick="showTab('visits')">Ziyaret Geçmişi</button>
+                <button class="btn tab-btn" onclick="showTab('orders')">Sipariş Geçmişi</button>
+                <button class="btn tab-btn" onclick="showTab('account')">Cari Hesap</button>
+            </div>
+
+            <!-- Sekme İçerikleri -->
+            <div class="card">
+                <div id="tabContent">İçerik yükleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: rgba(255, 255, 255, 0.7) !important;
+        }
+        .tab-btn.active {
+            background: var(--primary) !important;
+            color: white !important;
+        }
+        .visit-item, .order-item, .account-item {
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .visit-item:last-child, .order-item:last-child, .account-item:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let customerId = null;
+        let customerData = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getCustomerIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            customerId = urlParams.get('id');
+            
+            if (customerId) {
+                loadCustomerData();
+            } else {
+                document.getElementById('customerInfo').innerHTML = 
+                    '<p style="color: #f56565;">Müşteri ID bulunamadı</p>';
+            }
+        }
+
+        async function loadCustomerData() {
+            try {
+                // Müşteri bilgileri
+                customerData = await apiCall(`/api/customers/${customerId}`);
+                displayCustomerInfo();
+
+                // Ziyaret sayısı
+                const visits = await apiCall(`/api/visits?customer_id=${customerId}`);
+                document.getElementById('totalVisits').textContent = visits.length;
+
+                // Sipariş bilgileri
+                const orders = await apiCall(`/api/orders?customer_id=${customerId}`);
+                document.getElementById('totalOrders').textContent = orders.length;
+                
+                const totalAmount = orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
+                document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' TL';
+
+                // Cari bakiye (örnek)
+                document.getElementById('accountBalance').textContent = '2.500 TL';
+
+                // Varsayılan olarak ziyaret geçmişini göster
+                showTab('visits');
+
+            } catch (error) {
+                console.error('Müşteri verileri yüklenemedi:', error);
+                document.getElementById('customerInfo').innerHTML = 
+                    `<p style="color: #f56565;">Veriler yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        function displayCustomerInfo() {
+            document.getElementById('customerInfo').innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
+                    <div>
+                        <h4 style="color: #2d3748; margin-bottom: 0.5rem;">Firma Bilgileri</h4>
+                        <p><strong>Firma:</strong> ${customerData.company_name}</p>
+                        <p><strong>Yetkili:</strong> ${customerData.contact_person || '-'}</p>
+                        <p><strong>Durum:</strong> ${getStatusText(customerData.customer_status)}</p>
+                    </div>
+                    <div>
+                        <h4 style="color: #2d3748; margin-bottom: 0.5rem;">İletişim</h4>
+                        <p><strong>Telefon:</strong> ${customerData.phone || '-'}</p>
+                        <p><strong>E-posta:</strong> ${customerData.email || '-'}</p>
+                        <p><strong>Satış Temsilcisi:</strong> ${customerData.sales_rep_name || '-'}</p>
+                    </div>
+                    <div>
+                        <h4 style="color: #2d3748; margin-bottom: 0.5rem;">Adres</h4>
+                        <p>${customerData.address || 'Adres bilgisi yok'}</p>
+                        ${customerData.notes ? `<p><strong>Notlar:</strong> ${customerData.notes}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'active': return 'Aktif';
+                case 'potential': return 'Potansiyel';
+                case 'not_interested': return 'İlgilenmiyor';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        async function showTab(tabName) {
+            // Aktif sekmeyi güncelle
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const tabContent = document.getElementById('tabContent');
+            tabContent.innerHTML = 'Yükleniyor...';
+
+            try {
+                switch(tabName) {
+                    case 'visits':
+                        await showVisits();
+                        break;
+                    case 'orders':
+                        await showOrders();
+                        break;
+                    case 'account':
+                        await showAccount();
+                        break;
+                }
+            } catch (error) {
+                tabContent.innerHTML = `<p style="color: #f56565;">Veri yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        async function showVisits() {
+            const visits = await apiCall(`/api/visits?customer_id=${customerId}`);
+            
+            if (visits.length === 0) {
+                document.getElementById('tabContent').innerHTML = 
+                    '<p style="text-align: center; color: #718096; padding: 2rem;">Henüz ziyaret kaydı bulunmuyor.</p>';
+                return;
+            }
+
+            let html = '';
+            visits.forEach(visit => {
+                html += `
+                    <div class="visit-item">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="color: #2d3748;">${getVisitTypeText(visit.visit_type)} - ${getResultText(visit.result)}</h4>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(visit.visit_date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                            <span style="background: ${getResultColor(visit.result)}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem;">
+                                ${getResultText(visit.result)}
+                            </span>
+                        </div>
+                        ${visit.notes ? `<p style="margin-bottom: 0.5rem;"><strong>Notlar:</strong> ${visit.notes}</p>` : ''}
+                        ${visit.interested_products ? `<p style="margin-bottom: 0.5rem;"><strong>İlgilendiği Ürünler:</strong> ${visit.interested_products}</p>` : ''}
+                        ${visit.estimated_order_amount ? `<p style="color: #48bb78;"><strong>Tahmini Sipariş:</strong> ${visit.estimated_order_amount} TL</p>` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('tabContent').innerHTML = html;
+        }
+
+        async function showOrders() {
+            const orders = await apiCall(`/api/orders?customer_id=${customerId}`);
+            
+            if (orders.length === 0) {
+                document.getElementById('tabContent').innerHTML = 
+                    '<p style="text-align: center; color: #718096; padding: 2rem;">Henüz sipariş kaydı bulunmuyor.</p>';
+                return;
+            }
+
+            let html = '';
+            orders.forEach(order => {
+                html += `
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="color: #2d3748;">Sipariş #${order.order_number}</h4>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="font-size: 1.25rem; font-weight: 600; color: #48bb78;">${order.total_amount} TL</p>
+                                <span style="background: #48bb78; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem;">
+                                    ${order.status || 'Beklemede'}
+                                </span>
+                            </div>
+                        </div>
+                        ${order.notes ? `<p><strong>Notlar:</strong> ${order.notes}</p>` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('tabContent').innerHTML = html;
+        }
+
+        async function showAccount() {
+            // Cari hesap verilerini API'den al
+            const accountSummary = await apiCall(`/api/cari/customers/${customerId}/account-summary`);
+            const movements = await apiCall(`/api/cari/customers/${customerId}/movements`);
+            const invoices = await apiCall(`/api/cari/customers/${customerId}/invoices`);
+            const cashRegisters = await apiCall('/api/cari/cash-registers');
+
+            let html = `
+                <div style="margin-bottom: 2rem;">
+                    <h3>Cari Hesap Özeti</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0;">
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <p style="color: #718096;">Toplam Borç</p>
+                            <h4 style="color: #f56565;">${(accountSummary.totalDebit || 0).toLocaleString()} TL</h4>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <p style="color: #718096;">Toplam Alacak</p>
+                            <h4 style="color: #48bb78;">${(accountSummary.totalCredit || 0).toLocaleString()} TL</h4>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <p style="color: #718096;">Bakiye</p>
+                            <h4 style="color: #ed8936;">${(accountSummary.balance || 0).toLocaleString()} TL</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tahsilat Ekleme Formu -->
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem; color: #2d3748;">💰 Yeni Tahsilat Ekle</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+                        <div>
+                            <label>Tutar:</label>
+                            <input type="number" id="customerPaymentAmount" placeholder="0.00" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label>Ödeme Yöntemi:</label>
+                            <select id="customerPaymentMethod" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="cash">Nakit</option>
+                                <option value="transfer">Havale</option>
+                                <option value="pos">POS</option>
+                                <option value="check">Çek</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Kasa:</label>
+                            <select id="customerCashRegister" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                ${cashRegisters.map(cr => `<option value="${cr.id}">${cr.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label>Referans No:</label>
+                            <input type="text" id="customerReferenceNumber" placeholder="Opsiyonel" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <button class="btn" onclick="addCustomerPayment()" style="background: #48bb78;">Tahsilat Ekle</button>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <label>Fatura Seçin (Opsiyonel):</label>
+                        <select id="customerInvoiceSelect" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Genel Tahsilat</option>
+                            ${invoices.filter(inv => inv.remaining_amount > 0).map(inv => 
+                                `<option value="${inv.id}">${inv.invoice_number} - Kalan: ${inv.remaining_amount} TL</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <h4 style="margin-bottom: 1rem;">Cari Hesap Hareketleri</h4>
+            `;
+
+            movements.forEach(item => {
+                html += `
+                    <div class="account-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 style="color: #2d3748;">${item.description}</h4>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(item.movement_date).toLocaleDateString('tr-TR')} - ${item.movement_type}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                ${item.debit_amount > 0 ? `<p style="color: #f56565; font-weight: 600;">+${item.debit_amount.toLocaleString()} TL</p>` : ''}
+                                ${item.credit_amount > 0 ? `<p style="color: #48bb78; font-weight: 600;">-${item.credit_amount.toLocaleString()} TL</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('tabContent').innerHTML = html;
+        }
+        
+        async function addCustomerPayment() {
+            const amount = parseFloat(document.getElementById('customerPaymentAmount').value);
+            const method = document.getElementById('customerPaymentMethod').value;
+            const cashRegisterId = document.getElementById('customerCashRegister').value;
+            const reference = document.getElementById('customerReferenceNumber').value;
+            const invoiceId = document.getElementById('customerInvoiceSelect').value || null;
+
+            if (!amount || amount <= 0) {
+                alert('Geçerli bir tutar girin!');
+                return;
+            }
+
+            try {
+                await apiCall('/api/cari/payments', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        customerId: customerId,
+                        invoiceId: invoiceId,
+                        amount: amount,
+                        paymentMethod: method,
+                        cashRegisterId: cashRegisterId,
+                        referenceNumber: reference,
+                        notes: `Müşteri sayfasından ${method} ile tahsilat`
+                    })
+                });
+                
+                alert('Tahsilat başarıyla eklendi!');
+                
+                // Formu temizle
+                document.getElementById('customerPaymentAmount').value = '';
+                document.getElementById('customerReferenceNumber').value = '';
+                
+                // Cari hesap sekmesini yenile
+                showAccount();
+                
+                // Özet kartlarını yenile
+                loadCustomerData();
+            } catch (error) {
+                alert('Tahsilat eklenemedi: ' + error.message);
+            }
+        }
+
+        function getVisitTypeText(type) {
+            switch(type) {
+                case 'visit': return 'Yüz Yüze Ziyaret';
+                case 'call': return 'Telefon Görüşmesi';
+                case 'online': return 'Online Toplantı';
+                default: return type;
+            }
+        }
+
+        function getResultText(result) {
+            switch(result) {
+                case 'sale': return 'Satış Yapıldı';
+                case 'potential': return 'Potansiyel';
+                case 'follow_up': return 'Takip Gerekli';
+                case 'not_interested': return 'İlgilenmiyor';
+                default: return result;
+            }
+        }
+
+        function getResultColor(result) {
+            switch(result) {
+                case 'sale': return '#48bb78';
+                case 'potential': return '#ed8936';
+                case 'follow_up': return '#667eea';
+                case 'not_interested': return '#f56565';
+                default: return '#718096';
+            }
+        }
+
+        function createVisit() {
+            window.location.href = `/visit-form.html?customer_id=${customerId}`;
+        }
+
+        function createOrder() {
+            window.location.href = `/order-detail.html?customer_id=${customerId}`;
+        }
+
+        function goBack() {
+            window.location.href = '/sales.html';
+        }
+
+        // Sayfa yüklendiğinde müşteri verilerini yükle
+        getCustomerIdFromURL();
+    </script>
+</body>
+</html>

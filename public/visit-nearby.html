@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yakın Müşteriler - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        .location-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .location-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .distance {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Yakın Müşteriler</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Konumunuza yakın işletmeler</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%; margin-bottom: 1rem;">← Geri Dön</button>
+            <button onclick="createNewCustomer()" class="btn" style="width: 100%; background: #48bb78;">+ Yeni Müşteri Kaydı</button>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2>Yakın Konumdaki İşletmeler</h2>
+                        <p style="color: #718096;">Konumunuza en yakın müşteriler</p>
+                    </div>
+                    <div id="locationStatus" style="color: #718096; font-size: 0.875rem;">Konum alınıyor...</div>
+                </div>
+
+                <div id="nearbyList">
+                    <div style="text-align: center; padding: 2rem; color: #718096;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📍</div>
+                        <p>Konum bilgisi alınıyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let userLocation = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        document.getElementById('locationStatus').textContent = 
+                            `Konum: ${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`;
+                        
+                        loadNearbyCustomers();
+                    },
+                    (error) => {
+                        console.error('Konum alınamadı:', error);
+                        document.getElementById('locationStatus').textContent = 'Konum alınamadı';
+                        loadNearbyCustomers(); // Konum olmadan da müşterileri göster
+                    }
+                );
+            } else {
+                document.getElementById('locationStatus').textContent = 'Konum desteklenmiyor';
+                loadNearbyCustomers();
+            }
+        }
+
+        async function loadNearbyCustomers() {
+            try {
+                const customers = await apiCall('/api/customers');
+                displayNearbyCustomers(customers);
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+                document.getElementById('nearbyList').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #f56565;">
+                        <p>Müşteriler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayNearbyCustomers(customers) {
+            const nearbyList = document.getElementById('nearbyList');
+            
+            if (customers.length === 0) {
+                nearbyList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #718096;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+                        <p>Yakında kayıtlı müşteri bulunamadı</p>
+                        <button onclick="createNewCustomer()" class="btn" style="margin-top: 1rem;">Yeni Müşteri Kaydı Oluştur</button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            customers.forEach((customer, index) => {
+                const distance = userLocation && customer.latitude && customer.longitude 
+                    ? calculateDistance(userLocation.lat, userLocation.lng, customer.latitude, customer.longitude)
+                    : null;
+
+                html += `
+                    <div class="location-card" onclick="selectCustomer(${customer.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                            <div style="flex: 1;">
+                                <h3 style="color: #2d3748; margin-bottom: 0.5rem;">${customer.company_name}</h3>
+                                <p style="color: #718096; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                    Yetkili: ${customer.contact_person || 'Belirtilmemiş'}
+                                </p>
+                                <p style="color: #718096; font-size: 0.875rem;">
+                                    Tel: ${customer.phone || 'Belirtilmemiş'}
+                                </p>
+                            </div>
+                            ${distance ? `<span class="distance">${distance.toFixed(1)} km</span>` : ''}
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.875rem; color: #718096;">
+                                Durum: ${getStatusText(customer.customer_status)}
+                            </span>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <span style="background: ${getStatusColor(customer.customer_status)}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem;">
+                                    ${getStatusText(customer.customer_status)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            nearbyList.innerHTML = html;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Dünya yarıçapı (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'active': return '#48bb78';
+                case 'potential': return '#ed8936';
+                case 'not_interested': return '#f56565';
+                default: return '#718096';
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'active': return 'Aktif';
+                case 'potential': return 'Potansiyel';
+                case 'not_interested': return 'İlgilenmiyor';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        function selectCustomer(customerId) {
+            window.location.href = `/visit-form.html?customer_id=${customerId}`;
+        }
+
+        function createNewCustomer() {
+            const locationParam = userLocation ? `?lat=${userLocation.lat}&lng=${userLocation.lng}` : '';
+            window.location.href = `/new-customer.html${locationParam}`;
+        }
+
+        function goBack() {
+            window.location.href = '/sales.html';
+        }
+
+        // Sayfa yüklendiğinde konum al
+        getCurrentLocation();
+    </script>
+</body>
+</html>

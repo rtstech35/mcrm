@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#007bff">
+    <title>Admin Panel - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+
+</head>
+<body>
+    <div class="header">
+        <h1>Admin Panel - Saha CRM</h1>
+    </div>
+
+    <div class="container">
+        <div class="sidebar" style="background: #007bff; position: relative;">
+            <h3 style="color: white;">Menü</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showUsers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">👥 Kullanıcılar</a></li>
+                <li><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
+                <li><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
+                <li><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
+                <li><a href="#" onclick="showTargets()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Hedefler</a></li>
+                <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
+                <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
+                <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
+            </ul>
+            
+        </div>
+
+        <div class="content" id="content">
+            <div class="card">
+                <h2>Dashboard</h2>
+                <p>Admin paneline hoş geldiniz!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ürün Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('productModal')">&times;</span>
+            <h3>Yeni Ürün</h3>
+            <form id="productForm">
+                <div class="form-group">
+                    <label>Ürün Adı:</label>
+                    <input type="text" id="product_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <input type="text" id="product_description">
+                </div>
+                <div class="form-group">
+                    <label>Birim Fiyat (KDV Hariç):</label>
+                    <input type="number" id="product_unit_price" step="0.01" required onchange="calculateVAT()">
+                </div>
+                <div class="form-group">
+                    <label>KDV Oranı (%):</label>
+                    <select id="vat_rate" onchange="calculateVAT()" required>
+                        <option value="0">%0</option>
+                        <option value="1">%1</option>
+                        <option value="10">%10</option>
+                        <option value="20" selected>%20</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Birim Fiyat (KDV Dahil):</label>
+                    <input type="number" id="price_with_vat" step="0.01" readonly style="background: #f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Birim:</label>
+                    <select id="product_unit" required>
+                        <option value="adet">Adet</option>
+                        <option value="kg">Kilogram</option>
+                        <option value="lt">Litre</option>
+                        <option value="m">Metre</option>
+                        <option value="m2">Metrekare</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('userModal')">&times;</span>
+            <h3 id="userModalTitle">Yeni Kullanıcı</h3>
+            <form id="userForm">
+                <div class="form-group">
+                    <label>Kullanıcı Adı:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Ad Soyad:</label>
+                    <input type="text" id="full_name" required>
+                </div>
+                <div class="form-group">
+                    <label>E-posta:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="text" id="phone">
+                </div>
+                <div class="form-group">
+                    <label>Şifre:</label>
+                    <input type="password" id="password">
+                </div>
+                <div class="form-group">
+                    <label>Departman:</label>
+                    <select id="department_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Rol:</label>
+                    <select id="role_id" required></select>
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        async function showDashboard() {
+            try {
+                const stats = await apiCall('/api/dashboard/stats');
+                const salesData = await apiCall('/api/dashboard/monthly-sales');
+                const customerStatus = await apiCall('/api/dashboard/customer-status');
+                
+                document.getElementById('content').innerHTML = `
+
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                        <div onclick="showSalesTargets()" style="background: linear-gradient(135deg, #42A5F5, #1E88E5); padding: 1rem; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(66, 165, 245, 0.3);" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; font-size: 1.2rem;">💰</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.8rem; font-weight: 700; line-height: 1;">75%</div>
+                                    <div style="font-size: 0.75rem; opacity: 0.9;">450K / 600K TL</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;">Aylık Satış Hedefi</div>
+                            <div style="font-size: 0.75rem; opacity: 0.8;">Tüm satışçıların toplam hedefi</div>
+                        </div>
+                        
+                        <div onclick="showVisitTargets()" style="background: linear-gradient(135deg, #66BB6A, #43A047); padding: 1rem; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(102, 187, 106, 0.3);" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; font-size: 1.2rem;">🏢</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.8rem; font-weight: 700; line-height: 1;">82%</div>
+                                    <div style="font-size: 0.75rem; opacity: 0.9;">164 / 200 ziyaret</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;">Aylık Ziyaret Hedefi</div>
+                            <div style="font-size: 0.75rem; opacity: 0.8;">Tüm satışçıların ziyaret hedefi</div>
+                        </div>
+                        
+                        <div onclick="showProductionTargets()" style="background: linear-gradient(135deg, #FFA726, #FF7043); padding: 1rem; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(255, 167, 38, 0.3);" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; font-size: 1.2rem;">🏭</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.8rem; font-weight: 700; line-height: 1;">68%</div>
+                                    <div style="font-size: 0.75rem; opacity: 0.9;">34 / 50 sipariş</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;">Üretim Hedefi</div>
+                            <div style="font-size: 0.75rem; opacity: 0.8;">Aylık üretim kapasitesi</div>
+                        </div>
+                        
+                        <div onclick="showCollectionRates()" style="background: linear-gradient(135deg, #AB47BC, #8E24AA); padding: 1rem; border-radius: 12px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 16px rgba(171, 71, 188, 0.3);" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.5rem; border-radius: 8px; font-size: 1.2rem;">💳</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.8rem; font-weight: 700; line-height: 1;">89%</div>
+                                    <div style="font-size: 0.75rem; opacity: 0.9;">401K / 450K TL</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;">Tahsilat Oranı</div>
+                            <div style="font-size: 0.75rem; opacity: 0.8;">Aylık tahsilat performansı</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2d3748; margin-bottom: 1.5rem; font-weight: 600;">Ziyaret ve Satışa Dönüşüm Oranları</h3>
+                            <canvas id="conversionChart" width="400" height="250"></canvas>
+                        </div>
+                        
+                        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2d3748; margin-bottom: 1.5rem; font-weight: 600;">Sipariş ve Teslimat Hızı</h3>
+                            <canvas id="deliveryChart" width="400" height="250"></canvas>
+                        </div>
+                    </div>
+                        
+                        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2d3748; margin-bottom: 1.5rem; font-weight: 600;">Müşteri Konum Haritası</h3>
+                            <div id="customerMap" style="width: 100%; height: 400px; border-radius: 12px; overflow: hidden; position: relative; background: #f0f8ff;">
+                                <div style="position: absolute; top: 10px; right: 10px; background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000;">
+                                    <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <div style="width: 12px; height: 12px; background: #48bb78; border-radius: 50%;"></div>
+                                            <span>Aktif Müşteriler</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <div style="width: 12px; height: 12px; background: #42A5F5; border-radius: 50%;"></div>
+                                            <span>Potansiyel Müşteriler</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <div style="width: 12px; height: 12px; background: #f56565; border-radius: 50%;"></div>
+                                            <span>İlgilenmeyen Müşteriler</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <canvas id="mapCanvas" width="800" height="400" style="width: 100%; height: 100%;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Haritayı çiz
+                setTimeout(() => {
+                    drawCustomerMap();
+                }, 100);
+                
+            } catch (error) {
+                console.error('Dashboard yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Dashboard</h2>
+                        <p>Hoş geldiniz, ${currentUser.full_name}</p>
+                        <p style="color: red;">Dashboard verileri yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function showUsers() {
+            try {
+                const users = await apiCall('/api/users');
+                const roles = await apiCall('/api/roles');
+                const departments = await apiCall('/api/departments');
+                
+                let html = `
+                    <div class="card">
+                        <h2>Kullanıcı Yönetimi</h2>
+                        <button class="btn" onclick="openUserModal()">Yeni Kullanıcı</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Kullanıcı Adı</th>
+                                    <th>Ad Soyad</th>
+                                    <th>E-posta</th>
+                                    <th>Departman</th>
+                                    <th>Rol</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                users.forEach(user => {
+                    html += `
+                        <tr>
+                            <td>${user.id}</td>
+                            <td>${user.username}</td>
+                            <td>${user.full_name}</td>
+                            <td>${user.email}</td>
+                            <td>${user.department_name || '-'}</td>
+                            <td>${user.role_name || '-'}</td>
+                            <td>${user.is_active ? 'Aktif' : 'Pasif'}</td>
+                            <td>
+                                <button class="btn" onclick="editUser(${user.id})">Düzenle</button>
+                                <button class="btn btn-danger" onclick="deleteUser(${user.id})">Sil</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+                // Modal için seçenekleri hazırla
+                window.rolesData = roles;
+                window.departmentsData = departments;
+                
+            } catch (error) {
+                console.error('Kullanıcılar yüklenemedi:', error);
+            }
+        }
+
+        async function showCustomers() {
+            try {
+                const customers = await apiCall('/api/customers');
+                
+                let html = `
+                    <div class="card">
+                        <h2>Müşteri Yönetimi</h2>
+                        <button class="btn" onclick="alert('Müşteri ekleme yakında!')">Yeni Müşteri</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Şirket Adı</th>
+                                    <th>Yetkili</th>
+                                    <th>Telefon</th>
+                                    <th>Satış Temsilcisi</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                customers.forEach(customer => {
+                    html += `
+                        <tr onclick="viewCustomerDetail(${customer.id})" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+                            <td>${customer.id}</td>
+                            <td>${customer.company_name}</td>
+                            <td>${customer.contact_person || '-'}</td>
+                            <td>${customer.phone || '-'}</td>
+                            <td>${customer.sales_rep_name || '-'}</td>
+                            <td>${customer.customer_status}</td>
+                            <td>
+                                <button class="btn" onclick="event.stopPropagation(); alert('Düzenleme yakında!')">Düzenle</button>
+                                <button class="btn btn-danger" onclick="event.stopPropagation(); alert('Silme yakında!')">Sil</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+            }
+        }
+
+        function openUserModal() {
+            // Departman ve rol seçeneklerini doldur
+            const departmentSelect = document.getElementById('department_id');
+            const roleSelect = document.getElementById('role_id');
+            
+            departmentSelect.innerHTML = '<option value="">Seçiniz</option>';
+            window.departmentsData.forEach(dept => {
+                departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+            });
+            
+            roleSelect.innerHTML = '<option value="">Seçiniz</option>';
+            window.rolesData.forEach(role => {
+                roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
+            });
+            
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function openProductModal() {
+            document.getElementById('productModal').style.display = 'block';
+        }
+        
+        // KDV hesaplama fonksiyonu
+        function calculateVAT() {
+            const price = parseFloat(document.getElementById('product_unit_price').value) || 0;
+            const vatRate = parseFloat(document.getElementById('vat_rate').value) || 0;
+            const priceWithVat = price * (1 + vatRate / 100);
+            document.getElementById('price_with_vat').value = priceWithVat.toFixed(2);
+        }
+        
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('product_name').value,
+                description: document.getElementById('product_description').value,
+                unit_price: document.getElementById('product_unit_price').value,
+                vat_rate: document.getElementById('vat_rate').value,
+                price_with_vat: document.getElementById('price_with_vat').value,
+                unit: document.getElementById('product_unit').value
+            };
+            
+            try {
+                await apiCall('/api/products', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                
+                alert('Ürün başarıyla oluşturuldu!');
+                document.getElementById('productForm').reset();
+                closeModal('productModal');
+                showProducts();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                full_name: document.getElementById('full_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                password: document.getElementById('password').value,
+                department_id: document.getElementById('department_id').value,
+                role_id: document.getElementById('role_id').value
+            };
+            
+            try {
+                const result = await apiCall('/api/users', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                
+                alert('Kullanıcı başarıyla oluşturuldu!');
+                document.getElementById('userForm').reset();
+                closeModal('userModal');
+                showUsers();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        function viewOrderDetail(orderId) {
+            window.location.href = `/order-detail-admin.html?id=${orderId}`;
+        }
+        
+        async function showCariHesap() {
+            try {
+                console.log('Cari hesap verileri yüklenmeye başlanıyor...');
+                const deliveryNotes = await apiCall('/api/cari/delivery-notes');
+                const invoices = await apiCall('/api/cari/invoices');
+                console.log('İrsaliye sayısı:', deliveryNotes.length);
+                console.log('Fatura sayısı:', invoices.length);
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <!-- İrsaliyeler -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="color: #2d3748;">İrsaliyeler (${deliveryNotes.length})</h3>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn" onclick="showCariHesap()" style="background: #6c757d;">Yenile</button>
+                                        <span style="color: #666; font-size: 0.875rem; font-style: italic;">* İrsaliyeler teslimatçı tarafından otomatik oluşturulur</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                    ${deliveryNotes.map(dn => `
+                                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer;" onclick="viewDeliveryNote(${dn.id})">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <div>
+                                                    <strong>${dn.delivery_note_number}</strong>
+                                                    <p style="color: #718096; font-size: 0.875rem;">${dn.customer_name}</p>
+                                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
+                                                    <p style="color: #718096; font-size: 0.75rem;">${dn.created_by_name || 'Bilinmiyor'}</p>
+                                                </div>
+                                                <div style="text-align: right;">
+                                                    <p style="font-weight: 600;">${dn.total_amount} TL</p>
+                                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                                        <span style="background: ${dn.signature_data ? '#d1ecf1' : '#f8d7da'}; color: ${dn.signature_data ? '#0c5460' : '#721c24'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
+                                                            ${dn.signature_data ? '✓ İmzalı' : '✗ İmzasız'}
+                                                        </span>
+                                                        <span style="background: ${dn.is_invoiced ? '#d4edda' : '#fff3cd'}; color: ${dn.is_invoiced ? '#155724' : '#856404'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
+                                                            ${dn.invoice_status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <!-- Faturalar -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="color: #2d3748;">Faturalar (${invoices.length})</h3>
+                                    <button class="btn" onclick="createInvoiceFromDeliveryNotes()" style="background: #17a2b8;">İrsaliyelerden Fatura Oluştur</button>
+                                </div>
+                                
+                                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                    ${invoices.map(inv => `
+                                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer;" onclick="viewInvoice(${inv.id})">
+                                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                <div>
+                                                    <strong>${inv.invoice_number}</strong>
+                                                    <p style="color: #718096; font-size: 0.875rem;">${inv.customer_name}</p>
+                                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(inv.invoice_date).toLocaleDateString('tr-TR')}</p>
+                                                </div>
+                                                <div style="text-align: right;">
+                                                    <p style="font-weight: 600;">${inv.total_amount} TL</p>
+                                                    <p style="color: #28a745; font-size: 0.875rem;">Ödenen: ${inv.paid_amount} TL</p>
+                                                    <span style="background: ${inv.status === 'paid' ? '#d4edda' : inv.status === 'partial' ? '#fff3cd' : '#f8d7da'}; color: ${inv.status === 'paid' ? '#155724' : inv.status === 'partial' ? '#856404' : '#721c24'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
+                                                        ${inv.status === 'paid' ? 'Ödendi' : inv.status === 'partial' ? 'Kısmi' : 'Bekliyor'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Cari hesap verileri yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Cari Hesap Yönetimi</h2>
+                        <p style="color: red;">Veriler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+
+        
+        function createInvoiceFromDeliveryNotes() {
+            window.location.href = '/invoice-from-delivery.html';
+        }
+        
+        async function createInvoiceFromDeliveryNotesOld() {
+            try {
+                // Faturalanmamış irsaliyeleri getir
+                const deliveryNotes = await apiCall('/api/cari/delivery-notes');
+                const unInvoicedNotes = deliveryNotes.filter(dn => !dn.is_invoiced);
+                
+                if (unInvoicedNotes.length === 0) {
+                    alert('Faturalanmamış irsaliye bulunamadı!');
+                    return;
+                }
+                
+                // Müşterilere göre grupla
+                const customerGroups = {};
+                unInvoicedNotes.forEach(dn => {
+                    if (!customerGroups[dn.customer_id]) {
+                        customerGroups[dn.customer_id] = {
+                            customer_name: dn.customer_name,
+                            notes: []
+                        };
+                    }
+                    customerGroups[dn.customer_id].notes.push(dn);
+                });
+                
+                // Modal içeriği oluştur
+                let modalContent = `
+                    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 700px; width: 90%; max-height: 80%; overflow-y: auto;">
+                            <h3 style="margin-bottom: 1rem;">İrsaliyelerden Fatura Oluştur</h3>
+                            <p style="margin-bottom: 1rem; color: #666;">Müşteri seçin ve irsaliyelerini işaretleyin:</p>
+                `;
+                
+                Object.keys(customerGroups).forEach(customerId => {
+                    const group = customerGroups[customerId];
+                    modalContent += `
+                        <div style="border: 1px solid #e2e8f0; padding: 1rem; margin-bottom: 1rem; border-radius: 8px;">
+                            <h4 style="margin-bottom: 0.5rem; color: #2d3748;">${group.customer_name}</h4>
+                            <div style="margin-bottom: 0.5rem;">
+                                <label style="font-size: 0.875rem; color: #666;">
+                                    <input type="checkbox" onchange="toggleAllCustomer(${customerId})" id="customer_${customerId}"> Tümünü Seç
+                                </label>
+                            </div>
+                    `;
+                    
+                    group.notes.forEach(dn => {
+                        modalContent += `
+                            <div style="margin-left: 1rem; margin-bottom: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" class="delivery-note-cb customer-${customerId}" value="${dn.id}">
+                                    <span>${dn.delivery_note_number} - ${new Date(dn.delivery_date).toLocaleDateString('tr-TR')} - ${dn.total_amount} TL</span>
+                                </label>
+                            </div>
+                        `;
+                    });
+                    
+                    modalContent += `</div>`;
+                });
+                
+                modalContent += `
+                            <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                                <button onclick="closeInvoiceModal()" style="padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Kapat</button>
+                                <button onclick="createInvoiceFromSelected()" style="padding: 0.75rem 1.5rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Fatura Oluştur</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Modal'i sayfaya ekle
+                const modalDiv = document.createElement('div');
+                modalDiv.id = 'invoiceModal';
+                modalDiv.innerHTML = modalContent;
+                document.body.appendChild(modalDiv);
+                
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        function toggleAllCustomer(customerId) {
+            const customerCheckbox = document.getElementById(`customer_${customerId}`);
+            const deliveryCheckboxes = document.querySelectorAll(`.customer-${customerId}`);
+            
+            deliveryCheckboxes.forEach(cb => {
+                cb.checked = customerCheckbox.checked;
+            });
+        }
+        
+        async function createInvoiceFromSelected() {
+            const selectedCheckboxes = document.querySelectorAll('.delivery-note-cb:checked');
+            
+            if (selectedCheckboxes.length === 0) {
+                alert('Lütfen en az bir irsaliye seçin!');
+                return;
+            }
+            
+            // Seçilen irsaliyeleri müşterilere göre grupla
+            const customerInvoices = {};
+            selectedCheckboxes.forEach(cb => {
+                const deliveryNoteId = cb.value;
+                const customerClass = cb.className.match(/customer-(\d+)/)[1];
+                
+                if (!customerInvoices[customerClass]) {
+                    customerInvoices[customerClass] = [];
+                }
+                customerInvoices[customerClass].push(deliveryNoteId);
+            });
+            
+            try {
+                // Her müşteri için ayrı fatura oluştur
+                for (const customerId in customerInvoices) {
+                    const deliveryNoteIds = customerInvoices[customerId];
+                    
+                    const result = await apiCall('/api/cari/invoices/from-delivery-notes', {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            customerId: parseInt(customerId),
+                            deliveryNoteIds: deliveryNoteIds.map(id => parseInt(id))
+                        })
+                    });
+                    
+                    console.log(`Fatura oluşturuldu: ${result.invoiceNumber}`);
+                }
+                
+                alert('Faturalar başarıyla oluşturuldu!');
+                closeInvoiceModal();
+                showCariHesap(); // Sayfayı yenile
+                
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        function closeInvoiceModal() {
+            const modal = document.getElementById('invoiceModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function viewDeliveryNote(id) {
+            window.location.href = `/delivery-note-detail.html?id=${id}`;
+        }
+        
+        function viewInvoice(id) {
+            window.location.href = `/invoice-detail.html?id=${id}`;
+        }
+        
+        function viewCustomerDetail(customerId) {
+            window.location.href = `/customer-detail-admin.html?id=${customerId}`;
+        }
+        
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/';
+        }
+
+        // Harita çizim fonksiyonu
+        function drawCustomerMap() {
+            const canvas = document.getElementById('mapCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Basit harita arka planı
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#e3f2fd');
+            gradient.addColorStop(1, '#bbdefb');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Şehir sınırları (basit)
+            ctx.strokeStyle = '#90a4ae';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(100, 100);
+            ctx.lineTo(700, 120);
+            ctx.lineTo(680, 300);
+            ctx.lineTo(120, 280);
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Örnek müşteri konumları
+            const customers = [
+                // Aktif müşteriler (yeşil)
+                { x: 200, y: 150, status: 'active', name: 'ABC Restaurant' },
+                { x: 350, y: 180, status: 'active', name: 'XYZ Cafe' },
+                { x: 500, y: 160, status: 'active', name: 'DEF Otel' },
+                { x: 300, y: 220, status: 'active', name: 'GHI Market' },
+                { x: 450, y: 200, status: 'active', name: 'JKL Restaurant' },
+                
+                // Potansiyel müşteriler (mavi)
+                { x: 250, y: 200, status: 'potential', name: 'MNO Cafe' },
+                { x: 400, y: 140, status: 'potential', name: 'PQR Restaurant' },
+                { x: 320, y: 250, status: 'potential', name: 'STU Otel' },
+                { x: 480, y: 240, status: 'potential', name: 'VWX Market' },
+                
+                // İlgilenmeyen müşteriler (kırmızı)
+                { x: 180, y: 240, status: 'not_interested', name: 'YZ Restaurant' },
+                { x: 420, y: 180, status: 'not_interested', name: 'ABC2 Cafe' },
+                { x: 380, y: 260, status: 'not_interested', name: 'DEF2 Otel' }
+            ];
+            
+            // Müşteri noktalarını çiz
+            customers.forEach(customer => {
+                const colors = {
+                    'active': '#48bb78',
+                    'potential': '#42A5F5',
+                    'not_interested': '#f56565'
+                };
+                
+                // Dış çember (vurgu)
+                ctx.beginPath();
+                ctx.arc(customer.x, customer.y, 8, 0, 2 * Math.PI);
+                ctx.fillStyle = colors[customer.status] + '40';
+                ctx.fill();
+                
+                // İç nokta
+                ctx.beginPath();
+                ctx.arc(customer.x, customer.y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = colors[customer.status];
+                ctx.fill();
+                
+                // Beyaz kenar
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            
+            // Şehir isimleri
+            ctx.fillStyle = '#37474f';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('İstanbul Bölgesi', width / 2, 50);
+            
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#546e7a';
+            ctx.fillText('Hizmet Verilen Alan', width / 2, 70);
+        }
+        
+        async function showProducts() {
+            try {
+                const products = await apiCall('/api/products');
+                
+                let html = `
+                    <div class="card">
+                        <h2>Ürün Yönetimi</h2>
+                        <button class="btn" onclick="openProductModal()">Yeni Ürün</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Ürün Adı</th>
+                                    <th>Açıklama</th>
+                                    <th>Fiyat (KDV Hariç)</th>
+                                    <th>KDV %</th>
+                                    <th>Fiyat (KDV Dahil)</th>
+                                    <th>Birim</th>
+                                    <th>Durum</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                products.forEach(product => {
+                    html += `
+                        <tr>
+                            <td>${product.id}</td>
+                            <td>${product.name}</td>
+                            <td>${product.description || '-'}</td>
+                            <td>${product.unit_price} TL</td>
+                            <td>%${product.vat_rate || 20}</td>
+                            <td>${product.price_with_vat || (product.unit_price * 1.2).toFixed(2)} TL</td>
+                            <td>${product.unit}</td>
+                            <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
+                            <td>
+                                <button class="btn" onclick="editProduct(${product.id})">Düzenle</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Ürünler yüklenemedi:', error);
+            }
+        }
+
+        async function showOrders() {
+            try {
+                const orders = await apiCall('/api/orders');
+                
+                let html = `
+                    <div class="card">
+                        <h2>Sipariş Yönetimi</h2>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Sipariş No</th>
+                                    <th>Müşteri</th>
+                                    <th>Tarih</th>
+                                    <th>Tutar</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                orders.forEach(order => {
+                    html += `
+                        <tr onclick="viewOrderDetail(${order.id})" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
+                            <td>#${order.order_number}</td>
+                            <td>${order.customer_name || 'Bilinmiyor'}</td>
+                            <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
+                            <td>${order.total_amount} TL</td>
+                            <td>${order.status}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Siparişler yüklenemedi:', error);
+            }
+        }
+        
+        async function showTargets() {
+            try {
+                const users = await apiCall('/api/users');
+                const targets = await apiCall('/api/targets');
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Hedef Yönetimi</h2>
+                        <p>Kullanıcıların aylık hedeflerini belirleyin</p>
+                        
+                        <div style="margin: 2rem 0;">
+                            <h3>Hedef Belirleme</h3>
+                            <form id="targetForm" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; align-items: end;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Kullanıcı:</label>
+                                    <select id="target_user_id" required>
+                                        <option value="">Kullanıcı Seçiniz</option>
+                                        ${users.map(user => `<option value="${user.id}">${user.full_name} (${user.role})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Hedef Tipi:</label>
+                                    <select id="target_type" required>
+                                        <option value="">Tip Seçiniz</option>
+                                        <option value="sales">Satış Cirosu (TL)</option>
+                                        <option value="visits">Ziyaret Sayısı</option>
+                                        <option value="production">Üretim Adedi</option>
+                                        <option value="shipping">Sevkiyat Adedi</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Hedef Değer:</label>
+                                    <input type="number" id="target_value" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label>Ay:</label>
+                                    <input type="month" id="target_month" value="${new Date().toISOString().slice(0, 7)}" required>
+                                </div>
+                                <button type="submit" class="btn">Hedef Belirle</button>
+                            </form>
+                        </div>
+                        
+                        <h3>Mevcut Hedefler</h3>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Kullanıcı</th>
+                                    <th>Rol</th>
+                                    <th>Hedef Tipi</th>
+                                    <th>Hedef Değer</th>
+                                    <th>Ay</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${targets.map(target => {
+                                    const typeText = {
+                                        'sales': 'Satış Cirosu',
+                                        'visits': 'Ziyaret Sayısı',
+                                        'production': 'Üretim Adedi',
+                                        'shipping': 'Sevkiyat Adedi'
+                                    };
+                                    return `
+                                        <tr>
+                                            <td>${target.full_name || 'Bilinmiyor'}</td>
+                                            <td>${target.role || 'Bilinmiyor'}</td>
+                                            <td>${typeText[target.target_type] || target.target_type}</td>
+                                            <td>${target.target_value}${target.target_type === 'sales' ? ' TL' : ' adet'}</td>
+                                            <td>${target.target_month}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                // Form submit event
+                setTimeout(() => {
+                    document.getElementById('targetForm').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        
+                        const formData = {
+                            user_id: document.getElementById('target_user_id').value,
+                            target_type: document.getElementById('target_type').value,
+                            target_value: document.getElementById('target_value').value,
+                            target_month: document.getElementById('target_month').value
+                        };
+                        
+                        try {
+                            await apiCall('/api/targets', {
+                                method: 'POST',
+                                body: JSON.stringify(formData)
+                            });
+                            
+                            alert('Hedef başarıyla belirlendi!');
+                            showTargets();
+                        } catch (error) {
+                            alert('Hata: ' + error.message);
+                        }
+                    });
+                }, 100);
+                
+            } catch (error) {
+                console.error('Hedefler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Hedef Yönetimi</h2>
+                        <p style="color: red;">Hedefler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function showSalesTargets() {
+            try {
+                const targets = await apiCall('/api/targets');
+                const salesTargets = targets.filter(t => t.target_type === 'sales');
+                
+                let html = `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>Satış Hedefleri ve Gerçekleşme Durumu</h2>
+                            <button class="btn" onclick="showDashboard()" style="background: #6c757d;">← Dashboard'a Dön</button>
+                        </div>
+                        <div style="margin-bottom: 2rem;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                    <h4 style="color: #42A5F5;">600.000 TL</h4>
+                                    <p>Toplam Hedef</p>
+                                </div>
+                                <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                    <h4 style="color: #66BB6A;">450.000 TL</h4>
+                                    <p>Gerçekleşen</p>
+                                </div>
+                                <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                    <h4 style="color: #FFA726;">75%</h4>
+                                    <p>Başarı Oranı</p>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                // Satışçı detayları (örnek veri)
+                const salesReps = [
+                    { name: 'Ahmet Yılmaz', target: 150000, achieved: 125000 },
+                    { name: 'Ayşe Kaya', target: 200000, achieved: 180000 },
+                    { name: 'Mehmet Demir', target: 120000, achieved: 85000 },
+                    { name: 'Fatma Öz', target: 130000, achieved: 60000 }
+                ];
+                
+                salesReps.forEach(rep => {
+                    const percentage = Math.round((rep.achieved / rep.target) * 100);
+                    const statusColor = percentage >= 80 ? '#66BB6A' : percentage >= 60 ? '#FFA726' : '#f56565';
+                    
+                    html += `
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <h4>${rep.name}</h4>
+                                <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.875rem;">${percentage}%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Hedef: ${rep.target.toLocaleString()} TL</span>
+                                <span>Gerçekleşen: ${rep.achieved.toLocaleString()} TL</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${percentage}%; height: 100%; background: ${statusColor}; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Satış hedefleri yüklenemedi:', error);
+            }
+        }
+        
+        async function showVisitTargets() {
+            let html = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Ziyaret Hedefleri ve Gerçekleşme Durumu</h2>
+                        <button class="btn" onclick="showDashboard()" style="background: #6c757d;">← Dashboard'a Dön</button>
+                    </div>
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                <h4 style="color: #66BB6A;">200</h4>
+                                <p>Toplam Hedef</p>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                <h4 style="color: #42A5F5;">164</h4>
+                                <p>Gerçekleşen</p>
+                            </div>
+                            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                                <h4 style="color: #FFA726;">82%</h4>
+                                <p>Başarı Oranı</p>
+                            </div>
+                        </div>
+                    </div>
+            `;
+            
+            const visitReps = [
+                { name: 'Ahmet Yılmaz', target: 50, achieved: 45 },
+                { name: 'Ayşe Kaya', target: 60, achieved: 52 },
+                { name: 'Mehmet Demir', target: 45, achieved: 38 },
+                { name: 'Fatma Öz', target: 45, achieved: 29 }
+            ];
+            
+            visitReps.forEach(rep => {
+                const percentage = Math.round((rep.achieved / rep.target) * 100);
+                const statusColor = percentage >= 80 ? '#66BB6A' : percentage >= 60 ? '#FFA726' : '#f56565';
+                
+                html += `
+                    <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <h4>${rep.name}</h4>
+                            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.875rem;">${percentage}%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span>Hedef: ${rep.target} ziyaret</span>
+                            <span>Gerçekleşen: ${rep.achieved} ziyaret</span>
+                        </div>
+                        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: ${statusColor}; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+        
+        async function showProductionTargets() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Üretim Hedefleri ve Kapasite Kullanımı</h2>
+                        <button class="btn" onclick="showDashboard()" style="background: #6c757d;">← Dashboard'a Dön</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #FFA726;">50</h4>
+                            <p>Hedef Sipariş</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #66BB6A;">34</h4>
+                            <p>Tamamlanan</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #42A5F5;">68%</h4>
+                            <p>Kapasite Kullanımı</p>
+                        </div>
+                    </div>
+                    <p style="color: #718096;">Aylık üretim kapasitesi ve gerçekleşme durumu takip edilmektedir.</p>
+                </div>
+            `;
+        }
+        
+        async function showCollectionRates() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Tahsilat Oranları ve Performans</h2>
+                        <button class="btn" onclick="showDashboard()" style="background: #6c757d;">← Dashboard'a Dön</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #AB47BC;">450.000 TL</h4>
+                            <p>Toplam Alacak</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #66BB6A;">401.000 TL</h4>
+                            <p>Tahsil Edilen</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #f56565;">49.000 TL</h4>
+                            <p>Bekleyen</p>
+                        </div>
+                        <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #42A5F5;">89%</h4>
+                            <p>Tahsilat Oranı</p>
+                        </div>
+                    </div>
+                    <p style="color: #718096;">Aylık tahsilat performansı ve bekleyen alacaklar takip edilmektedir.</p>
+                </div>
+            `;
+        }
+        
+        function drawConversionChart() {
+            const canvas = document.getElementById('conversionChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz'];
+            const visits = [45, 52, 38, 48, 55, 42];
+            const conversions = [12, 18, 15, 20, 22, 18];
+            
+            ctx.strokeStyle = '#42A5F5';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            visits.forEach((visit, index) => {
+                const x = 60 + (index * 50);
+                const y = 200 - (visit * 2);
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#66BB6A';
+            ctx.beginPath();
+            conversions.forEach((conv, index) => {
+                const x = 60 + (index * 50);
+                const y = 200 - (conv * 4);
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        }
+        
+        function drawDeliveryChart() {
+            const canvas = document.getElementById('deliveryChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const data = [85, 92, 78, 88, 95, 82];
+            
+            data.forEach((value, index) => {
+                const x = 60 + (index * 50);
+                const height = value * 1.5;
+                const y = 200 - height;
+                
+                ctx.fillStyle = '#FFA726';
+                ctx.fillRect(x - 15, y, 30, height);
+            });
+        }
+        
+        function updateUserInfo() {
+            const adminInfo = document.getElementById('adminInfo');
+            if (adminInfo) {
+                adminInfo.innerHTML = `
+                    <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;">Admin Dashboard</div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Hoş geldiniz, ${currentUser.full_name}</div>
+                    <div style="font-size: 0.75rem; opacity: 0.8;">
+                        ${new Date().toLocaleDateString('tr-TR')} - ${new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}
+                    </div>
+                `;
+            }
+        }
+        
+        // Sayfa yüklendiğinde dashboard'u göster
+        showDashboard();
+        
+        // Kullanıcı bilgilerini güncelle
+        setTimeout(() => {
+            updateUserInfo();
+            drawConversionChart();
+            drawDeliveryChart();
+        }, 100);
+        
+        // Her dakika kullanıcı bilgilerini güncelle
+        setInterval(updateUserInfo, 60000);
+    </script>
+    <div id="adminInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(0, 123, 255, 0.9); padding: 1rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 200px;">
+        <!-- JavaScript ile doldurulacak -->
+    </div>
+</body>
+</html>

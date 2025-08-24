@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#007bff">
+    <title>Saha CRM Sistemi</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <div class="login-box">
+            <h2>Saha CRM Sistemi</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Kullanıcı Adı:</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Şifre:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn">Giriş Yap</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard" class="dashboard">
+        <div class="header">
+            <h1>Saha CRM Sistemi</h1>
+            <div class="nav">
+                <button onclick="showDashboard()">Dashboard</button>
+                <button onclick="showUsers()">Kullanıcılar</button>
+                <button onclick="showCustomers()">Müşteriler</button>
+                <button onclick="showProducts()">Ürünler</button>
+                <button onclick="showOrders()">Siparişler</button>
+                <button onclick="logout()">Çıkış</button>
+            </div>
+        </div>
+        <div id="content" class="content">
+            <h2>Dashboard</h2>
+            <p>Saha CRM Sistemi başarıyla kuruldu!</p>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let authToken = null;
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentUser = data.user;
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    
+                    if (currentUser.role === 'admin') {
+                        window.location.href = '/admin.html';
+                    } else if (currentUser.role === 'sales_rep') {
+                        window.location.href = '/sales.html';
+                    } else if (currentUser.role === 'production') {
+                        window.location.href = '/production.html';
+                    } else if (currentUser.role === 'shipping') {
+                        window.location.href = '/shipping.html';
+                    } else if (currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
+                        window.location.href = '/accounting.html';
+                    } else {
+                        document.getElementById('loginContainer').style.display = 'none';
+                        document.getElementById('dashboard').style.display = 'block';
+                    }
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert('Bağlantı hatası');
+            }
+        });
+
+        function showDashboard() {
+            document.getElementById('content').innerHTML = `
+                <h2>Dashboard</h2>
+                <p>Hoş geldiniz, ${currentUser.full_name}</p>
+                <p>Rol: ${currentUser.role}</p>
+                <p>Departman: ${currentUser.department}</p>
+            `;
+        }
+
+        function showUsers() {
+            document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Yakında...</p>';
+        }
+
+        function showCustomers() {
+            document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Yakında...</p>';
+        }
+
+        function showProducts() {
+            document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Yakında...</p>';
+        }
+
+        function showOrders() {
+            document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Yakında...</p>';
+        }
+
+        function logout() {
+            currentUser = null;
+            authToken = null;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+        
+        // PWA kurulum
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

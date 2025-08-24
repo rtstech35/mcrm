@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sevkiyat Detayı - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        .shipping-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 2rem; }
+        .info-section { background: #f8f9fa; padding: 1.5rem; border-radius: 12px; }
+        .item-row { display: flex; justify-content: space-between; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .item-row:last-child { border-bottom: none; }
+        .status-badge { padding: 0.5rem 1rem; border-radius: 20px; color: white; font-size: 0.875rem; font-weight: 500; }
+        .status-completed { background: #28a745; }
+        .status-shipping { background: #6f42c1; }
+        .status-delivered { background: #17a2b8; }
+        .signature-pad { border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
+    </style>
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Sevkiyat Detayı</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Sevkiyat Paneli</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%; margin-bottom: 1rem;">← Geri Dön</button>
+            <div id="actionButtons"></div>
+        </div>
+
+        <div class="content">
+            <!-- Sipariş Bilgileri -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2 id="orderTitle">Sevkiyat Detayı</h2>
+                    <div id="orderStatus"></div>
+                </div>
+                
+                <div class="shipping-info">
+                    <div class="info-section">
+                        <h3 style="color: #2d3748; margin-bottom: 1rem;">Sipariş Bilgileri</h3>
+                        <div id="orderInfo">Yükleniyor...</div>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3 style="color: #2d3748; margin-bottom: 1rem;">Teslimat Bilgileri</h3>
+                        <div id="deliveryInfo">Yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sevkiyat Kalemleri -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <h3 style="color: #2d3748; margin-bottom: 1.5rem;">Sevkiyat Kalemleri</h3>
+                <div id="shippingItems">Yükleniyor...</div>
+            </div>
+
+            <!-- Teslimat İşlemleri -->
+            <div class="card" id="deliverySection" style="display: none;">
+                <h3 style="color: #2d3748; margin-bottom: 1.5rem;">Teslimat İşlemleri</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslimat Tarihi:</label>
+                        <input type="datetime-local" id="deliveryDate" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslim Alan Kişi:</label>
+                        <input type="text" id="receiverName" placeholder="Teslim alanın adı soyadı" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslim Alan Kişinin İmzası:</label>
+                    <div style="border: 2px dashed #e2e8f0; border-radius: 8px; padding: 1rem; background: #fafafa;">
+                        <canvas id="signaturePad" class="signature-pad" width="500" height="150" style="background: white; border-radius: 4px;"></canvas>
+                        <div style="margin-top: 0.5rem; text-align: center;">
+                            <button class="btn" onclick="clearSignature()" style="background: #6c757d; font-size: 0.875rem;">Temizle</button>
+                            <small style="color: #718096; margin-left: 1rem;">Lütfen yukarıdaki alana imza atınız</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslimat Notları:</label>
+                    <textarea id="deliveryNotes" rows="3" placeholder="Teslimat durumu, hasarlı ürün var mı, eksik var mı vb..." style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; resize: vertical;"></textarea>
+                </div>
+                
+                <button class="btn" onclick="completeDelivery()" style="background: #28a745; width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: 600;">
+                    ✅ Teslimatı Tamamla
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let orderId = null;
+        let orderData = null;
+        let isDrawing = false;
+        let signaturePad = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getOrderIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            orderId = urlParams.get('id');
+            
+            if (orderId) {
+                loadOrderData();
+            } else {
+                alert('Sipariş ID bulunamadı');
+                goBack();
+            }
+        }
+
+        async function loadOrderData() {
+            try {
+                // Sipariş bilgilerini al
+                const orders = await apiCall('/api/orders');
+                orderData = orders.find(o => o.id == orderId);
+                
+                if (!orderData) {
+                    throw new Error('Sipariş bulunamadı');
+                }
+
+                // Müşteri bilgilerini al
+                const customers = await apiCall('/api/customers');
+                const customer = customers.find(c => c.id == orderData.customer_id);
+                
+                // Sipariş kalemlerini al
+                const orderItems = await apiCall(`/api/order-items/${orderId}`);
+
+                displayOrderData(orderData, customer, orderItems);
+
+            } catch (error) {
+                console.error('Sipariş verileri yüklenemedi:', error);
+                alert('Sipariş verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function displayOrderData(order, customer, items) {
+            // Başlık ve durum
+            document.getElementById('orderTitle').textContent = `Sevkiyat - Sipariş #${order.order_number}`;
+            
+            const statusText = {
+                'completed': 'Sevkiyat Bekliyor',
+                'shipping': 'Sevkiyatta',
+                'delivered': 'Teslim Edildi'
+            };
+            
+            document.getElementById('orderStatus').innerHTML = 
+                `<span class="status-badge status-${order.status}">${statusText[order.status] || order.status}</span>`;
+
+            // Sipariş bilgileri
+            document.getElementById('orderInfo').innerHTML = `
+                <p><strong>Sipariş No:</strong> #${order.order_number}</p>
+                <p><strong>Sipariş Tarihi:</strong> ${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                <p><strong>Satış Temsilcisi:</strong> ${order.sales_rep_name || 'Bilinmiyor'}</p>
+                ${order.notes ? `<p><strong>Sipariş Notları:</strong> ${order.notes}</p>` : ''}
+            `;
+
+            // Teslimat bilgileri
+            if (customer) {
+                const hasLocation = customer.latitude && customer.longitude;
+                const addressText = customer.address || 'Belirtilmemiş';
+                
+                document.getElementById('deliveryInfo').innerHTML = `
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="color: #2d3748; font-size: 1.2rem; margin-bottom: 0.5rem;">${customer.company_name}</h4>
+                    </div>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p><strong>Teslimat Adresi:</strong></p>
+                        <p style="margin: 0.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #6f42c1; font-size: 1rem; line-height: 1.4;">
+                            ${addressText}
+                        </p>
+                        ${hasLocation ? 
+                            `<div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                                <button class="btn" onclick="openNavigation(${customer.latitude}, ${customer.longitude})" style="background: #28a745; padding: 0.75rem 1.5rem; font-weight: 600;">
+                                    🗺️ Navigasyonu Başlat
+                                </button>
+                                <button class="btn" onclick="showOnMap(${customer.latitude}, ${customer.longitude})" style="background: #17a2b8; padding: 0.75rem 1.5rem; font-weight: 600;">
+                                    📍 Haritada Göster
+                                </button>
+                            </div>` : 
+                            '<p style="color: #f56565; font-size: 0.875rem; margin-top: 0.5rem;">⚠️ Konum bilgisi mevcut değil</p>'
+                        }
+                    </div>
+                    
+                    <p><strong>Planlanan Teslimat:</strong> ${order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</p>
+                `;
+            }
+
+            // Sevkiyat kalemleri
+            if (items && items.length > 0) {
+                let itemsHtml = '';
+                let totalQuantity = 0;
+                
+                items.forEach(item => {
+                    totalQuantity += item.quantity;
+                    
+                    itemsHtml += `
+                        <div class="item-row">
+                            <div style="flex: 1;">
+                                <strong style="font-size: 1.1rem;">${item.product_name || `Ürün ID: ${item.product_id}`}</strong>
+                                <p style="color: #718096; font-size: 0.875rem; margin-top: 0.25rem;">Birim: ${item.unit || 'adet'}</p>
+                            </div>
+                            <div style="text-align: right; min-width: 100px;">
+                                <p style="font-size: 1.5rem; font-weight: 700; color: #2d3748;">${item.quantity}</p>
+                                <p style="color: #718096; font-size: 0.875rem;">${item.unit || 'adet'}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                itemsHtml += `
+                    <div class="item-row" style="background: #f8f9fa; font-weight: 600; border-top: 2px solid #e2e8f0;">
+                        <div style="flex: 1;">
+                            <strong style="font-size: 1.2rem;">TOPLAM KALEM</strong>
+                        </div>
+                        <div style="text-align: right; min-width: 100px;">
+                            <p style="font-size: 1.8rem; font-weight: 700; color: #48bb78;">${totalQuantity}</p>
+                            <p style="color: #718096; font-size: 0.875rem;">adet</p>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('shippingItems').innerHTML = itemsHtml;
+            } else {
+                document.getElementById('shippingItems').innerHTML = 
+                    '<p style="text-align: center; color: #718096; padding: 2rem;">Sipariş kalemleri bulunamadı</p>';
+            }
+
+            // Aksiyon butonları ve teslimat bölümü
+            updateActionButtons(order.status);
+            
+            // İmza pad'ini başlat
+            if (order.status === 'shipping') {
+                initSignaturePad();
+            }
+        }
+
+        function updateActionButtons(status) {
+            let buttonsHtml = '';
+            
+            if (status === 'completed') {
+                buttonsHtml = `
+                    <button class="btn" onclick="startShipping()" style="width: 100%; background: #6f42c1; margin-bottom: 0.5rem;">
+                        🚚 Sevkiyata Al
+                    </button>
+                `;
+            } else if (status === 'shipping') {
+                buttonsHtml = `
+                    <div style="background: #e7e3ff; color: #6f42c1; padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1rem;">
+                        🚚 Sevkiyatta<br>
+                        <small>Teslimat için aşağıdaki formu doldurun</small>
+                    </div>
+                `;
+                document.getElementById('deliverySection').style.display = 'block';
+            } else if (status === 'delivered') {
+                buttonsHtml = `
+                    <div style="background: #d1ecf1; color: #0c5460; padding: 1rem; border-radius: 8px; text-align: center;">
+                        ✅ Teslim Edildi<br>
+                        <small>Teslimat tamamlandı</small>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('actionButtons').innerHTML = buttonsHtml;
+        }
+
+        async function startShipping() {
+            if (confirm('Bu siparişi sevkiyata almak istediğinizden emin misiniz?')) {
+                try {
+                    await apiCall(`/api/orders/${orderId}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: 'shipping' })
+                    });
+                    
+                    alert('Sipariş sevkiyata alındı!');
+                    loadOrderData(); // Sayfayı yenile
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+
+        function initSignaturePad() {
+            const canvas = document.getElementById('signaturePad');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            signaturePad = { canvas, ctx };
+            
+            // Bugünün tarihini varsayılan olarak ayarla
+            const now = new Date();
+            const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('deliveryDate').value = localDateTime;
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = signaturePad.canvas.getBoundingClientRect();
+            signaturePad.ctx.beginPath();
+            signaturePad.ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = signaturePad.canvas.getBoundingClientRect();
+            signaturePad.ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            signaturePad.ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            signaturePad.canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearSignature() {
+            if (signaturePad) {
+                signaturePad.ctx.clearRect(0, 0, signaturePad.canvas.width, signaturePad.canvas.height);
+            }
+        }
+
+        async function completeDelivery() {
+            const deliveryDate = document.getElementById('deliveryDate').value;
+            const receiverName = document.getElementById('receiverName').value;
+            const deliveryNotes = document.getElementById('deliveryNotes').value;
+            
+            if (!deliveryDate) {
+                alert('Lütfen teslimat tarihini giriniz');
+                return;
+            }
+            
+            if (!receiverName.trim()) {
+                alert('Lütfen teslim alan kişinin adını giriniz');
+                return;
+            }
+            
+            if (confirm(`Teslimatı "${receiverName}" adlı kişiye tamamlamak istediğinizden emin misiniz?`)) {
+                try {
+                    const signatureData = signaturePad ? signaturePad.canvas.toDataURL() : '';
+                    
+                    await apiCall(`/api/orders/${orderId}/deliver`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ 
+                            signature: signatureData,
+                            delivery_date: deliveryDate,
+                            receiver_name: receiverName,
+                            notes: deliveryNotes
+                        })
+                    });
+                    
+                    alert('Teslimat başarıyla tamamlandı!');
+                    loadOrderData(); // Sayfayı yenile
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+
+        function openNavigation(lat, lng) {
+            // Mobil cihazlarda varsayılan harita uygulamasını aç
+            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Mobil cihazlarda Google Maps veya Apple Maps
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                if (isIOS) {
+                    window.open(`maps://maps.google.com/maps?daddr=${lat},${lng}&amp;ll=`);
+                } else {
+                    window.open(`google.navigation:q=${lat},${lng}`);
+                }
+            } else {
+                // Masaüstünde Google Maps
+                window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+            }
+        }
+        
+        function showOnMap(lat, lng) {
+            // Google Maps'te konumu göster
+            window.open(`https://www.google.com/maps?q=${lat},${lng}&z=15`, '_blank');
+        }
+        
+        function goBack() {
+            window.location.href = '/shipping.html';
+        }
+
+        // Sayfa yüklendiğinde sipariş verilerini yükle
+        getOrderIdFromURL();
+    </script>
+</body>
+</html>

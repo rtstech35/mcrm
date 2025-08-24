@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipariş Detayı - Admin Panel</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #007bff; color: white; padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .card { background: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #0056b3; }
+        .btn-back { background: #6c757d; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .item-row:last-child { border-bottom: none; }
+        .status-badge { padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-production { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-shipping { background: #e2e3e5; color: #383d41; }
+        .status-delivered { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sipariş Detayı - Admin Panel</h1>
+    </div>
+
+    <div class="container">
+        <div style="margin-bottom: 2rem;">
+            <a href="/admin.html" class="btn btn-back">← Admin Paneline Dön</a>
+        </div>
+
+        <div class="card">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+                <!-- Sol Taraf - Sipariş Formu -->
+                <div>
+                    <h2 style="color: #2d3748; margin-bottom: 1.5rem;">Sipariş Detayları</h2>
+                    
+                    <!-- Sipariş Bilgileri -->
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Sipariş No:</label>
+                                <input type="text" id="orderNumber" readonly style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8f9fa;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Sipariş Tarihi:</label>
+                                <input type="date" id="orderDate" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Teslimat Tarihi:</label>
+                                <input type="date" id="deliveryDate" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Sipariş Durumu:</label>
+                                <select id="statusSelect" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                    <option value="pending">Bekliyor</option>
+                                    <option value="production">Üretimde</option>
+                                    <option value="completed">Tamamlandı</option>
+                                    <option value="shipping">Sevkiyatta</option>
+                                    <option value="delivered">Teslim Edildi</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Notlar:</label>
+                            <textarea id="orderNotes" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; resize: vertical;"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Sipariş Kalemleri -->
+                    <div>
+                        <h3 style="color: #2d3748; margin-bottom: 1rem;">Sipariş Kalemleri</h3>
+                        <div id="orderItems" style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <!-- JavaScript ile doldurulacak -->
+                        </div>
+                    </div>
+                    
+                    <!-- Butonlar -->
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                        <button class="btn" onclick="updateOrderStatus()" style="background: #28a745;">Değişiklikleri Kaydet</button>
+                        <button class="btn" onclick="printOrder()" style="background: #17a2b8;">Yazdır</button>
+                    </div>
+                </div>
+                
+                <!-- Sağ Taraf - Müşteri Bilgileri -->
+                <div>
+                    <h2 style="color: #2d3748; margin-bottom: 1.5rem;">Müşteri Bilgileri</h2>
+                    
+                    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div id="customerInfo">
+                            <!-- JavaScript ile doldurulacak -->
+                        </div>
+                    </div>
+                    
+                    <!-- Özet Bilgiler -->
+                    <div style="margin-top: 2rem; background: #e8f5e8; padding: 1.5rem; border-radius: 8px; border: 1px solid #c3e6cb;">
+                        <h3 style="color: #155724; margin-bottom: 1rem;">Sipariş Özeti</h3>
+                        <div id="orderSummary">
+                            <!-- JavaScript ile doldurulacak -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let orderId = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getOrderIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            orderId = urlParams.get('id');
+            if (orderId) {
+                loadOrderData();
+            } else {
+                alert('Sipariş ID bulunamadı');
+                window.location.href = '/admin.html';
+            }
+        }
+
+        async function loadOrderData() {
+            try {
+                // Sipariş bilgilerini al
+                const order = await apiCall(`/api/orders/${orderId}`);
+                const customer = await apiCall(`/api/customers/${order.customer_id}`);
+                const items = await apiCall(`/api/orders/${orderId}/items`);
+
+                // Form alanlarını doldur
+                document.getElementById('orderNumber').value = `#${order.order_number}`;
+                document.getElementById('orderDate').value = order.order_date ? order.order_date.split('T')[0] : '';
+                document.getElementById('deliveryDate').value = order.delivery_date ? order.delivery_date.split('T')[0] : '';
+                document.getElementById('statusSelect').value = order.status;
+                document.getElementById('orderNotes').value = order.notes || '';
+
+                // Müşteri bilgileri
+                document.getElementById('customerInfo').innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: #2d3748; margin-bottom: 0.5rem;">${customer.company_name}</h4>
+                        <p style="margin-bottom: 0.5rem;"><strong>Yetkili:</strong> ${customer.contact_person || 'Belirtilmemiş'}</p>
+                        <p style="margin-bottom: 0.5rem;"><strong>Telefon:</strong> ${customer.phone || 'Belirtilmemiş'}</p>
+                        <p style="margin-bottom: 0.5rem;"><strong>E-posta:</strong> ${customer.email || 'Belirtilmemiş'}</p>
+                        <p style="margin-bottom: 0.5rem;"><strong>Durum:</strong> ${customer.customer_status}</p>
+                        <p><strong>Adres:</strong><br>${customer.address || 'Belirtilmemiş'}</p>
+                    </div>
+                `;
+                
+                // Sipariş özeti
+                const statusText = {
+                    'pending': 'Bekliyor',
+                    'production': 'Üretimde',
+                    'completed': 'Tamamlandı',
+                    'shipping': 'Sevkiyatta',
+                    'delivered': 'Teslim Edildi'
+                };
+                
+                document.getElementById('orderSummary').innerHTML = `
+                    <p style="margin-bottom: 0.5rem;"><strong>Satış Temsilcisi:</strong> ${order.sales_rep_name || 'Bilinmiyor'}</p>
+                    <p style="margin-bottom: 0.5rem;"><strong>Durum:</strong> <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">${statusText[order.status]}</span></p>
+                    <hr style="margin: 1rem 0; border: none; border-top: 1px solid #c3e6cb;">
+                    <p style="font-size: 1.2rem; font-weight: 600; color: #155724;"><strong>Toplam: ${order.total_amount} TL</strong></p>
+                `;
+
+                // Sipariş kalemleri
+                if (items && items.length > 0) {
+                    let itemsHtml = `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 1rem; text-align: left; border-bottom: 2px solid #e2e8f0;">Ürün</th>
+                                    <th style="padding: 1rem; text-align: center; border-bottom: 2px solid #e2e8f0;">Miktar</th>
+                                    <th style="padding: 1rem; text-align: right; border-bottom: 2px solid #e2e8f0;">Birim Fiyat</th>
+                                    <th style="padding: 1rem; text-align: right; border-bottom: 2px solid #e2e8f0;">Toplam</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    let totalAmount = 0;
+                    
+                    items.forEach(item => {
+                        const itemTotal = item.quantity * item.unit_price;
+                        totalAmount += itemTotal;
+                        
+                        itemsHtml += `
+                            <tr>
+                                <td style="padding: 1rem; border-bottom: 1px solid #e2e8f0;">
+                                    <strong>${item.product_name || `Ürün ID: ${item.product_id}`}</strong>
+                                    <div style="color: #718096; font-size: 0.875rem;">${item.unit || 'adet'}</div>
+                                </td>
+                                <td style="padding: 1rem; text-align: center; border-bottom: 1px solid #e2e8f0;">
+                                    <strong>${item.quantity}</strong>
+                                </td>
+                                <td style="padding: 1rem; text-align: right; border-bottom: 1px solid #e2e8f0;">
+                                    ${item.unit_price} TL
+                                </td>
+                                <td style="padding: 1rem; text-align: right; border-bottom: 1px solid #e2e8f0; font-weight: 600;">
+                                    ${itemTotal.toFixed(2)} TL
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    itemsHtml += `
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #e8f5e8; font-weight: 600;">
+                                    <td colspan="3" style="padding: 1rem; text-align: right; border-top: 2px solid #c3e6cb;">GENEL TOPLAM:</td>
+                                    <td style="padding: 1rem; text-align: right; border-top: 2px solid #c3e6cb; color: #155724; font-size: 1.1rem;">${totalAmount.toFixed(2)} TL</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    `;
+                    
+                    document.getElementById('orderItems').innerHTML = itemsHtml;
+                } else {
+                    document.getElementById('orderItems').innerHTML = 
+                        '<p style="text-align: center; color: #718096; padding: 2rem;">Sipariş kalemleri bulunamadı</p>';
+                }
+
+                // Durum seçicisini ayarla
+                document.getElementById('statusSelect').value = order.status;
+
+            } catch (error) {
+                console.error('Sipariş verileri yüklenemedi:', error);
+                alert('Sipariş verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function updateOrderStatus() {
+            const newStatus = document.getElementById('statusSelect').value;
+            const orderDate = document.getElementById('orderDate').value;
+            const deliveryDate = document.getElementById('deliveryDate').value;
+            const notes = document.getElementById('orderNotes').value;
+            
+            if (confirm('Sipariş bilgilerini güncellemek istediğinizden emin misiniz?')) {
+                try {
+                    await apiCall(`/api/orders/${orderId}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ 
+                            status: newStatus,
+                            order_date: orderDate,
+                            delivery_date: deliveryDate,
+                            notes: notes
+                        })
+                    });
+                    
+                    alert('Sipariş başarıyla güncellendi!');
+                    loadOrderData();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+        
+        function printOrder() {
+            window.print();
+        }
+
+        // Sayfa yüklendiğinde sipariş verilerini yükle
+        getOrderIdFromURL();
+    </script>
+</body>
+</html>

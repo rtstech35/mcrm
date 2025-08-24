@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Detayı - Admin Panel</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #007bff; color: white; padding: 1rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .card { background: white; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 1rem; }
+        .btn:hover { background: #0056b3; }
+        .btn-back { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-info { background: #17a2b8; }
+        .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 2rem; }
+        .tab { padding: 1rem 2rem; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; }
+        .tab.active { border-bottom-color: #007bff; color: #007bff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+        .info-item { margin-bottom: 1rem; }
+        .info-item label { font-weight: 600; color: #2d3748; }
+        .info-item p { color: #4a5568; margin-top: 0.25rem; }
+        .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        .summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .summary-card h3 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .summary-card p { opacity: 0.9; }
+        .list-item { padding: 0.75rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; }
+        .list-item:hover { background: #f8f9fa; }
+        .list-item:last-child { border-bottom: none; }
+        .tab-container { max-height: 500px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.875rem; font-weight: 600; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-unpaid { background: #f8d7da; color: #721c24; }
+        .status-partial { background: #fff3cd; color: #856404; }
+        .balance-positive { color: #28a745; font-weight: 600; }
+        .balance-negative { color: #dc3545; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Müşteri Detayı - Admin Panel</h1>
+    </div>
+
+    <div class="container" style="display: flex; flex-direction: column;">
+        <div style="margin-bottom: 2rem;">
+            <a href="/admin.html" class="btn btn-back">← Admin Paneline Dön</a>
+        </div>
+
+        <!-- Müşteri Bilgileri - Üst Kutu -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">📋 Müşteri Bilgileri</h2>
+            <div id="customerInfo">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+
+        <!-- Özet Bilgiler - Orta Kutu -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">📊 Özet Bilgiler</h2>
+            <div id="summaryCards" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+
+        <!-- Detaylı Bilgiler - Alt Kutu -->
+        <div class="card">
+            <h2 style="color: #2d3748; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">📈 Detaylı Bilgiler</h2>
+            
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('orders')">📋 Siparişler</div>
+                <div class="tab" onclick="showTab('delivery-notes')">📦 İrsaliyeler</div>
+                <div class="tab" onclick="showTab('invoices')">🧾 Faturalar</div>
+                <div class="tab" onclick="showTab('payments')">💰 Tahsilatlar</div>
+                <div class="tab" onclick="showTab('account')">📊 Cari Hesap</div>
+                <div class="tab" onclick="showTab('ekstre')">📄 Ekstre</div>
+            </div>
+
+            <!-- Siparişler Sekmesi -->
+            <div id="orders-tab" class="tab-content active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">📋 Siparişler</h3>
+                    <button class="btn btn-success" onclick="createNewOrder()">+ Yeni Sipariş</button>
+                </div>
+                <div id="ordersList" class="tab-container">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- İrsaliyeler Sekmesi -->
+            <div id="delivery-notes-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">📦 İrsaliyeler</h3>
+                    <button class="btn btn-info" onclick="createInvoiceFromDeliveryNotes()">📄 Faturalaştır</button>
+                </div>
+                <div id="deliveryNotesList" class="tab-container">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Faturalar Sekmesi -->
+            <div id="invoices-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">🧾 Faturalar</h3>
+                    <button class="btn btn-success" onclick="addPayment()">💳 Tahsilat Ekle</button>
+                </div>
+                <div id="invoicesList" class="tab-container">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Tahsilatlar Sekmesi -->
+            <div id="payments-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">💰 Tahsilatlar</h3>
+                    <button class="btn btn-success" onclick="addPayment()">+ Yeni Tahsilat</button>
+                </div>
+                <div id="paymentsList" class="tab-container">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Cari Hesap Sekmesi -->
+            <div id="account-tab" class="tab-content">
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">📊 Cari Hesap Hareketleri</h3>
+                </div>
+                <div id="accountMovements" class="tab-container">
+                    <!-- JavaScript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- Ekstre Sekmesi -->
+            <div id="ekstre-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2d3748;">📄 Müşteri Ekstresi</h3>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="date" id="startDate" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <input type="date" id="endDate" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <button onclick="generateEkstre()" class="btn" style="background: #007bff;">Görüntüle</button>
+                        <button onclick="downloadEkstrePDF()" class="btn" style="background: #dc3545;">PDF İndir</button>
+                        <button onclick="downloadEkstreExcel()" class="btn" style="background: #28a745;">Excel İndir</button>
+                    </div>
+                </div>
+                <div id="ekstreContent" class="tab-container">
+                    <div style="text-align: center; padding: 2rem; color: #718096;">
+                        Tarih aralığı seçip "Görüntüle" butonuna tıklayın.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let customerId = null;
+
+        if (!authToken) {
+            alert('Giriş yapmanız gerekiyor!');
+            window.location.href = '/admin.html';
+        }
+        
+        console.log('Auth token:', authToken ? 'Var' : 'Yok');
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function getCustomerIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            customerId = urlParams.get('id');
+            if (customerId) {
+                loadCustomerData();
+            } else {
+                alert('Müşteri ID bulunamadı');
+                window.location.href = '/admin.html';
+            }
+        }
+
+        async function loadCustomerData() {
+            console.log('loadCustomerData başlatıldı');
+            console.log('customerId:', customerId);
+            console.log('authToken:', authToken ? 'Var' : 'Yok');
+            
+            try {
+                console.log('Müşteri bilgileri isteniyor...');
+                // Müşteri bilgilerini al
+                const customer = await apiCall(`/api/customers/${customerId}`);
+                console.log('Müşteri verisi:', customer);
+                
+                // Müşteri bilgilerini göster
+                document.getElementById('customerInfo').innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Firma Adı:</strong> ${customer.company_name}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Yetkili Kişi:</strong> ${customer.contact_person || 'Belirtilmemiş'}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Telefon:</strong> ${customer.phone || 'Belirtilmemiş'}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>E-posta:</strong> ${customer.email || 'Belirtilmemiş'}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Müşteri Durumu:</strong> ${customer.customer_status}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Satış Temsilcisi:</strong> ${customer.sales_rep_name || 'Atanmamış'}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Kayıt Tarihi:</strong> ${new Date(customer.created_at).toLocaleDateString('tr-TR')}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Adres:</strong> ${customer.address || 'Belirtilmemiş'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Özet verileri yükle
+                await loadSummaryData();
+                
+                // Sekme verilerini yükle
+                await loadTabData();
+
+            } catch (error) {
+                console.error('Müşteri verileri yüklenemedi:', error);
+                console.error('Hata detayı:', error.stack);
+                document.getElementById('customerInfo').innerHTML = `
+                    <div style="color: red; padding: 1rem; background: #ffe6e6; border-radius: 8px;">
+                        <h4>Hata: Müşteri verileri yüklenemedi</h4>
+                        <p>Detay: ${error.message}</p>
+                        <p>Müşteri ID: ${customerId}</p>
+                        <p>Token: ${authToken ? 'Mevcut' : 'Eksik'}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadSummaryData() {
+            try {
+                const [orders, deliveryNotes, invoices, accountSummary] = await Promise.all([
+                    apiCall(`/api/orders?customer_id=${customerId}`),
+                    apiCall(`/api/cari/customers/${customerId}/delivery-notes`),
+                    apiCall(`/api/cari/invoices?customer_id=${customerId}`),
+                    apiCall(`/api/cari/customers/${customerId}/account-summary`)
+                ]);
+
+                const totalOrders = orders.length;
+                const totalDeliveryNotes = deliveryNotes.length;
+                const totalInvoices = invoices.length;
+                const balance = accountSummary.balance || 0;
+
+                document.getElementById('summaryCards').innerHTML = `
+                    <div style="background: linear-gradient(135deg, #42A5F5, #1E88E5); color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${totalOrders}</h3>
+                        <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">Toplam Sipariş</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #FFA726, #FF7043); color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${totalDeliveryNotes}</h3>
+                        <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">İrsaliye</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #66BB6A, #43A047); color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${totalInvoices}</h3>
+                        <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">Fatura</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, ${balance >= 0 ? '#26A69A, #00897B' : '#EF5350, #E53935'}); color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">${balance.toFixed(2)} TL</h3>
+                        <p style="margin: 0; font-size: 0.875rem; opacity: 0.9;">Cari Bakiye</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Özet veriler yüklenemedi:', error);
+            }
+        }
+
+        async function loadTabData() {
+            try {
+                // Siparişleri yükle
+                const orders = await apiCall(`/api/orders?customer_id=${customerId}`);
+                document.getElementById('ordersList').innerHTML = orders.map(order => `
+                    <div class="list-item" onclick="viewOrder(${order.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>#${order.order_number}</strong>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="font-weight: 600;">${order.total_amount} TL</p>
+                                <span class="status-badge" style="background: #e2e8f0; color: #4a5568;">${order.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // İrsaliyeleri yükle
+                const deliveryNotes = await apiCall(`/api/cari/customers/${customerId}/delivery-notes`);
+                document.getElementById('deliveryNotesList').innerHTML = deliveryNotes.map(dn => `
+                    <div class="list-item" onclick="viewDeliveryNote(${dn.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${dn.delivery_note_number}</strong>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="font-weight: 600;">${dn.total_amount} TL</p>
+                                <span class="status-badge ${dn.is_invoiced ? 'status-paid' : 'status-unpaid'}">${dn.is_invoiced ? 'Faturalandı' : 'Bekliyor'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Faturaları yükle
+                const invoices = await apiCall(`/api/cari/customers/${customerId}/invoices`);
+                document.getElementById('invoicesList').innerHTML = invoices.map(inv => `
+                    <div class="list-item" onclick="viewInvoice(${inv.id})">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${inv.invoice_number}</strong>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(inv.invoice_date).toLocaleDateString('tr-TR')}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="font-weight: 600;">${inv.total_amount} TL</p>
+                                <p style="color: #28a745; font-size: 0.875rem;">Ödenen: ${inv.paid_amount} TL</p>
+                                <span class="status-badge ${inv.status === 'paid' ? 'status-paid' : inv.status === 'partial' ? 'status-partial' : 'status-unpaid'}">${inv.status_text}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Tahsilatları yükle
+                const payments = await apiCall(`/api/cari/customers/${customerId}/payments`);
+                document.getElementById('paymentsList').innerHTML = payments.map(payment => `
+                    <div class="list-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${payment.invoice_number || 'Genel Tahsilat'}</strong>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(payment.payment_date).toLocaleDateString('tr-TR')}</p>
+                                <p style="color: #718096; font-size: 0.875rem;">${payment.cash_register_name} - ${payment.payment_method}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="font-weight: 600; color: #28a745;">${payment.amount} TL</p>
+                                ${payment.reference_number ? `<p style="color: #718096; font-size: 0.875rem;">Ref: ${payment.reference_number}</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Cari hesap hareketlerini yükle
+                const movements = await apiCall(`/api/cari/customers/${customerId}/movements`);
+                document.getElementById('accountMovements').innerHTML = movements.map(movement => `
+                    <div class="list-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${movement.description}</strong>
+                                <p style="color: #718096; font-size: 0.875rem;">${new Date(movement.movement_date).toLocaleDateString('tr-TR')}</p>
+                                <p style="color: #718096; font-size: 0.875rem;">${movement.reference_number || ''}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                ${movement.debit_amount > 0 ? `<p style="font-weight: 600; color: #dc3545;">Borç: ${movement.debit_amount} TL</p>` : ''}
+                                ${movement.credit_amount > 0 ? `<p style="font-weight: 600; color: #28a745;">Alacak: ${movement.credit_amount} TL</p>` : ''}
+                                <p style="color: #718096; font-size: 0.875rem;">Bakiye: ${movement.balance} TL</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Sekme verileri yüklenemedi:', error);
+            }
+        }
+
+        function showTab(tabName) {
+            // Tüm sekmeleri gizle
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Seçili sekmeyi göster
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function viewOrder(orderId) {
+            window.location.href = `/order-detail-admin.html?id=${orderId}`;
+        }
+
+        function viewDeliveryNote(id) {
+            window.location.href = `/delivery-note-detail.html?id=${id}`;
+        }
+        
+        function viewInvoice(id) {
+            window.location.href = `/invoice-detail.html?id=${id}`;
+        }
+
+        function createNewOrder() {
+            window.location.href = `/order-detail.html?customer_id=${customerId}`;
+        }
+
+        function createInvoiceFromDeliveryNotes() {
+            alert('İrsaliyelerden fatura oluşturma özelliği yakında eklenecek!');
+        }
+
+        async function addPayment() {
+            console.log('addPayment fonksiyonu çağrıldı');
+            console.log('customerId:', customerId);
+            
+            try {
+                console.log('API çağrıları başlatılıyor...');
+                // Kasaları ve faturaları yükle
+                const [cashRegisters, invoices] = await Promise.all([
+                    apiCall('/api/cari/cash-registers'),
+                    apiCall(`/api/cari/customers/${customerId}/invoices`)
+                ]);
+                
+                console.log('Kasalar:', cashRegisters);
+                console.log('Faturalar:', invoices);
+                console.log('İlk fatura detayı:', invoices[0]);
+                console.log('remaining_amount var mı?', invoices[0] ? invoices[0].remaining_amount : 'Fatura yok');
+            
+                const unpaidInvoices = invoices.filter(inv => inv.remaining_amount > 0);
+                console.log('Ödenmemiş faturalar:', unpaidInvoices);
+                
+                const cashRegisterOptions = cashRegisters.map(cr => 
+                    `<option value="${cr.id}">${cr.name} (${cr.balance} TL)</option>`
+                ).join('');
+                console.log('Kasa seçenekleri:', cashRegisterOptions);
+                
+                const invoiceOptions = unpaidInvoices.map(inv => 
+                    `<option value="${inv.id}">${inv.invoice_number} - Kalan: ${inv.remaining_amount} TL</option>`
+                ).join('');
+                console.log('Fatura seçenekleri:', invoiceOptions);
+                
+                console.log('PaymentForm oluşturuluyor...');
+                const paymentForm = `
+                <div onclick="event.stopPropagation()" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; margin: 2rem auto;">
+                    <h3 style="margin-bottom: 1.5rem; text-align: center; color: #2d3748;">💰 Yeni Tahsilat Ekle</h3>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Tutar:</label>
+                        <input type="number" id="paymentAmount" placeholder="0.00" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ödeme Yöntemi:</label>
+                        <select id="paymentMethod" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="cash">Nakit</option>
+                            <option value="transfer">Havale</option>
+                            <option value="pos">POS</option>
+                            <option value="check">Çek</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Kasa:</label>
+                        <select id="cashRegister" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                            ${cashRegisterOptions}
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Fatura Seçin (Opsiyonel):</label>
+                        <select id="invoiceSelect" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Genel Tahsilat</option>
+                            ${invoiceOptions}
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Referans No:</label>
+                        <input type="text" id="referenceNumber" placeholder="Opsiyonel" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: center;">
+                        <button onclick="submitPayment()" style="padding: 0.75rem 2rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Tahsilat Ekle</button>
+                        <button onclick="closePaymentForm()" style="padding: 0.75rem 2rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">İptal</button>
+                    </div>
+                </div>
+            `;
+            
+                console.log('Modal oluşturuluyor...');
+                // Modal'i göster
+                const modal = document.createElement('div');
+                modal.id = 'paymentModal';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5);';
+                modal.innerHTML = paymentForm;
+                document.body.appendChild(modal);
+                console.log('Modal eklendi:', modal);
+            } catch (error) {
+                console.error('Tahsilat formu açılamadı:', error);
+                alert('Tahsilat formu açılamadı: ' + error.message);
+            }
+        }
+        
+        function closePaymentForm() {
+            const modal = document.getElementById('paymentModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function submitPayment() {
+            const amount = parseFloat(document.getElementById('paymentAmount').value);
+            const method = document.getElementById('paymentMethod').value;
+            const cashRegisterId = document.getElementById('cashRegister').value;
+            const invoiceId = document.getElementById('invoiceSelect').value || null;
+            const reference = document.getElementById('referenceNumber').value;
+
+            if (!amount || amount <= 0) {
+                alert('Geçerli bir tutar girin!');
+                return;
+            }
+
+            try {
+                await apiCall('/api/cari/payments', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        customerId: customerId,
+                        invoiceId: invoiceId,
+                        amount: amount,
+                        paymentMethod: method,
+                        cashRegisterId: cashRegisterId,
+                        referenceNumber: reference,
+                        notes: `Admin panelinden ${method} ile tahsilat`
+                    })
+                });
+                
+                alert('Tahsilat başarıyla eklendi!');
+                closePaymentForm();
+                
+                // Verileri yenile
+                await loadSummaryData();
+                await loadTabData();
+            } catch (error) {
+                alert('Tahsilat eklenemedi: ' + error.message);
+            }
+        }
+
+        // Ekstre fonksiyonları
+        async function generateEkstre() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Lütfen başlangıç ve bitiş tarihlerini seçin!');
+                return;
+            }
+            
+            try {
+                const movements = await apiCall(`/api/cari/customers/${customerId}/movements?start_date=${startDate}&end_date=${endDate}`);
+                const customer = await apiCall(`/api/customers/${customerId}`);
+                
+                let html = `
+                    <div style="padding: 2rem; background: white; border-radius: 8px;">
+                        <div style="text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 1rem;">
+                            <h2 style="color: #2d3748; margin-bottom: 0.5rem;">MÜŞTERİ EKSTRESİ</h2>
+                            <p style="color: #718096;">${customer.company_name}</p>
+                            <p style="color: #718096; font-size: 0.875rem;">${startDate} - ${endDate}</p>
+                        </div>
+                        
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="border: 1px solid #ddd; padding: 0.75rem; text-align: left;">Tarih</th>
+                                    <th style="border: 1px solid #ddd; padding: 0.75rem; text-align: left;">Açıklama</th>
+                                    <th style="border: 1px solid #ddd; padding: 0.75rem; text-align: right;">Borç</th>
+                                    <th style="border: 1px solid #ddd; padding: 0.75rem; text-align: right;">Alacak</th>
+                                    <th style="border: 1px solid #ddd; padding: 0.75rem; text-align: right;">Bakiye</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                let runningBalance = 0;
+                movements.forEach(movement => {
+                    runningBalance += (movement.debit_amount || 0) - (movement.credit_amount || 0);
+                    html += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 0.75rem;">${new Date(movement.movement_date).toLocaleDateString('tr-TR')}</td>
+                            <td style="border: 1px solid #ddd; padding: 0.75rem;">${movement.description}</td>
+                            <td style="border: 1px solid #ddd; padding: 0.75rem; text-align: right; color: #dc3545;">${movement.debit_amount > 0 ? movement.debit_amount.toLocaleString() + ' TL' : '-'}</td>
+                            <td style="border: 1px solid #ddd; padding: 0.75rem; text-align: right; color: #28a745;">${movement.credit_amount > 0 ? movement.credit_amount.toLocaleString() + ' TL' : '-'}</td>
+                            <td style="border: 1px solid #ddd; padding: 0.75rem; text-align: right; font-weight: 600;">${runningBalance.toLocaleString()} TL</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #f8f9fa; font-weight: 600;">
+                                    <td colspan="4" style="border: 1px solid #ddd; padding: 0.75rem; text-align: right;">SON BAKİYE:</td>
+                                    <td style="border: 1px solid #ddd; padding: 0.75rem; text-align: right; color: ${runningBalance >= 0 ? '#dc3545' : '#28a745'};">${runningBalance.toLocaleString()} TL</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+                
+                document.getElementById('ekstreContent').innerHTML = html;
+            } catch (error) {
+                alert('Ekstre oluşturulamadı: ' + error.message);
+            }
+        }
+        
+        async function downloadEkstrePDF() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Lütfen önce ekstre görüntüleyin!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/cari/customers/${customerId}/ekstre-pdf?start_date=${startDate}&end_date=${endDate}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('PDF oluşturulamadı');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ekstre_${customerId}_${startDate}_${endDate}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('PDF indirilemedi: ' + error.message);
+            }
+        }
+        
+        async function downloadEkstreExcel() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Lütfen önce ekstre görüntüleyin!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/cari/customers/${customerId}/ekstre-excel?start_date=${startDate}&end_date=${endDate}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Excel oluşturulamadı');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ekstre_${customerId}_${startDate}_${endDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Excel indirilemedi: ' + error.message);
+            }
+        }
+        
+        // Sayfa yüklendiğinde müşteri verilerini yükle
+        getCustomerIdFromURL();
+    </script>
+</body>
+</html>

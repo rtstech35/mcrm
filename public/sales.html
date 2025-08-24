@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#28a745">
+    <title>Satış Paneli - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+
+</head>
+<body>
+
+
+    <div class="container" style="min-height: 100vh; padding-top: 2rem;">
+        <div class="sidebar" style="position: relative;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Saha CRM</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Satış Paneli</p>
+            </div>
+            
+            <h3>Menü</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><a href="#" onclick="showDashboard()">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showCalendar()">📅 Takvim</a></li>
+                <li><a href="/visit-nearby.html">🏢 Müşteri Ziyaret</a></li>
+                <li><a href="#" onclick="showCustomers()">👥 Müşterilerim</a></li>
+                <li><a href="#" onclick="showOrders()">📋 Siparişlerim</a></li>
+                <li><a href="/order-detail.html">📝 Yeni Sipariş</a></li>
+                <li><a href="/map.html">🗺️ Harita</a></li>
+                <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚪 Çıkış</a></li>
+            </ul>
+        </div>
+
+        <div class="content" id="content">
+            <div class="card">
+                <h2>Satış Dashboard</h2>
+                <p>Satış paneline hoş geldiniz!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sipariş Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('orderModal')">&times;</span>
+            <h3>Yeni Sipariş</h3>
+            <form id="orderForm">
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="order_customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Sipariş Tarihi:</label>
+                    <input type="date" id="order_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Teslimat Tarihi:</label>
+                    <input type="date" id="delivery_date">
+                </div>
+                <div class="form-group">
+                    <label>Ödeme Vadesi:</label>
+                    <input type="date" id="payment_due_date">
+                </div>
+                <div class="form-group">
+                    <label>Toplam Tutar:</label>
+                    <input type="number" id="total_amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="order_notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Sipariş Oluştur</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ziyaret Modal -->
+    <div id="visitModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('visitModal')">&times;</span>
+            <h3>Müşteri Ziyareti</h3>
+            <form id="visitForm">
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Ziyaret Tipi:</label>
+                    <select id="visit_type" required>
+                        <option value="visit">Ziyaret</option>
+                        <option value="call">Telefon</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sonuç:</label>
+                    <select id="result" required>
+                        <option value="sale">Satış Yapıldı</option>
+                        <option value="potential">Potansiyel</option>
+                        <option value="not_interested">İlgilenmiyor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="notes" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Sonraki İletişim Tarihi:</label>
+                    <input type="date" id="next_contact_date">
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Aktivite Detay Modal -->
+    <div id="activityDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close" onclick="closeModal('activityDetailModal')">&times;</span>
+            <div id="activityDetailContent">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Randevu Planlama Modal -->
+    <div id="appointmentModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeModal('appointmentModal')">&times;</span>
+            <h3>📅 Yeni Randevu Planla</h3>
+            <div style="margin: 1.5rem 0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label>Tarih:</label>
+                        <input type="date" id="appointmentDate" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label>Saat:</label>
+                        <input type="time" id="appointmentTime" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Randevu Tipi:</label>
+                    <select id="appointmentType" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="visit">Ziyaret</option>
+                        <option value="call">Telefon Görüşmesi</option>
+                        <option value="meeting">Toplantı</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Randevu Notu:</label>
+                    <textarea id="appointmentNote" rows="3" placeholder="Randevu hakkında notlar..." style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                <div style="text-align: center;">
+                    <button onclick="saveAppointment()" class="btn btn-success">✓ Randevu Kaydet</button>
+                    <button onclick="closeModal('appointmentModal')" class="btn" style="background: #6c757d; margin-left: 0.5rem;">İptal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        async function showDashboard() {
+            try {
+                const stats = await apiCall('/api/dashboard/stats');
+                const targets = await apiCall(`/api/targets/user/${currentUser.id}`);
+                const salesTarget = targets.find(t => t.target_type === 'sales');
+                const visitsTarget = targets.find(t => t.target_type === 'visits');
+                
+                document.getElementById('content').innerHTML = `
+
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                        <!-- 1. Aylık Satış Hedefi -->
+                        <div class="card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Satış Hedefi</h3>
+                                    <p style="color: #718096; font-size: 0.875rem;">${salesTarget ? salesTarget.target_value.toLocaleString() : '0'} TL</p>
+                                </div>
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💰</div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 45.000 TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${salesTarget ? Math.round((45000 / salesTarget.target_value) * 100) : 0}%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${salesTarget ? Math.min((45000 / salesTarget.target_value) * 100, 100) : 0}%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.875rem; color: ${salesTarget && 45000 >= salesTarget.target_value * 0.8 ? '#48bb78' : '#f56565'};">Kalan: ${salesTarget ? (salesTarget.target_value - 45000).toLocaleString() : '0'} TL</div>
+                        </div>
+                        
+                        <!-- 2. Ziyaret Hedefi -->
+                        <div class="card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Ziyaret Hedefi</h3>
+                                    <p style="color: #718096; font-size: 0.875rem;">${visitsTarget ? visitsTarget.target_value : '0'} ziyaret</p>
+                                </div>
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #48bb78, #38a169); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎯</div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 15 ziyaret</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${visitsTarget ? Math.round((15 / visitsTarget.target_value) * 100) : 0}%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${visitsTarget ? Math.min((15 / visitsTarget.target_value) * 100, 100) : 0}%; height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.875rem; color: ${visitsTarget && 15 >= visitsTarget.target_value * 0.8 ? '#48bb78' : '#f56565'};">Kalan: ${visitsTarget ? (visitsTarget.target_value - 15) : '0'} ziyaret</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 2rem;">
+                        <!-- 3. Tahsilat Oranı -->
+                        <div class="card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Tahsilat Oranı</h3>
+                                    <p style="color: #718096; font-size: 0.875rem;">Toplam: 38.000 TL</p>
+                                </div>
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ed8936, #dd6b20); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💳</div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.875rem; color: #718096;">Tahsil edilen: 32.000 TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">84%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 84%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.875rem; color: #ed8936;">Bekleyen: 6.000 TL</div>
+                        </div>
+                        
+                        <!-- 4. Bugünkü Ziyaretler -->
+                        <div class="card" style="margin-bottom: 0; cursor: pointer;" onclick="showCalendar()">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div>
+                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Bugünkü Ziyaretler</h3>
+                                    <p style="color: #718096; font-size: 0.875rem;">Planlı aktiviteler</p>
+                                </div>
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #9f7aea, #805ad5); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">📅</div>
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.875rem; color: #718096;">Tamamlanan: 3 ziyaret</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">60%</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #9f7aea, #805ad5); transition: width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.875rem; color: #9f7aea;">Kalan: 2 ziyaret</div>
+                        </div>
+                    </div>
+                    
+
+                    
+                    <!-- Hızlı İşlemler -->
+                    <div class="card">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1.5rem;">Hızlı İşlemler</h3>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                            <button class="btn" onclick="window.location.href='/order-detail.html'" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
+                                <span>Yeni Sipariş</span>
+                            </button>
+                            <button class="btn" onclick="window.location.href='/visit-nearby.html'" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏢</div>
+                                <span>Yeni Ziyaret</span>
+                            </button>
+                            <button class="btn" onclick="showCustomers()" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">👥</div>
+                                <span>Müşterilerim</span>
+                            </button>
+                            <button class="btn" onclick="showOrders()" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
+                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
+                                <span>Siparişlerim</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Grafikleri çiz
+                setTimeout(() => {
+                    drawSalesChart();
+                    drawVisitChart();
+                }, 100);
+                
+            } catch (error) {
+                console.error('Dashboard yüklenemedi:', error);
+                showDashboardFallback();
+            }
+        }
+        
+        function showDashboardFallback() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>Satış Dashboard</h2>
+                    <p>Hoş geldiniz, ${currentUser.full_name}</p>
+                    <div style="margin-top: 2rem;">
+                        <button class="btn" onclick="window.location.href='/order-detail.html'">📝 Yeni Sipariş</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function showVisit() {
+            try {
+                const customers = await apiCall('/api/customers');
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Müşteri Ziyaret</h2>
+                        <button class="btn" onclick="openVisitModal()">Yeni Ziyaret Kaydı</button>
+                        
+                        <h3 style="margin-top: 2rem;">Yakındaki Müşteriler</h3>
+                        <div id="nearbyCustomers">
+                            ${customers.map(customer => `
+                                <div class="customer-card" onclick="selectCustomer(${customer.id})">
+                                    <h4>${customer.company_name}</h4>
+                                    <p>Yetkili: ${customer.contact_person || '-'}</p>
+                                    <p>Telefon: ${customer.phone || '-'}</p>
+                                    <p>Durum: ${customer.customer_status}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Ziyaret sayfası yüklenemedi:', error);
+            }
+        }
+
+        async function showCustomers() {
+            try {
+                const customers = await apiCall('/api/customers');
+                
+                let html = `
+                    <div class="card">
+                        <h2>Müşterilerim</h2>
+                        <div style="display: grid; gap: 1rem;">
+                `;
+                
+                customers.forEach(customer => {
+                    html += `
+                        <div class="customer-card" onclick="viewCustomerDetail(${customer.id})" style="cursor: pointer;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4>${customer.company_name}</h4>
+                                    <p>Yetkili: ${customer.contact_person || '-'}</p>
+                                    <p>Telefon: ${customer.phone || '-'}</p>
+                                    <p>Durum: ${customer.customer_status}</p>
+                                </div>
+                                <div>
+                                    <button class="btn" onclick="event.stopPropagation(); visitCustomer(${customer.id})">Ziyaret Et</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+            }
+        }
+
+        async function showOrders() {
+            try {
+                const orders = await apiCall('/api/orders');
+                const myOrders = orders.filter(o => o.sales_rep_id == currentUser.id);
+                
+                let html = `
+                    <div class="card">
+                        <h2>Siparişlerim</h2>
+                        <button class="btn" onclick="openOrderModal()">Yeni Sipariş</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Sipariş No</th>
+                                    <th>Müşteri</th>
+                                    <th>Tarih</th>
+                                    <th>Tutar</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                myOrders.forEach(order => {
+                    html += `
+                        <tr>
+                            <td>#${order.order_number}</td>
+                            <td>${order.customer_name || 'Bilinmiyor'}</td>
+                            <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
+                            <td>${order.total_amount} TL</td>
+                            <td>${order.status}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Siparişler yüklenemedi:', error);
+            }
+        }
+
+        async function showMap() {
+            window.location.href = '/map.html';
+        }
+
+        function selectCustomer(customerId) {
+            document.querySelectorAll('.customer-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.target.closest('.customer-card').classList.add('active');
+        }
+
+        function visitCustomer(customerId) {
+            openVisitModal();
+            document.getElementById('customer_id').value = customerId;
+        }
+        
+        function viewCustomerDetail(customerId) {
+            window.location.href = `/customer-detail.html?id=${customerId}`;
+        }
+
+        async function openVisitModal() {
+            try {
+                const customers = await apiCall('/api/customers');
+                
+                const customerSelect = document.getElementById('customer_id');
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+                
+                document.getElementById('visitModal').style.display = 'block';
+            } catch (error) {
+                alert('Müşteriler yüklenemedi: ' + error.message);
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        async function openOrderModal() {
+            try {
+                const customers = await apiCall('/api/customers');
+                
+                const customerSelect = document.getElementById('order_customer_id');
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+                
+                // Bugünün tarihini varsayılan olarak ayarla
+                document.getElementById('order_date').value = new Date().toISOString().split('T')[0];
+                
+                document.getElementById('orderModal').style.display = 'block';
+            } catch (error) {
+                alert('Müşteriler yüklenemedi: ' + error.message);
+            }
+        }
+        
+        document.getElementById('orderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                customer_id: document.getElementById('order_customer_id').value,
+                order_date: document.getElementById('order_date').value,
+                delivery_date: document.getElementById('delivery_date').value,
+                payment_due_date: document.getElementById('payment_due_date').value,
+                total_amount: document.getElementById('total_amount').value,
+                notes: document.getElementById('order_notes').value
+            };
+            
+            try {
+                const result = await apiCall('/api/orders', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                
+                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${result.order_number}`);
+                document.getElementById('orderForm').reset();
+                closeModal('orderModal');
+                showOrders();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        document.getElementById('visitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                customer_id: document.getElementById('customer_id').value,
+                visit_type: document.getElementById('visit_type').value,
+                result: document.getElementById('result').value,
+                notes: document.getElementById('notes').value,
+                next_contact_date: document.getElementById('next_contact_date').value,
+                visit_date: new Date().toISOString()
+            };
+            
+            try {
+                await apiCall('/api/visits', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                
+                alert('Ziyaret kaydı başarıyla oluşturuldu!');
+                document.getElementById('visitForm').reset();
+                closeModal('visitModal');
+                showVisit();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        function drawSalesChart() {
+            const canvas = document.getElementById('salesChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Veri
+            const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz'];
+            const target = [100, 120, 110, 130, 125, 140];
+            const actual = [85, 95, 105, 115, 130, 125];
+            
+            const maxValue = Math.max(...target, ...actual) * 1.1;
+            const barWidth = (width - 80) / (months.length * 2.5);
+            
+            // Grid çizgiler
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = 40 + (i * (height - 80) / 5);
+                ctx.beginPath();
+                ctx.moveTo(40, y);
+                ctx.lineTo(width - 20, y);
+                ctx.stroke();
+            }
+            
+            months.forEach((month, index) => {
+                const x = 60 + (index * 2.5) * barWidth;
+                const targetHeight = (target[index] / maxValue) * (height - 80);
+                const actualHeight = (actual[index] / maxValue) * (height - 80);
+                
+                // Hedef bar (daha ince)
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(x, height - targetHeight - 40, barWidth * 0.6, targetHeight);
+                
+                // Gerçekleşen bar (gradient)
+                const gradient = ctx.createLinearGradient(0, height - 40, 0, height - actualHeight - 40);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, height - actualHeight - 40, barWidth * 0.6, actualHeight);
+                
+                // Ay etiketi
+                ctx.fillStyle = '#718096';
+                ctx.font = '12px Poppins';
+                ctx.textAlign = 'center';
+                ctx.fillText(month, x + barWidth * 0.3, height - 15);
+            });
+            
+            // Legend
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(40, 15, 12, 12);
+            ctx.fillStyle = '#718096';
+            ctx.font = '11px Poppins';
+            ctx.textAlign = 'left';
+            ctx.fillText('Hedef', 58, 25);
+            
+            ctx.fillStyle = '#667eea';
+            ctx.fillRect(100, 15, 12, 12);
+            ctx.fillText('Gerçekleşen', 118, 25);
+        }
+        
+        function drawVisitChart() {
+            const canvas = document.getElementById('visitChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2 - 10;
+            const radius = 70;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const data = [
+                { label: 'Başarılı', value: 60, color: '#48bb78' },
+                { label: 'Potansiyel', value: 25, color: '#ed8936' },
+                { label: 'Olumsuz', value: 15, color: '#f56565' }
+            ];
+            
+            let currentAngle = -Math.PI / 2; // Başlangıç üst nokta
+            
+            data.forEach((item, index) => {
+                const sliceAngle = (item.value / 100) * 2 * Math.PI;
+                
+                // Gradient oluştur
+                const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+                gradient.addColorStop(0, item.color);
+                gradient.addColorStop(1, item.color + '80');
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Çember kenarı
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                currentAngle += sliceAngle;
+            });
+            
+            // Legend
+            let legendY = canvas.height - 60;
+            data.forEach((item, index) => {
+                ctx.fillStyle = item.color;
+                ctx.fillRect(20, legendY + (index * 20), 12, 12);
+                
+                ctx.fillStyle = '#718096';
+                ctx.font = '11px Poppins';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${item.label} ${item.value}%`, 38, legendY + (index * 20) + 9);
+            });
+        }
+        
+        async function showCalendar() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📅 Takvim ve Aktiviteler</h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <!-- Bugünkü Aktiviteler -->
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+                            <h3 style="color: #2d3748; margin-bottom: 1rem;">📅 Bugünkü Aktiviteler</h3>
+                            <div id="todayActivities">
+                                <div onclick="showActivityDetail(1)" style="border-left: 4px solid #48bb78; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>09:00</strong> - ABC Restaurant ziyareti
+                                    <div style="font-size: 0.875rem; color: #666;">Sipariş takibi</div>
+                                </div>
+                                <div onclick="showActivityDetail(2)" style="border-left: 4px solid #ed8936; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>14:00</strong> - XYZ Cafe randevusu
+                                    <div style="font-size: 0.875rem; color: #666;">Yeni ürün tanıtımı</div>
+                                </div>
+                                <div onclick="showActivityDetail(3)" style="border-left: 4px solid #f56565; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>16:30</strong> - DEF Otel telefon görüşmesi
+                                    <div style="font-size: 0.875rem; color: #666;">Tahsilat takibi</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bu Hafta Planlı -->
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+                            <h3 style="color: #2d3748; margin-bottom: 1rem;">📆 Bu Hafta Planlı</h3>
+                            <div id="weekActivities">
+                                <div onclick="showActivityDetail(4)" style="border-left: 4px solid #42A5F5; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>Yarın 10:00</strong> - GHI Market
+                                    <div style="font-size: 0.875rem; color: #666;">Aylık sipariş planlaması</div>
+                                </div>
+                                <div onclick="showActivityDetail(5)" style="border-left: 4px solid #9f7aea; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>Perşembe 15:00</strong> - JKL Restaurant
+                                    <div style="font-size: 0.875rem; color: #666;">Yeni müşteri ziyareti</div>
+                                </div>
+                                <div onclick="showActivityDetail(6)" style="border-left: 4px solid #48bb78; padding: 0.5rem 1rem; margin: 0.5rem 0; background: white; border-radius: 4px; cursor: pointer;" onmouseover="this.style.background='#f0f8ff'" onmouseout="this.style.background='white'">
+                                    <strong>Cuma 11:00</strong> - MNO Cafe
+                                    <div style="font-size: 0.875rem; color: #666;">Sipariş teslim takibi</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Yeni Aktivite Ekleme -->
+                    <div style="background: white; border: 2px dashed #e2e8f0; padding: 2rem; border-radius: 8px; text-align: center;">
+                        <h3 style="color: #2d3748; margin-bottom: 1rem;">➕ Yeni Aktivite Ekle</h3>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; align-items: end;">
+                            <div>
+                                <label>Tarih:</label>
+                                <input type="date" id="activityDate" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label>Saat:</label>
+                                <input type="time" id="activityTime" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label>Müşteri:</label>
+                                <select id="activityCustomer" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="">Müşteri Seçiniz</option>
+                                    <option value="1">ABC Restaurant</option>
+                                    <option value="2">XYZ Cafe</option>
+                                    <option value="3">DEF Otel</option>
+                                </select>
+                            </div>
+                            <button onclick="addActivity()" class="btn">➕ Ekle</button>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <input type="text" id="activityNote" placeholder="Aktivite notu..." style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Bugünün tarihini varsayılan olarak ayarla
+            document.getElementById('activityDate').value = new Date().toISOString().split('T')[0];
+        }
+        
+        function showActivityDetail(activityId) {
+            // Örnek veri - gerçekte API'den gelecek
+            const activities = {
+                1: {
+                    customer: 'ABC Restaurant',
+                    time: '09:00',
+                    type: 'Ziyaret',
+                    status: 'Planlı',
+                    notes: 'Sipariş takibi yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-15', note: 'Yeni ürünler tanıtıldı, olumlu karşılandı', result: 'Potansiyel' },
+                        { date: '2025-08-10', note: '500 TL sipariş alındı', result: 'Satış' },
+                        { date: '2025-08-05', note: 'İlk ziyaret, tanışma toplantısı', result: 'Potansiyel' }
+                    ]
+                },
+                2: {
+                    customer: 'XYZ Cafe',
+                    time: '14:00',
+                    type: 'Randevu',
+                    status: 'Onaylanmış',
+                    notes: 'Yeni ürün tanıtımı yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-12', note: 'Fiyat teklifi verildi, düşünüyor', result: 'Potansiyel' },
+                        { date: '2025-08-08', note: 'Müşteri ilgili ama karar veremedi', result: 'Potansiyel' }
+                    ]
+                },
+                3: {
+                    customer: 'DEF Otel',
+                    time: '16:30',
+                    type: 'Telefon',
+                    status: 'Planlı',
+                    notes: 'Tahsilat takibi yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-18', note: '1200 TL sipariş verildi, ödeme 30 gün vade', result: 'Satış' },
+                        { date: '2025-08-14', note: 'Büyük sipariş potansiyeli var', result: 'Potansiyel' }
+                    ]
+                },
+                4: {
+                    customer: 'GHI Market',
+                    time: 'Yarın 10:00',
+                    type: 'Ziyaret',
+                    status: 'Planlı',
+                    notes: 'Aylık sipariş planlaması yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-16', note: '2500 TL büyük sipariş alındı', result: 'Satış' },
+                        { date: '2025-08-10', note: 'Aylık ihtiyaç belirlendi', result: 'Potansiyel' }
+                    ]
+                },
+                5: {
+                    customer: 'JKL Restaurant',
+                    time: 'Perşembe 15:00',
+                    type: 'Ziyaret',
+                    status: 'Yeni Müşteri',
+                    notes: 'Yeni müşteri ziyareti, tanıtım yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-17', note: 'İlk irtibat kuruldu, ilgili görünüyor', result: 'Potansiyel' }
+                    ]
+                },
+                6: {
+                    customer: 'MNO Cafe',
+                    time: 'Cuma 11:00',
+                    type: 'Takip',
+                    status: 'Planlı',
+                    notes: 'Sipariş teslim takibi yapılacak',
+                    previousVisits: [
+                        { date: '2025-08-19', note: '800 TL sipariş verildi, teslim bekliyor', result: 'Satış' },
+                        { date: '2025-08-12', note: 'Fiyat listesi verildi', result: 'Potansiyel' }
+                    ]
+                }
+            };
+            
+            const activity = activities[activityId];
+            if (!activity) return;
+            
+            document.getElementById('activityDetailContent').innerHTML = `
+                <h3>📅 ${activity.customer} - Aktivite Detayı</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 1.5rem 0;">
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                        <h4>Bugünkü Aktivite</h4>
+                        <p><strong>Saat:</strong> ${activity.time}</p>
+                        <p><strong>Tip:</strong> ${activity.type}</p>
+                        <p><strong>Durum:</strong> <span style="color: #48bb78;">${activity.status}</span></p>
+                        <p><strong>Not:</strong> ${activity.notes}</p>
+                        <button onclick="completeActivity(${activityId})" class="btn btn-success" style="margin-top: 0.5rem;">✓ Tamamlandı Olarak İşaretle</button>
+                        <div id="completedActions-${activityId}" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+                            <h5 style="margin-bottom: 0.5rem;">Sonraki Aşama:</h5>
+                            <button onclick="scheduleNextMeeting(${activityId})" class="btn" style="background: #42A5F5; margin-right: 0.5rem; margin-bottom: 0.5rem;">📅 Tekrar Randevu</button>
+                            <button onclick="createOrder(${activityId})" class="btn" style="background: #48bb78; margin-right: 0.5rem; margin-bottom: 0.5rem;">📝 Sipariş Yap</button>
+                            <button onclick="scheduleCall(${activityId})" class="btn" style="background: #ed8936; margin-right: 0.5rem; margin-bottom: 0.5rem;">📞 Telefon Planla</button>
+                            <button onclick="markAsNotInterested(${activityId})" class="btn" style="background: #f56565; margin-bottom: 0.5rem;">❌ İlgilenmiyor</button>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                        <h4>Müşteri Bilgileri</h4>
+                        <p><strong>Firma:</strong> ${activity.customer}</p>
+                        <p><strong>Son Ziyaret:</strong> ${activity.previousVisits[0].date}</p>
+                        <p><strong>Toplam Ziyaret:</strong> ${activity.previousVisits.length} kez</p>
+                        <button onclick="viewCustomerDetail(1)" class="btn" style="margin-top: 0.5rem;">👥 Müşteri Detayı</button>
+                    </div>
+                </div>
+                
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                    <h4>📝 Önceki Görüşme Notları</h4>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${activity.previousVisits.map(visit => `
+                            <div style="border-bottom: 1px solid #f1f5f9; padding: 0.75rem 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <strong>${new Date(visit.date).toLocaleDateString('tr-TR')}</strong>
+                                    <span style="background: ${visit.result === 'Satış' ? '#d4edda' : '#fff3cd'}; color: ${visit.result === 'Satış' ? '#155724' : '#856404'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">${visit.result}</span>
+                                </div>
+                                <p style="color: #666; font-size: 0.9rem;">${visit.note}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button onclick="addVisitNote(${activityId})" class="btn">➕ Yeni Not Ekle</button>
+                    <button onclick="closeModal('activityDetailModal')" class="btn" style="background: #6c757d; margin-left: 0.5rem;">Kapat</button>
+                </div>
+            `;
+            
+            document.getElementById('activityDetailModal').style.display = 'block';
+        }
+        
+        function completeActivity(activityId) {
+            // Tamamlandı butonunu gizle ve aksiyon butonlarını göster
+            event.target.style.display = 'none';
+            document.getElementById(`completedActions-${activityId}`).style.display = 'block';
+            alert('Aktivite tamamlandı! Sonraki aşamayı seçin.');
+        }
+        
+        function scheduleNextMeeting(activityId) {
+            const date = prompt('Randevu tarihi (YYYY-MM-DD):');
+            const time = prompt('Randevu saati (HH:MM):');
+            if (date && time) {
+                alert(`Yeni randevu planlandı: ${date} ${time}`);
+                closeModal('activityDetailModal');
+            }
+        }
+        
+        function createOrder(activityId) {
+            if (confirm('Sipariş sayfasına yönlendirileceksiniz. Devam etmek istiyor musunuz?')) {
+                window.location.href = '/order-detail.html';
+            }
+        }
+        
+        function scheduleCall(activityId) {
+            const date = prompt('Telefon görüşmesi tarihi (YYYY-MM-DD):');
+            const time = prompt('Telefon görüşmesi saati (HH:MM):');
+            if (date && time) {
+                alert(`Telefon görüşmesi planlandı: ${date} ${time}`);
+                closeModal('activityDetailModal');
+            }
+        }
+        
+        function markAsNotInterested(activityId) {
+            if (confirm('Müşteri ilgilenmiyor olarak işaretlenecek. Emin misiniz?')) {
+                alert('Müşteri ilgilenmiyor olarak işaretlendi.');
+                closeModal('activityDetailModal');
+            }
+        }
+        
+        function addVisitNote(activityId) {
+            const note = prompt('Yeni görüşme notu:');
+            if (note) {
+                alert('Not eklendi: ' + note);
+                // Burada API'ye kaydet
+            }
+        }
+
+        function addActivity() {
+            const date = document.getElementById('activityDate').value;
+            const time = document.getElementById('activityTime').value;
+            const customer = document.getElementById('activityCustomer').value;
+            const note = document.getElementById('activityNote').value;
+            
+            if (!date || !time || !customer) {
+                alert('Lütfen tüm alanları doldurun!');
+                return;
+            }
+            
+            alert('Aktivite eklendi! (Veritabanı entegrasyonu yapılacak)');
+            
+            // Formu temizle
+            document.getElementById('activityTime').value = '';
+            document.getElementById('activityCustomer').value = '';
+            document.getElementById('activityNote').value = '';
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/';
+        }
+
+        function updateUserInfo() {
+            const userInfo = document.getElementById('userInfo');
+            if (userInfo) {
+                userInfo.innerHTML = `
+                    <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;">Satış Dashboard</div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Hoş geldiniz, ${currentUser.full_name}</div>
+                    <div style="font-size: 0.75rem; opacity: 0.8;">
+                        ${new Date().toLocaleDateString('tr-TR')} - ${new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}
+                    </div>
+                `;
+            }
+        }
+        
+        showDashboard();
+        
+        setTimeout(() => {
+            updateUserInfo();
+        }, 100);
+        
+        setInterval(updateUserInfo, 60000);
+    </script>
+    <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(40, 167, 69, 0.9); padding: 1rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 200px;">
+        <!-- JavaScript ile doldurulacak -->
+    </div>
+</body>
+</html>

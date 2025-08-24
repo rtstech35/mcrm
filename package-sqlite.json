@@ -1,0 +1,19 @@
+{
+  "name": "saha-crm-sistemi",
+  "version": "1.0.0",
+  "description": "Saha Operasyonları CRM Sistemi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server-sqlite.js",
+    "test": "node test-server.js",
+    "setup": "node setup-sqlite.js"
+  },
+  "dependencies": {
+    "express": "latest",
+    "sqlite3": "latest",
+    "bcryptjs": "latest",
+    "jsonwebtoken": "latest",
+    "cors": "latest",
+    "dotenv": "latest"
+  }
+}

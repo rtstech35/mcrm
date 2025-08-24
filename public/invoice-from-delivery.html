@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İrsaliyelerden Fatura Oluştur</title>
+    <link rel="stylesheet" href="/theme.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #007bff; color: white; padding: 1rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; display: flex; gap: 2rem; }
+        .left-panel { width: 400px; background: white; border-radius: 12px; padding: 1.5rem; height: fit-content; }
+        .right-panel { flex: 1; background: white; border-radius: 12px; padding: 1.5rem; }
+        .btn { padding: 0.75rem 1.5rem; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin-right: 1rem; }
+        .btn:hover { background: #0056b3; }
+        .btn-back { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .delivery-item { 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            margin-bottom: 0.5rem; 
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .delivery-item:hover { background: #f8f9fa; }
+        .delivery-item.selected { background: #e3f2fd; border-color: #2196f3; }
+        .checkbox { margin-right: 0.5rem; }
+        .preview-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .preview-table th, .preview-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .preview-table th { background: #f8f9fa; font-weight: 600; }
+        .delivery-list { max-height: 500px; overflow-y: auto; }
+        .customer-group { margin-bottom: 1.5rem; }
+        .customer-header { 
+            background: #f8f9fa; 
+            padding: 0.75rem; 
+            border-radius: 8px; 
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>İrsaliyelerden Fatura Oluştur</h1>
+    </div>
+
+    <div class="container">
+        <!-- Sol Panel - İrsaliye Listesi -->
+        <div class="left-panel">
+            <h3 style="margin-bottom: 1rem; color: #2d3748;">📦 Faturalanmamış İrsaliyeler</h3>
+            <div id="deliveryList" class="delivery-list">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+            <div style="margin-top: 1rem;">
+                <a href="/admin.html" class="btn btn-back">← Geri Dön</a>
+            </div>
+        </div>
+
+        <!-- Sağ Panel - Fatura Önizleme -->
+        <div class="right-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="color: #2d3748;">🧾 Fatura Önizleme</h3>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div>
+                        <label style="font-size: 0.875rem; color: #666;">Fatura No (opsiyonel):</label>
+                        <input type="text" id="manualInvoiceNumber" placeholder="FAT-001234" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+                    </div>
+                    <button class="btn btn-success" onclick="createInvoice()" id="createBtn" disabled>Fatura Oluştur</button>
+                </div>
+            </div>
+            
+            <div id="invoicePreview">
+                <p style="color: #666; text-align: center; padding: 2rem;">
+                    Sol taraftan irsaliye seçin
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let selectedDeliveries = [];
+        let deliveryNotes = [];
+
+        if (!authToken) {
+            alert('Giriş yapmanız gerekiyor!');
+            window.location.href = '/admin.html';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        async function loadDeliveryNotes() {
+            try {
+                deliveryNotes = await apiCall('/api/cari/delivery-notes');
+                const unInvoiced = deliveryNotes.filter(dn => !dn.is_invoiced);
+                
+                if (unInvoiced.length === 0) {
+                    document.getElementById('deliveryList').innerHTML = `
+                        <p style="color: #666; text-align: center; padding: 2rem;">
+                            Faturalanmamış irsaliye bulunamadı
+                        </p>
+                    `;
+                    return;
+                }
+
+                // Müşterilere göre grupla
+                const customerGroups = {};
+                unInvoiced.forEach(dn => {
+                    if (!customerGroups[dn.customer_id]) {
+                        customerGroups[dn.customer_id] = {
+                            customer_name: dn.customer_name,
+                            notes: []
+                        };
+                    }
+                    customerGroups[dn.customer_id].notes.push(dn);
+                });
+
+                let html = '';
+                Object.keys(customerGroups).forEach(customerId => {
+                    const group = customerGroups[customerId];
+                    html += `
+                        <div class="customer-group">
+                            <div class="customer-header">
+                                🏢 ${group.customer_name}
+                                <span style="float: right; font-size: 0.875rem; font-weight: normal;">
+                                    ${group.notes.length} irsaliye
+                                </span>
+                            </div>
+                    `;
+                    
+                    group.notes.forEach(dn => {
+                        html += `
+                            <div class="delivery-item" onclick="toggleDelivery(${dn.id})" id="delivery-${dn.id}">
+                                <div style="display: flex; align-items: center;">
+                                    <input type="checkbox" class="checkbox" id="cb-${dn.id}" onchange="toggleDelivery(${dn.id})">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 600;">${dn.delivery_note_number}</div>
+                                        <div style="font-size: 0.875rem; color: #666;">
+                                            📅 ${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: #666;">
+                                            💰 ${dn.total_amount} TL
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                });
+
+                document.getElementById('deliveryList').innerHTML = html;
+
+            } catch (error) {
+                console.error('İrsaliyeler yüklenemedi:', error);
+                document.getElementById('deliveryList').innerHTML = `
+                    <p style="color: red; text-align: center; padding: 2rem;">
+                        Hata: ${error.message}
+                    </p>
+                `;
+            }
+        }
+
+        function toggleDelivery(deliveryId) {
+            const checkbox = document.getElementById(`cb-${deliveryId}`);
+            const item = document.getElementById(`delivery-${deliveryId}`);
+            
+            if (selectedDeliveries.includes(deliveryId)) {
+                selectedDeliveries = selectedDeliveries.filter(id => id !== deliveryId);
+                checkbox.checked = false;
+                item.classList.remove('selected');
+            } else {
+                selectedDeliveries.push(deliveryId);
+                checkbox.checked = true;
+                item.classList.add('selected');
+            }
+            
+            updatePreview();
+        }
+
+        async function updatePreview() {
+            const createBtn = document.getElementById('createBtn');
+            
+            if (selectedDeliveries.length === 0) {
+                document.getElementById('invoicePreview').innerHTML = `
+                    <p style="color: #666; text-align: center; padding: 2rem;">
+                        Sol taraftan irsaliye seçin
+                    </p>
+                `;
+                createBtn.disabled = true;
+                return;
+            }
+
+            try {
+                // Seçilen irsaliyelerin kalemlerini al
+                const selectedNotes = deliveryNotes.filter(dn => selectedDeliveries.includes(dn.id));
+                const customerName = selectedNotes[0].customer_name;
+                
+                console.log('Seçilen irsaliyeler:', selectedNotes);
+                
+                // Tüm kalemleri topla
+                let allItems = [];
+                for (const note of selectedNotes) {
+                    console.log(`İrsaliye ${note.id} kalemlerini alıyor...`);
+                    const items = await apiCall(`/api/cari/delivery-notes/${note.id}/items`);
+                    console.log(`İrsaliye ${note.id} kalemleri:`, items);
+                    items.forEach(item => {
+                        item.delivery_note_number = note.delivery_note_number;
+                        allItems.push(item);
+                    });
+                }
+                
+                console.log('Tüm kalemler:', allItems);
+
+                // Aynı ürünleri birleştir
+                const groupedItems = {};
+                allItems.forEach(item => {
+                    const key = item.product_id;
+                    if (!groupedItems[key]) {
+                        groupedItems[key] = {
+                            product_name: item.product_name,
+                            unit_price: parseFloat(item.unit_price),
+                            quantity: 0,
+                            total_price: 0,
+                            delivery_notes: []
+                        };
+                    }
+                    groupedItems[key].quantity += parseFloat(item.quantity);
+                    groupedItems[key].total_price += parseFloat(item.total_price);
+                    
+                    // İrsaliye numarasını sadece bir kez ekle
+                    if (!groupedItems[key].delivery_notes.includes(item.delivery_note_number)) {
+                        groupedItems[key].delivery_notes.push(item.delivery_note_number);
+                    }
+                });
+                
+                console.log('Gruplandı ürünler:', groupedItems);
+
+                let html = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4>Müşteri: ${customerName}</h4>
+                        <p style="color: #666;">Seçilen İrsaliyeler: ${selectedNotes.map(n => n.delivery_note_number).join(', ')}</p>
+                    </div>
+                    
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th>Ürün</th>
+                                <th>Miktar</th>
+                                <th>Birim Fiyat</th>
+                                <th>Toplam</th>
+                                <th>İrsaliyeler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                let grandTotal = 0;
+                Object.values(groupedItems).forEach(item => {
+                    // Toplam fiyatı yeniden hesapla (miktar x birim fiyat)
+                    const calculatedTotal = item.quantity * item.unit_price;
+                    grandTotal += calculatedTotal;
+                    
+                    html += `
+                        <tr>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.unit_price.toFixed(2)} TL</td>
+                            <td>${calculatedTotal.toFixed(2)} TL</td>
+                            <td style="font-size: 0.75rem;">${item.delivery_notes.join(', ')}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8f9fa; font-weight: 600;">
+                                <td colspan="3">GENEL TOPLAM</td>
+                                <td>${grandTotal.toFixed(2)} TL</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+                document.getElementById('invoicePreview').innerHTML = html;
+                createBtn.disabled = false;
+
+            } catch (error) {
+                console.error('Önizleme hatası:', error);
+            }
+        }
+
+        async function createInvoice() {
+            if (selectedDeliveries.length === 0) {
+                alert('Lütfen en az bir irsaliye seçin!');
+                return;
+            }
+
+            try {
+                const selectedNotes = deliveryNotes.filter(dn => selectedDeliveries.includes(dn.id));
+                const customerId = selectedNotes[0].customer_id;
+                const manualNumber = document.getElementById('manualInvoiceNumber').value.trim();
+
+                const result = await apiCall('/api/cari/invoices/from-delivery-notes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        customerId: customerId,
+                        deliveryNoteIds: selectedDeliveries,
+                        manualInvoiceNumber: manualNumber || null
+                    })
+                });
+
+                alert(`Fatura başarıyla oluşturuldu: ${result.invoiceNumber}`);
+                window.location.href = '/admin.html';
+
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+
+        // Sayfa yüklendiğinde irsaliyeleri yükle
+        loadDeliveryNotes();
+    </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#17a2b8">
+    <title>Harita - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #17a2b8; color: white; padding: 1rem; }
+        .nav { display: flex; gap: 1rem; margin-top: 1rem; }
+        .nav button { 
+            padding: 0.5rem 1rem; background: rgba(255,255,255,0.2); 
+            color: white; border: none; border-radius: 4px; cursor: pointer; 
+        }
+        .nav button:hover, .nav button.active { background: rgba(255,255,255,0.3); }
+        .container { display: flex; height: calc(100vh - 120px); }
+        .sidebar { width: 300px; background: white; padding: 1rem; overflow-y: auto; }
+        .map-container { flex: 1; position: relative; }
+        #map { height: 100%; width: 100%; }
+        .customer-item { 
+            border: 1px solid #ddd; padding: 0.5rem; margin: 0.5rem 0; 
+            border-radius: 4px; cursor: pointer; 
+        }
+        .customer-item:hover { background: #f8f9fa; }
+        .customer-active { background: #e3f2fd; border-color: #2196f3; }
+        .customer-potential { background: #fff3e0; border-color: #ff9800; }
+        .customer-not-interested { background: #ffebee; border-color: #f44336; }
+        .legend { 
+            position: absolute; top: 10px; right: 10px; background: white; 
+            padding: 1rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .legend-item { display: flex; align-items: center; margin: 0.5rem 0; }
+        .legend-color { width: 20px; height: 20px; border-radius: 50%; margin-right: 0.5rem; }
+        .btn { padding: 0.5rem 1rem; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #138496; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Harita - Saha CRM</h1>
+        <div class="nav">
+            <button onclick="goBack()">← Geri Dön</button>
+            <button onclick="getCurrentLocation()" class="active">Konumum</button>
+            <button onclick="showAllCustomers()">Tüm Müşteriler</button>
+            <button id="deliveryRouteBtn" onclick="showDeliveryRoute()" style="display: none;">Teslimat Rotası</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <h3 id="sidebarTitle">Müşteri Listesi</h3>
+            <div id="sidebarButtons"></div>
+            <div id="customerList"></div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="legend">
+                <h4>Müşteri Durumu</h4>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4CAF50;"></div>
+                    <span>Aktif Müşteri</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF9800;"></div>
+                    <span>Potansiyel</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #F44336;"></div>
+                    <span>İlgilenmiyor</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2196F3;"></div>
+                    <span>Konumum</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let map;
+        let markers = [];
+        let userLocation = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function initMap() {
+            // İstanbul merkez koordinatları
+            map = L.map('map').setView([41.0082, 28.9784], 11);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            setupSidebar();
+            loadCustomers();
+            getCurrentLocation();
+        }
+        
+        function setupSidebar() {
+            const titleElement = document.getElementById('sidebarTitle');
+            const buttonsElement = document.getElementById('sidebarButtons');
+            const deliveryBtn = document.getElementById('deliveryRouteBtn');
+            
+            if (currentUser.role === 'shipping') {
+                titleElement.textContent = 'Teslimat Noktaları';
+                buttonsElement.innerHTML = '<p style="font-size: 12px; color: #666; margin: 10px 0;">Müşteri konumlarına tıklayarak navigasyon başlatabilirsiniz.</p>';
+                deliveryBtn.style.display = 'block';
+            } else if (currentUser.role === 'warehouse') {
+                titleElement.textContent = 'Sevkiyat Noktaları';
+                buttonsElement.innerHTML = '<p style="font-size: 12px; color: #666; margin: 10px 0;">Müşteri konumlarına tıklayarak navigasyon başlatabilirsiniz.</p>';
+                deliveryBtn.style.display = 'block';
+            } else if (currentUser.role === 'sales_rep') {
+                titleElement.textContent = 'Müşteri Listesi';
+                buttonsElement.innerHTML = '<button class="btn" onclick="addCustomerLocation()">Yeni Konum Ekle</button>';
+                deliveryBtn.style.display = 'none';
+            } else {
+                titleElement.textContent = 'Müşteri Listesi';
+                buttonsElement.innerHTML = '';
+                deliveryBtn.style.display = 'none';
+            }
+        }
+
+        async function loadCustomers() {
+            try {
+                const customers = await apiCall('/api/customers');
+                displayCustomerList(customers);
+                displayCustomersOnMap(customers);
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+            }
+        }
+
+        function displayCustomerList(customers) {
+            const listContainer = document.getElementById('customerList');
+            listContainer.innerHTML = '';
+            
+            customers.forEach(customer => {
+                const statusClass = `customer-${customer.customer_status}`;
+                const item = document.createElement('div');
+                item.className = `customer-item ${statusClass}`;
+                item.innerHTML = `
+                    <h5>${customer.company_name}</h5>
+                    <p>${customer.contact_person || 'Yetkili belirtilmemiş'}</p>
+                    <p>${customer.phone || 'Telefon yok'}</p>
+                    <small>Durum: ${getStatusText(customer.customer_status)}</small>
+                `;
+                
+                item.onclick = () => focusCustomer(customer);
+                listContainer.appendChild(item);
+            });
+        }
+
+        function displayCustomersOnMap(customers) {
+            // Mevcut markerları temizle
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            customers.forEach(customer => {
+                if (customer.latitude && customer.longitude) {
+                    const color = getStatusColor(customer.customer_status);
+                    
+                    const marker = L.circleMarker([customer.latitude, customer.longitude], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.7,
+                        radius: 8
+                    }).addTo(map);
+                    
+                    const popupContent = `
+                        <strong>${customer.company_name}</strong><br>
+                        Yetkili: ${customer.contact_person || 'Belirtilmemiş'}<br>
+                        Telefon: ${customer.phone || 'Yok'}<br>
+                        Durum: ${getStatusText(customer.customer_status)}<br>
+                        ${(currentUser.role === 'shipping' || currentUser.role === 'warehouse') ? 
+                            `<button onclick="navigateToCustomer(${customer.latitude}, ${customer.longitude}, '${customer.company_name}')" style="margin-top: 5px; padding: 5px 10px; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer;">Navigasyon</button>` : 
+                            ''}
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    
+                    markers.push(marker);
+                }
+            });
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'active': return '#4CAF50';
+                case 'potential': return '#FF9800';
+                case 'not_interested': return '#F44336';
+                default: return '#9E9E9E';
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'active': return 'Aktif';
+                case 'potential': return 'Potansiyel';
+                case 'not_interested': return 'İlgilenmiyor';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        function focusCustomer(customer) {
+            if (customer.latitude && customer.longitude) {
+                map.setView([customer.latitude, customer.longitude], 15);
+                
+                // Marker'ı bul ve popup'ını aç
+                markers.forEach(marker => {
+                    const latLng = marker.getLatLng();
+                    if (latLng.lat === customer.latitude && latLng.lng === customer.longitude) {
+                        marker.openPopup();
+                    }
+                });
+            } else {
+                alert('Bu müşterinin konum bilgisi bulunmuyor.');
+            }
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        
+                        // Kullanıcı konumu marker'ı
+                        if (window.userMarker) {
+                            map.removeLayer(window.userMarker);
+                        }
+                        
+                        window.userMarker = L.circleMarker(userLocation, {
+                            color: '#2196F3',
+                            fillColor: '#2196F3',
+                            fillOpacity: 0.8,
+                            radius: 10
+                        }).addTo(map);
+                        
+                        window.userMarker.bindPopup('Konumunuz');
+                        map.setView(userLocation, 13);
+                        
+                        // Yakındaki müşterileri göster
+                        showNearbyCustomers();
+                    },
+                    (error) => {
+                        console.error('Konum alınamadı:', error);
+                        alert('Konum bilgisi alınamadı. Lütfen konum izni verin.');
+                    }
+                );
+            } else {
+                alert('Tarayıcınız konum özelliğini desteklemiyor.');
+            }
+        }
+
+        async function showNearbyCustomers() {
+            if (!userLocation) return;
+            
+            try {
+                const customers = await apiCall('/api/customers');
+                const nearbyCustomers = customers.filter(customer => {
+                    if (!customer.latitude || !customer.longitude) return false;
+                    
+                    const distance = calculateDistance(
+                        userLocation[0], userLocation[1],
+                        customer.latitude, customer.longitude
+                    );
+                    
+                    return distance <= 5; // 5km içindeki müşteriler
+                });
+                
+                if (nearbyCustomers.length > 0) {
+                    console.log(`${nearbyCustomers.length} yakın müşteri bulundu`);
+                }
+            } catch (error) {
+                console.error('Yakın müşteriler yüklenemedi:', error);
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Dünya yarıçapı (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function showAllCustomers() {
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        function navigateToCustomer(lat, lng, customerName) {
+            if (userLocation) {
+                // Google Maps ile navigasyon aç
+                const googleMapsUrl = `https://www.google.com/maps/dir/${userLocation[0]},${userLocation[1]}/${lat},${lng}`;
+                
+                // Apple Maps alternatifi (iOS için)
+                const appleMapsUrl = `http://maps.apple.com/?saddr=${userLocation[0]},${userLocation[1]}&daddr=${lat},${lng}`;
+                
+                // Kullanıcıya seçenek sun
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                
+                if (isMobile) {
+                    const choice = confirm(`${customerName} konumuna navigasyon başlatılsın mı?\n\nTamam: Google Maps\nİptal: Apple Maps`);
+                    if (choice) {
+                        window.open(googleMapsUrl, '_blank');
+                    } else {
+                        window.open(appleMapsUrl, '_blank');
+                    }
+                } else {
+                    window.open(googleMapsUrl, '_blank');
+                }
+            } else {
+                alert('Navigasyon için önce konumunuzu almalıyız. "Konumum" butonuna tıklayın.');
+            }
+        }
+        
+        async function showDeliveryRoute() {
+            try {
+                const orders = await apiCall('/api/orders');
+                const deliveryOrders = orders.filter(o => o.status === 'shipping' || o.status === 'completed');
+                
+                if (deliveryOrders.length === 0) {
+                    alert('Teslimat bekleyen sipariş bulunmuyor.');
+                    return;
+                }
+                
+                // Teslimat noktalarını vurgula
+                markers.forEach(marker => {
+                    const latLng = marker.getLatLng();
+                    const hasDelivery = deliveryOrders.some(order => {
+                        // Siparişin müşterisini bul ve konumunu karşılaştır
+                        return true; // Basitleştirilmiş kontrol
+                    });
+                    
+                    if (hasDelivery) {
+                        marker.setStyle({
+                            color: '#FF6B6B',
+                            fillColor: '#FF6B6B',
+                            radius: 12
+                        });
+                    }
+                });
+                
+                alert(`${deliveryOrders.length} teslimat noktası kırmızı ile işaretlendi.`);
+                
+            } catch (error) {
+                console.error('Teslimat rotası yüklenemedi:', error);
+            }
+        }
+        
+        function addCustomerLocation() {
+            alert('Yeni müşteri konum ekleme özelliği yakında...');
+        }
+
+        function goBack() {
+            if (currentUser.role === 'admin') {
+                window.location.href = '/admin.html';
+            } else if (currentUser.role === 'sales_rep') {
+                window.location.href = '/sales.html';
+            } else if (currentUser.role === 'shipping') {
+                window.location.href = '/shipping.html';
+            } else if (currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
+                window.location.href = '/accounting.html';
+            } else {
+                window.location.href = '/';
+            }
+        }
+
+        // Sayfa yüklendiğinde haritayı başlat
+        window.onload = initMap;
+    </script>
+</body>
+</html>

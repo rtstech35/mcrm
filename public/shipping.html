@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sevkiyat Paneli</title>
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+    <style>
+        .shipping-tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        .shipping-tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9fa;
+            border-right: 1px solid #ddd;
+        }
+        .shipping-tab:last-child { border-right: none; }
+        .shipping-tab.active { background: #007bff; color: white; }
+        .shipping-content { display: none; }
+        .shipping-content.active { display: block; }
+        .order-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚚 Sevkiyat Paneli</h1>
+        <div>
+            <span id="userInfo"></span>
+            <button onclick="logout()" class="btn">Çıkış</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="shipping-tabs">
+            <div class="shipping-tab active" data-tab="pending">📦 Bekleyen Sevkiyatlar</div>
+            <div class="shipping-tab" data-tab="shipping">🚚 Sevkiyatta</div>
+            <div class="shipping-tab" data-tab="delivered">✅ Teslim Edildi</div>
+        </div>
+
+        <div id="pending" class="shipping-content active">
+            <h3>Sevkiyat Bekleyen Siparişler</h3>
+            <div id="pending-orders"></div>
+        </div>
+
+        <div id="shipping" class="shipping-content">
+            <h3>Sevkiyatta Olan Siparişler</h3>
+            <div id="shipping-orders"></div>
+        </div>
+
+        <div id="delivered" class="shipping-content">
+            <h3>Teslim Edilen Siparişler</h3>
+            <div id="delivered-orders"></div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        // API çağrısı
+        async function apiCall(url, options = {}) {
+            try {
+                console.log('API çağrısı:', url, options);
+                
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        ...options.headers
+                    }
+                });
+                
+                console.log('API yanıt durumu:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API hata yanıtı:', errorText);
+                    throw new Error(`API Hatası (${response.status}): ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('API başarılı yanıt:', result);
+                return result;
+                
+            } catch (error) {
+                console.error('API çağrı hatası:', error);
+                throw error;
+            }
+        }
+
+        // Tab değiştirme
+        document.querySelectorAll('.shipping-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Tüm tab'ları pasif yap
+                document.querySelectorAll('.shipping-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.shipping-content').forEach(c => c.classList.remove('active'));
+                
+                // Seçilen tab'ı aktif yap
+                tab.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+
+        // Siparişleri yükle
+        async function loadOrders() {
+            try {
+                const orders = await apiCall('/api/orders');
+                console.log('Tüm siparişler:', orders);
+                
+                // Filtreleme
+                const pending = orders.filter(o => o.status === 'completed');
+                const shipping = orders.filter(o => o.status === 'shipping');
+                const delivered = orders.filter(o => o.status === 'delivered');
+                
+                console.log('Bekleyen:', pending.length);
+                console.log('Sevkiyatta:', shipping.length);
+                console.log('Teslim edildi:', delivered.length);
+                
+                // Gösterme
+                showOrders('pending-orders', pending, 'pending');
+                showOrders('shipping-orders', shipping, 'shipping');
+                showOrders('delivered-orders', delivered, 'delivered');
+                
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Siparişler yüklenemedi');
+            }
+        }
+
+        // Siparişleri göster
+        function showOrders(containerId, orders, type) {
+            const container = document.getElementById(containerId);
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<p>Sipariş bulunmuyor.</p>';
+                return;
+            }
+            
+            let html = '';
+            orders.forEach(order => {
+                html += `
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4>Sipariş #${order.order_number}</h4>
+                                <p>Müşteri: ${order.customer_name || 'Bilinmiyor'}</p>
+                                <p>Tarih: ${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                                <p>Tutar: ${order.total_amount} TL</p>
+                                <p>Durum: ${order.status}</p>
+                            </div>
+                            <div>
+                                ${getActionButton(order, type)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Aksiyon butonu
+        function getActionButton(order, type) {
+            if (type === 'pending') {
+                return `<button onclick="startShipping(${order.id})" class="btn">Sevkiyata Al</button>`;
+            } else if (type === 'shipping') {
+                return `<button onclick="completeDelivery(${order.id})" class="btn btn-success">Teslim Et</button>`;
+            } else {
+                return `<span style="color: green;">✓ Teslim Edildi</span>`;
+            }
+        }
+
+        // Sevkiyata al
+        async function startShipping(orderId) {
+            try {
+                await apiCall(`/api/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'shipping' })
+                });
+                
+                alert('Sipariş sevkiyata alındı!');
+                loadOrders();
+            } catch (error) {
+                alert('Hata oluştu');
+            }
+        }
+
+        // Teslimatı tamamla
+        async function completeDelivery(orderId) {
+            try {
+                console.log('Teslimat başlatılıyor, sipariş ID:', orderId);
+                
+                const result = await apiCall(`/api/orders/${orderId}/deliver`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ 
+                        signature: 'digital_signature_' + Date.now(),
+                        delivery_date: new Date().toISOString()
+                    })
+                });
+                
+                console.log('Teslimat sonucu:', result);
+                alert('Teslimat tamamlandı! İrsaliye: ' + (result.deliveryNoteNumber || 'Oluşturuldu'));
+                loadOrders();
+            } catch (error) {
+                console.error('Teslimat hatası:', error);
+                alert('Teslimat tamamlanamadı: ' + error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/';
+        }
+
+        // Başlangıç
+        document.getElementById('userInfo').textContent = `Hoş geldiniz, ${currentUser.full_name}`;
+        loadOrders();
+    </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#28a745">
+    <title>Sipariş Detayı - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/mobile.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .header { background: #28a745; color: white; padding: 1rem; }
+        .container { padding: 2rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        .btn { padding: 0.5rem 1rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background: #218838; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; }
+        .form-group input, .form-group select { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
+        .product-item { border: 1px solid #ddd; padding: 1rem; margin: 0.5rem 0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .product-item.selected { background: #e3f2fd; border-color: #2196f3; }
+        .quantity-input { width: 80px; }
+        .total-section { background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Sipariş Detayı</h1>
+        <button onclick="goBack()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px;">← Geri</button>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Yeni Sipariş Oluştur</h2>
+            
+            <div class="form-group">
+                <label>Müşteri:</label>
+                <select id="customer_id" required></select>
+            </div>
+            
+            <div class="form-group">
+                <label>Sipariş Tarihi:</label>
+                <input type="date" id="order_date" required>
+            </div>
+            
+            <h3>Ürün Ekleme</h3>
+            <div style="display: flex; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                    <label>Ürün:</label>
+                    <select id="productSelect">
+                        <option value="">Ürün Seçiniz</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>Miktar:</label>
+                    <input type="number" id="quantityInput" min="1" placeholder="Miktar">
+                </div>
+                <button class="btn" onclick="addProduct()" style="height: fit-content;">Ürün Ekle</button>
+            </div>
+            
+            <div id="selectedProducts" style="margin-top: 2rem; display: none;">
+                <h3>Seçilen Ürünler</h3>
+                <div id="selectedList"></div>
+            </div>
+            
+            <div class="total-section">
+                <h3>Toplam: <span id="totalAmount">0.00</span> TL</h3>
+                <button class="btn" onclick="createOrder()">Siparişi Oluştur</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let selectedProducts = [];
+        let products = [];
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        async function loadData() {
+            try {
+                // Müşterileri yükle
+                const customers = await apiCall('/api/customers');
+                const customerSelect = document.getElementById('customer_id');
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+
+                // Ürünleri yükle
+                products = await apiCall('/api/products');
+                displayProducts();
+
+                // Bugünün tarihini ayarla
+                document.getElementById('order_date').value = new Date().toISOString().split('T')[0];
+
+            } catch (error) {
+                console.error('Veri yüklenemedi:', error);
+                alert('Veri yüklenirken hata oluştu: ' + error.message);
+            }
+        }
+
+        function displayProducts() {
+            const productSelect = document.getElementById('productSelect');
+            productSelect.innerHTML = '<option value="">Ürün Seçiniz</option>';
+
+            products.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = `${product.name} - ${product.unit_price} TL/${product.unit}`;
+                productSelect.appendChild(option);
+            });
+        }
+
+        function addProduct() {
+            const productId = document.getElementById('productSelect').value;
+            const quantity = document.getElementById('quantityInput').value;
+            
+            if (!productId) {
+                alert('Lütfen ürün seçiniz');
+                return;
+            }
+            
+            if (!quantity || quantity <= 0) {
+                alert('Lütfen geçerli bir miktar giriniz');
+                return;
+            }
+            
+            const product = products.find(p => p.id == productId);
+            const existingIndex = selectedProducts.findIndex(p => p.product_id == productId);
+            
+            const productData = {
+                product_id: parseInt(productId),
+                quantity: parseInt(quantity),
+                unit_price: product.unit_price,
+                total: quantity * product.unit_price
+            };
+            
+            if (existingIndex >= 0) {
+                // Mevcut ürün varsa miktarı güncelle
+                selectedProducts[existingIndex].quantity += parseInt(quantity);
+                selectedProducts[existingIndex].total = selectedProducts[existingIndex].quantity * product.unit_price;
+            } else {
+                selectedProducts.push(productData);
+            }
+            
+            // Formu temizle
+            document.getElementById('productSelect').value = '';
+            document.getElementById('quantityInput').value = '';
+            
+            updateTotal();
+        }
+        
+        function removeProduct(productId) {
+            const index = selectedProducts.findIndex(p => p.product_id == productId);
+            if (index >= 0) {
+                selectedProducts.splice(index, 1);
+                updateTotal();
+            }
+        }
+
+        function updateTotal() {
+            const total = selectedProducts.reduce((sum, product) => sum + product.total, 0);
+            document.getElementById('totalAmount').textContent = total.toFixed(2);
+            
+            // Seçilen ürünleri göster
+            const selectedSection = document.getElementById('selectedProducts');
+            const selectedList = document.getElementById('selectedList');
+            
+            if (selectedProducts.length > 0) {
+                selectedSection.style.display = 'block';
+                selectedList.innerHTML = selectedProducts.map(item => {
+                    const product = products.find(p => p.id === item.product_id);
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; margin: 0.5rem 0; background: #f8f9fa;">
+                            <div>
+                                <strong>${product.name}</strong><br>
+                                <span>${item.quantity} ${product.unit} x ${item.unit_price} TL = ${item.total.toFixed(2)} TL</span>
+                            </div>
+                            <button class="btn btn-danger" onclick="removeProduct(${item.product_id})" style="background: #dc3545; padding: 0.25rem 0.5rem;">Kaldır</button>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                selectedSection.style.display = 'none';
+            }
+        }
+
+        async function createOrder() {
+            const customerId = document.getElementById('customer_id').value;
+            const orderDate = document.getElementById('order_date').value;
+
+            if (!customerId) {
+                alert('Lütfen müşteri seçiniz');
+                return;
+            }
+
+            if (selectedProducts.length === 0) {
+                alert('Lütfen en az bir ürün seçiniz');
+                return;
+            }
+
+            try {
+                const orderData = {
+                    customer_id: customerId,
+                    order_date: orderDate,
+                    items: selectedProducts,
+                    notes: `Ürünler: ${selectedProducts.map(p => {
+                        const product = products.find(pr => pr.id === p.product_id);
+                        return `${product.name} (${p.quantity} ${product.unit})`;
+                    }).join(', ')}`
+                };
+
+                const result = await apiCall('/api/orders', {
+                    method: 'POST',
+                    body: JSON.stringify(orderData)
+                });
+
+                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${result.order_number}`);
+                goBack();
+
+            } catch (error) {
+                alert('Sipariş oluşturulurken hata: ' + error.message);
+            }
+        }
+
+        function goBack() {
+            window.location.href = '/sales.html';
+        }
+
+        // Enter tuşu ile ürün ekleme
+        document.getElementById('quantityInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addProduct();
+            }
+        });
+        
+        // Sayfa yüklendiğinde verileri yükle
+        loadData();
+    </script>
+</body>
+</html>

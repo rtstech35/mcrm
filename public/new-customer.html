@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeni Müşteri Kaydı - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Yeni Müşteri</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Müşteri kaydı oluştur</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%;">← Geri Dön</button>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <h2 style="margin-bottom: 2rem;">Yeni Müşteri Kaydı</h2>
+                
+                <form id="customerForm">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                        <div class="form-group">
+                            <label>Firma Adı *</label>
+                            <input type="text" id="company_name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Yetkili Adı *</label>
+                            <input type="text" id="contact_person" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Telefon Numarası *</label>
+                            <input type="tel" id="phone" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>E-posta</label>
+                            <input type="email" id="email">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Adres Bilgisi</label>
+                        <textarea id="address" rows="3" placeholder="Konum bilgisinden otomatik oluşturulacak..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>İlgilendiği Ürünler / Notlar</label>
+                        <textarea id="notes" rows="4" placeholder="Müşterinin ilgilendiği ürünler, özel notlar veya 'İlgilenmiyor' yazabilirsiniz..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Müşteri Durumu</label>
+                        <select id="customer_status" required>
+                            <option value="potential">Potansiyel</option>
+                            <option value="active">Aktif</option>
+                            <option value="not_interested">İlgilenmiyor</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn" style="flex: 1;">Müşteriyi Kaydet</button>
+                        <button type="button" onclick="saveAndCreateVisit()" class="btn" style="flex: 1; background: #48bb78;">Kaydet ve Ziyaret Oluştur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let currentLocation = null;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        // URL'den konum parametrelerini al
+        function getLocationFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const lat = urlParams.get('lat');
+            const lng = urlParams.get('lng');
+            
+            if (lat && lng) {
+                currentLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
+            }
+        }
+
+        // Koordinatlardan adres bilgisi al (basit örnek)
+        async function getAddressFromCoordinates(lat, lng) {
+            try {
+                // Gerçek uygulamada Google Maps API veya başka bir servis kullanılabilir
+                // Şimdilik basit bir adres oluşturalım
+                const address = `Enlem: ${lat.toFixed(6)}, Boylam: ${lng.toFixed(6)}`;
+                document.getElementById('address').value = address;
+            } catch (error) {
+                console.error('Adres alınamadı:', error);
+                document.getElementById('address').value = `Konum: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            }
+        }
+
+        document.getElementById('customerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveCustomer(false);
+        });
+
+        async function saveCustomer(createVisit = false) {
+            const formData = {
+                company_name: document.getElementById('company_name').value,
+                contact_person: document.getElementById('contact_person').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                address: document.getElementById('address').value,
+                notes: document.getElementById('notes').value,
+                customer_status: document.getElementById('customer_status').value,
+                sales_rep_id: currentUser.id,
+                latitude: currentLocation ? currentLocation.lat : null,
+                longitude: currentLocation ? currentLocation.lng : null
+            };
+
+            try {
+                const result = await apiCall('/api/customers', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                if (createVisit) {
+                    // Müşteri kaydedildikten sonra ziyaret sayfasına yönlendir
+                    window.location.href = `/visit-form.html?customer_id=${result.id}&new_customer=true`;
+                } else {
+                    alert('Müşteri başarıyla kaydedildi!');
+                    goBack();
+                }
+            } catch (error) {
+                alert('Müşteri kaydedilirken hata: ' + error.message);
+            }
+        }
+
+        async function saveAndCreateVisit() {
+            await saveCustomer(true);
+        }
+
+        function goBack() {
+            window.location.href = '/visit-nearby.html';
+        }
+
+        // Sayfa yüklendiğinde konum parametrelerini kontrol et
+        getLocationFromURL();
+    </script>
+</body>
+</html>

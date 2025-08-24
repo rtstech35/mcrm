@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ziyaret Kaydı - Saha CRM</title>
+    <link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+    <div class="container" style="min-height: 100vh; padding: 2rem;">
+        <div class="sidebar">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600;">Ziyaret Kaydı</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Müşteri ziyareti</p>
+            </div>
+            <button onclick="goBack()" class="btn" style="width: 100%;">← Geri Dön</button>
+        </div>
+
+        <div class="content">
+            <div class="card" id="customerInfo" style="margin-bottom: 2rem;">
+                <h3>Müşteri Bilgileri</h3>
+                <div id="customerDetails">Müşteri bilgileri yükleniyor...</div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 2rem;">Ziyaret Kaydı</h2>
+                
+                <form id="visitForm">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div class="form-group">
+                            <label>Ziyaret Tipi</label>
+                            <select id="visit_type" required>
+                                <option value="visit">Yüz Yüze Ziyaret</option>
+                                <option value="call">Telefon Görüşmesi</option>
+                                <option value="online">Online Toplantı</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Ziyaret Sonucu</label>
+                            <select id="result" required>
+                                <option value="sale">Satış Yapıldı</option>
+                                <option value="potential">Potansiyel Müşteri</option>
+                                <option value="follow_up">Takip Gerekli</option>
+                                <option value="not_interested">İlgilenmiyor</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Ziyaret Notları</label>
+                        <textarea id="notes" rows="4" placeholder="Ziyaret detayları, müşteri talepleri, öneriler..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>İlgilendiği Ürünler</label>
+                        <textarea id="interested_products" rows="3" placeholder="Müşterinin ilgilendiği ürünler veya hizmetler..."></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                        <div class="form-group">
+                            <label>Sonraki İletişim Tarihi</label>
+                            <input type="date" id="next_contact_date">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tahmini Sipariş Tutarı</label>
+                            <input type="number" id="estimated_order_amount" placeholder="TL" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn" style="flex: 1;">Ziyareti Kaydet</button>
+                        <button type="button" onclick="saveAndCreateOrder()" class="btn" style="flex: 1; background: #48bb78;">Kaydet ve Sipariş Oluştur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let customerId = null;
+        let isNewCustomer = false;
+
+        if (!authToken) {
+            window.location.href = '/';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        // URL'den müşteri ID'sini al
+        function getCustomerIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            customerId = urlParams.get('customer_id');
+            isNewCustomer = urlParams.get('new_customer') === 'true';
+            
+            if (customerId) {
+                loadCustomerInfo();
+            } else {
+                document.getElementById('customerDetails').innerHTML = 
+                    '<p style="color: #f56565;">Müşteri ID bulunamadı</p>';
+            }
+        }
+
+        async function loadCustomerInfo() {
+            try {
+                const customer = await apiCall(`/api/customers/${customerId}`);
+                
+                document.getElementById('customerDetails').innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                        <div>
+                            <strong>Firma:</strong> ${customer.company_name}
+                        </div>
+                        <div>
+                            <strong>Yetkili:</strong> ${customer.contact_person || '-'}
+                        </div>
+                        <div>
+                            <strong>Telefon:</strong> ${customer.phone || '-'}
+                        </div>
+                        <div>
+                            <strong>Durum:</strong> ${getStatusText(customer.customer_status)}
+                        </div>
+                    </div>
+                    ${isNewCustomer ? '<div style="background: #e6fffa; color: #00695c; padding: 0.5rem; border-radius: 8px; margin-top: 1rem; font-size: 0.875rem;">✅ Yeni müşteri kaydı oluşturuldu</div>' : ''}
+                `;
+                
+                // Eğer müşteri notları varsa, ziyaret notlarına ekle
+                if (customer.notes) {
+                    document.getElementById('notes').value = `Müşteri notları: ${customer.notes}\n\nZiyaret notları: `;
+                }
+                
+            } catch (error) {
+                console.error('Müşteri bilgileri yüklenemedi:', error);
+                document.getElementById('customerDetails').innerHTML = 
+                    `<p style="color: #f56565;">Müşteri bilgileri yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'active': return 'Aktif';
+                case 'potential': return 'Potansiyel';
+                case 'not_interested': return 'İlgilenmiyor';
+                default: return 'Bilinmiyor';
+            }
+        }
+
+        document.getElementById('visitForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveVisit(false);
+        });
+
+        async function saveVisit(createOrder = false) {
+            const formData = {
+                customer_id: customerId,
+                visit_type: document.getElementById('visit_type').value,
+                result: document.getElementById('result').value,
+                notes: document.getElementById('notes').value,
+                interested_products: document.getElementById('interested_products').value,
+                next_contact_date: document.getElementById('next_contact_date').value,
+                estimated_order_amount: document.getElementById('estimated_order_amount').value,
+                visit_date: new Date().toISOString()
+            };
+
+            try {
+                const result = await apiCall('/api/visits', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                if (createOrder) {
+                    // Ziyaret kaydedildikten sonra sipariş sayfasına yönlendir
+                    window.location.href = `/order-detail.html?customer_id=${customerId}&visit_id=${result.id}`;
+                } else {
+                    alert('Ziyaret başarıyla kaydedildi!');
+                    window.location.href = '/sales.html';
+                }
+            } catch (error) {
+                alert('Ziyaret kaydedilirken hata: ' + error.message);
+            }
+        }
+
+        async function saveAndCreateOrder() {
+            await saveVisit(true);
+        }
+
+        function goBack() {
+            if (isNewCustomer) {
+                window.location.href = '/visit-nearby.html';
+            } else {
+                window.location.href = '/visit-nearby.html';
+            }
+        }
+
+        // Sayfa yüklendiğinde müşteri bilgilerini yükle
+        getCustomerIdFromURL();
+    </script>
+</body>
+</html>
