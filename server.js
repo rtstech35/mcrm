@@ -4,18 +4,28 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// PostgreSQL pool bağlantısı
+// ---------------- STATİK DOSYALAR ---------------- //
+// public klasöründe admin.html ve diğer frontend dosyalarını tut
+app.use(express.static(path.join(__dirname, "public")));
+
+// Alternatif: /admin route'u ile admin.html'e erişim
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+// ---------------- POSTGRESQL BAĞLANTI ---------------- //
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Test için
+// ---------------- TEST ---------------- //
 app.get("/", (req, res) => {
   res.send("Saha CRM Sistemi Çalışıyor 🚀 (Postgres)");
 });
@@ -24,6 +34,12 @@ app.get("/", (req, res) => {
 app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    // Aynı kullanıcı kontrolü (opsiyonel)
+    const existingUser = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: "Kullanıcı zaten var" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
