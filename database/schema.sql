@@ -1,7 +1,7 @@
 -- Saha CRM Sistemi Veritabanı Şeması
 
 -- Roller tablosu
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
@@ -10,7 +10,7 @@ CREATE TABLE roles (
 );
 
 -- Departmanlar tablosu
-CREATE TABLE departments (
+CREATE TABLE IF NOT EXISTS departments (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
@@ -18,7 +18,7 @@ CREATE TABLE departments (
 );
 
 -- Kullanıcılar tablosu
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE users (
 );
 
 -- Müşteriler tablosu
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,
     company_name VARCHAR(200) NOT NULL,
     contact_person VARCHAR(100),
@@ -54,7 +54,7 @@ CREATE TABLE customers (
 );
 
 -- Ürünler tablosu
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description TEXT,
@@ -65,7 +65,7 @@ CREATE TABLE products (
 );
 
 -- Siparişler tablosu
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
     order_number VARCHAR(50) UNIQUE NOT NULL,
     customer_id INTEGER REFERENCES customers(id),
@@ -81,7 +81,7 @@ CREATE TABLE orders (
 );
 
 -- Sipariş detayları tablosu
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER REFERENCES orders(id),
     product_id INTEGER REFERENCES products(id),
@@ -91,7 +91,7 @@ CREATE TABLE order_items (
 );
 
 -- Müşteri ziyaretleri tablosu
-CREATE TABLE customer_visits (
+CREATE TABLE IF NOT EXISTS customer_visits (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER REFERENCES customers(id),
     sales_rep_id INTEGER REFERENCES users(id),

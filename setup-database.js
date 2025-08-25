@@ -21,18 +21,32 @@ async function setupDatabase() {
     const schemaPath = path.join(__dirname, "database", "schema.sql");
     const schemaSQL = fs.readFileSync(schemaPath, "utf8");
 
-    // Schema'yı çalıştır (IF NOT EXISTS ile)
-    console.log("📋 Database schema kontrol ediliyor...");
-    try {
-      await pool.query(schemaSQL);
-      console.log("✅ Database schema başarıyla oluşturuldu");
-    } catch (error) {
-      if (error.code === '42P07') {
-        console.log("✅ Database schema zaten mevcut, devam ediliyor...");
-      } else {
-        throw error;
+    // Önce tüm tabloları sil (temiz başlangıç için)
+    console.log("🗑️ Mevcut tablolar temizleniyor...");
+    const dropQueries = [
+      "DROP TABLE IF EXISTS customer_visits CASCADE",
+      "DROP TABLE IF EXISTS order_items CASCADE", 
+      "DROP TABLE IF EXISTS orders CASCADE",
+      "DROP TABLE IF EXISTS products CASCADE",
+      "DROP TABLE IF EXISTS customers CASCADE",
+      "DROP TABLE IF EXISTS users CASCADE",
+      "DROP TABLE IF EXISTS departments CASCADE",
+      "DROP TABLE IF EXISTS roles CASCADE"
+    ];
+
+    for (const query of dropQueries) {
+      try {
+        await pool.query(query);
+        console.log(`✅ ${query.split(' ')[2]} tablosu silindi`);
+      } catch (error) {
+        console.log(`⚠️ ${query.split(' ')[2]} tablosu zaten yok`);
       }
     }
+
+    // Schema'yı çalıştır
+    console.log("📋 Database schema oluşturuluyor...");
+    await pool.query(schemaSQL);
+    console.log("✅ Database schema başarıyla oluşturuldu");
 
     // Temel verileri ekle
     console.log("📝 Temel veriler ekleniyor...");
