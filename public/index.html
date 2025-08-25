@@ -58,20 +58,22 @@
             const password = document.getElementById('password').value;
 
             try {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
+                console.log('Login response:', data);
                 
-                if (response.ok) {
+                if (response.ok && data.success) {
                     currentUser = data.user;
                     authToken = data.token;
                     localStorage.setItem('authToken', authToken);
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     
+                    // Role-based yönlendirme
                     if (currentUser.role === 'admin') {
                         window.location.href = '/admin.html';
                     } else if (currentUser.role === 'sales_rep') {
@@ -83,24 +85,29 @@
                     } else if (currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
                         window.location.href = '/accounting.html';
                     } else {
+                        // Default dashboard göster
                         document.getElementById('loginContainer').style.display = 'none';
                         document.getElementById('dashboard').style.display = 'block';
+                        showDashboard();
                     }
                 } else {
-                    alert(data.message);
+                    alert(data.error || data.message || 'Giriş başarısız');
                 }
             } catch (error) {
-                alert('Bağlantı hatası');
+                console.error('Login error:', error);
+                alert('Bağlantı hatası: ' + error.message);
             }
         });
 
         function showDashboard() {
-            document.getElementById('content').innerHTML = `
-                <h2>Dashboard</h2>
-                <p>Hoş geldiniz, ${currentUser.full_name}</p>
-                <p>Rol: ${currentUser.role}</p>
-                <p>Departman: ${currentUser.department}</p>
-            `;
+            if (currentUser) {
+                document.getElementById('content').innerHTML = `
+                    <h2>Dashboard</h2>
+                    <p>Hoş geldiniz, ${currentUser.full_name || currentUser.username}</p>
+                    <p>Rol: ${currentUser.role || 'Belirtilmemiş'}</p>
+                    <p>Departman: ${currentUser.department || 'Belirtilmemiş'}</p>
+                `;
+            }
         }
 
         function showUsers() {
@@ -129,6 +136,20 @@
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
         }
+
+        // Sayfa yüklendiğinde token kontrolü
+        window.addEventListener('load', () => {
+            const storedToken = localStorage.getItem('authToken');
+            const storedUser = localStorage.getItem('currentUser');
+            
+            if (storedToken && storedUser) {
+                authToken = storedToken;
+                currentUser = JSON.parse(storedUser);
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                showDashboard();
+            }
+        });
         
         // PWA kurulum
         if ('serviceWorker' in navigator) {
