@@ -304,8 +304,10 @@ app.post("/api/customers", authenticateToken, async (req, res) => {
 });
 
 // ---------------- DASHBOARD STATS ---------------- //
-app.get("/api/stats", authenticateToken, async (req, res) => {
+app.get("/api/stats", async (req, res) => {
   try {
+    console.log("📊 Dashboard stats isteği geldi");
+    
     // Toplam siparişler
     const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
     const totalOrders = parseInt(ordersResult.rows[0].total);
@@ -319,26 +321,73 @@ app.get("/api/stats", authenticateToken, async (req, res) => {
     const totalProducts = parseInt(productsResult.rows[0].total);
 
     // Bu ay siparişler
-    const monthlyOrdersResult = await pool.query(
-      "SELECT COUNT(*) as total FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"
-    );
+    const monthlyOrdersResult = await pool.query(`
+      SELECT COUNT(*) as total FROM orders 
+      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+    `);
     const monthlyOrders = parseInt(monthlyOrdersResult.rows[0].total);
 
+    // Toplam gelir hesaplama
+    const revenueResult = await pool.query("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders");
+    const totalRevenue = parseFloat(revenueResult.rows[0].total);
+
+    console.log("✅ Dashboard stats başarıyla hesaplandı");
+
     res.json({
+      success: true,
       totalOrders,
       totalCustomers, 
       totalProducts,
       monthlyOrders,
-      totalRevenue: totalOrders * 150, // Dummy calculation
+      totalRevenue: totalRevenue || 0,
     });
   } catch (err) {
-    console.error("Stats hatası:", err);
-    res.json({
+    console.error("❌ Dashboard stats hatası:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
       totalOrders: 0,
       totalCustomers: 0,
       totalProducts: 0,
       monthlyOrders: 0,
       totalRevenue: 0
+    });
+  }
+});
+
+// Dashboard için basit stats (authentication olmadan)
+app.get("/api/dashboard-stats", async (req, res) => {
+  try {
+    console.log("📊 Basit dashboard stats isteği geldi");
+    
+    // Toplam sipariş sayısı
+    const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
+    const totalOrders = parseInt(ordersResult.rows[0].total);
+
+    // Toplam müşteri sayısı
+    const customersResult = await pool.query("SELECT COUNT(*) as total FROM customers");
+    const totalCustomers = parseInt(customersResult.rows[0].total);
+
+    // Toplam ürün sayısı
+    const productsResult = await pool.query("SELECT COUNT(*) as total FROM products");
+    const totalProducts = parseInt(productsResult.rows[0].total);
+
+    res.json({
+      success: true,
+      totalOrders,
+      totalCustomers, 
+      totalProducts,
+      message: "Stats başarıyla alındı"
+    });
+  } catch (err) {
+    console.error("❌ Basit dashboard stats hatası:", err);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      totalOrders: 0,
+      totalCustomers: 0,
+      totalProducts: 0
     });
   }
 });
