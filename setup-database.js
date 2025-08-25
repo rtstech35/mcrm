@@ -21,10 +21,18 @@ async function setupDatabase() {
     const schemaPath = path.join(__dirname, "database", "schema.sql");
     const schemaSQL = fs.readFileSync(schemaPath, "utf8");
 
-    // Schema'yı çalıştır
-    console.log("📋 Database schema oluşturuluyor...");
-    await pool.query(schemaSQL);
-    console.log("✅ Database schema başarıyla oluşturuldu");
+    // Schema'yı çalıştır (IF NOT EXISTS ile)
+    console.log("📋 Database schema kontrol ediliyor...");
+    try {
+      await pool.query(schemaSQL);
+      console.log("✅ Database schema başarıyla oluşturuldu");
+    } catch (error) {
+      if (error.code === '42P07') {
+        console.log("✅ Database schema zaten mevcut, devam ediliyor...");
+      } else {
+        throw error;
+      }
+    }
 
     // Temel verileri ekle
     console.log("📝 Temel veriler ekleniyor...");

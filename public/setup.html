@@ -145,6 +145,10 @@
             Database'i Kur
         </button>
         
+        <button class="setup-btn" onclick="resetDatabase()" id="resetBtn" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); margin-left: 10px;">
+            Database'i Sıfırla
+        </button>
+        
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Database kuruluyor...</p>
@@ -216,6 +220,58 @@
                 // UI'yi geri yükle
                 setupBtn.disabled = false;
                 setupBtn.textContent = 'Database\'i Kur';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+        
+        async function resetDatabase() {
+            const resetBtn = document.getElementById('resetBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const credentials = document.getElementById('credentials');
+            
+            // UI'yi güncelle
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Sıfırlanıyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+            credentials.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/reset-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    status.className = 'status success';
+                    status.innerHTML = `
+                        <h3>✅ Başarılı!</h3>
+                        <p>${result.message}</p>
+                    `;
+                    credentials.style.display = 'block';
+                } else {
+                    throw new Error(result.message || 'Bilinmeyen hata');
+                }
+                
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `
+                    <h3>❌ Hata!</h3>
+                    <p>${error.message}</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
+                        Lütfen environment variables'ları kontrol edin.
+                    </p>
+                `;
+            } finally {
+                // UI'yi geri yükle
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Database\'i Sıfırla';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }

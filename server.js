@@ -32,8 +32,8 @@ pool.connect()
   .then(async () => {
     console.log("✅ PostgreSQL bağlantısı başarılı");
     
-    // Production'da otomatik database setup
-    if (process.env.NODE_ENV === 'production') {
+    // Production'da otomatik database setup (geçici olarak devre dışı)
+    if (process.env.NODE_ENV === 'production' && process.env.AUTO_SETUP === 'true') {
       try {
         console.log("🔄 Production ortamında database setup kontrol ediliyor...");
         await setupDatabase();
@@ -378,6 +378,28 @@ app.post("/api/setup-database", async (req, res) => {
     res.status(500).json({ 
       error: error.message,
       message: 'Database setup başarısız'
+    });
+  }
+});
+
+app.post("/api/reset-database", async (req, res) => {
+  try {
+    console.log('🗑️ Database reset başlatılıyor...');
+    const resetDatabase = require("./reset-database");
+    await resetDatabase();
+    res.json({ 
+      success: true,
+      message: 'Database başarıyla sıfırlandı ve yeniden kuruldu',
+      admin: {
+        username: 'admin',
+        password: 'admin123'
+      }
+    });
+  } catch (error) {
+    console.error('🗑️ Database reset hatası:', error);
+    res.status(500).json({ 
+      error: error.message,
+      message: 'Database reset başarısız'
     });
   }
 });
