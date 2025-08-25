@@ -342,3 +342,175 @@ app.listen(PORT, () => {
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Tanımlı' : '❌ Tanımsız'}`);
 });
+// Bu kodları server.js'nizin en altına, listen()'den önce ekleyin:
+
+// 1. Mevcut kullanıcıları debug et
+app.get("/api/debug-users", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, username, password_hash, full_name, is_active, created_at FROM users ORDER BY id"
+    );
+    
+    const users = result.rows.map(user => ({
+      ...user,
+      password_hash: user.password_hash ? `${user.password_hash.substring(0, 10)}...` : 'NULL'
+    }));
+    
+    res.json({
+      totalUsers: result.rows.length,
+      users: users
+    });
+  } catch (error) {
+    console.error('Debug users hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. Test kullanıcısı oluştur/güncelle
+app.post("/api/create-admin", async (req, res) => {
+  try {
+    console.log('Admin oluşturuluyor...');
+    
+    const hashedPassword = await bcrypt.hash('1234', 10);
+    console.log('Hash oluşturuldu:', hashedPassword.substring(0, 20) + '...');
+    
+    // Önce sil
+    await pool.query("DELETE FROM users WHERE username = 'admin1'");
+    console.log('Eski admin silindi');
+    
+    // Sonra ekle
+    const result = await pool.query(
+      `INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING id, username`,
+      ['admin1', hashedPassword, 'Admin User', 'admin@test.com', 1, 1, true]
+    );
+    
+    console.log('Yeni admin eklendi:', result.rows[0]);
+    
+    res.json({ 
+      success: true,
+      message: 'Admin kullanıcı oluşturuldu',
+      user: result.rows[0],
+      credentials: {
+        username: 'admin1',
+        password: '1234'
+      }
+    });
+    
+  } catch (error) {
+    console.error('Admin oluşturma hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. Şifre test endpoint'i
+app.post("/api/test-password", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log('Şifre test ediliyor:', { username, password });
+    
+    const result = await pool.query(
+      "SELECT username, password_hash FROM users WHERE username = $1",
+      [username]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.json({ error: 'Kullanıcı bulunamadı' });
+    }
+    
+    const user = result.rows[0];
+    console.log('DB Hash:', user.password_hash);
+    
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log('Şifre eşleşmesi:', isMatch);
+    
+    res.json({
+      username: user.username,
+      passwordMatch: isMatch,
+      hashExists: !!user.password_hash,
+      hashLength: user.password_hash ? user.password_hash.length : 0
+    });
+    
+  } catch (error) {
+    console.error('Şifre test hatası:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. Login endpoint'ini güncelle (mevcut login'i değiştirin)
+app.post("/api/login-debug", async (req, res) => {
+  try {
+    console.log("🔍 Debug Login isteği:", req.body);
+    const { username, password } = req.body;
+    
+    // Kullanıcı ara
+    const result = await pool.query(
+      `SELECT u.*, r.name as role_name, d.name as department_name 
+       FROM users u 
+       LEFT JOIN roles r ON u.role_id = r.id 
+       LEFT JOIN departments d ON u.department_id = d.id 
+       WHERE u.username = $1 AND u.is_active = true`,
+      [username]
+    );
+    
+    console.log("🔍 Query sonucu:", result.rows.length);
+    
+    if (result.rows.length === 0) {
+      console.log("❌ Kullanıcı bulunamadı");
+      return res.status(401).json({ error: "Kullanıcı adı veya şifre hatalı" });
+    }
+    
+    const user = result.rows[0];
+    console.log("✅ Kullanıcı bulundu:", user.username);
+    console.log("🔐 Hash mevcut:", !!user.password_hash);
+    console.log("🔐 Hash uzunluk:", user.password_hash ? user.password_hash.length : 0);
+    console.log("🔑 Girilen şifre:", password);
+    
+    // Şifre kontrolü
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    console.log("🎯 Şifre eşleşmesi:", isMatch);
+    
+    if (!isMatch) {
+      console.log("❌ Şifre eşleşmedi");
+      return res.status(401).json({ 
+        error: "Kullanıcı adı veya şifre hatalı",
+        debug: {
+          userFound: true,
+          passwordMatch: false,
+          hashExists: !!user.password_hash
+        }
+      });
+    }
+    
+    // Token oluştur
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        username: user.username,
+        role: user.role_name || 'user',
+        department: user.department_name
+      },
+      process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
+      { expiresIn: "24h" }
+    );
+    
+    console.log("✅ Login başarılı:", username);
+    res.json({ 
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role_name || 'user',
+        department: user.department_name
+      }
+    });
+    
+  } catch (err) {
+    console.error("💥 Login hatası:", err);
+    res.status(500).json({ error: "Sunucu hatası: " + err.message });
+  }
+});
