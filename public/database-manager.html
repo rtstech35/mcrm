@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saha CRM - Database Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+            min-width: 150px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn.danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .btn.success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+        }
+        
+        .btn.warning {
+            background: linear-gradient(135deg, #ffd43b 0%, #fcc419 100%);
+            color: #333;
+        }
+        
+        .status {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            display: none;
+            margin: 1rem 0;
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .credentials {
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .credentials h3 {
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .cred-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .cred-label {
+            font-weight: bold;
+            color: #666;
+        }
+        
+        .cred-value {
+            color: #333;
+            font-family: monospace;
+        }
+        
+        .table-list {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .table-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .table-item:last-child {
+            border-bottom: none;
+        }
+        
+        .table-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .table-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .table-status.exists {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .table-status.missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .info-box h3 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-box ul {
+            margin-left: 1rem;
+        }
+        
+        .info-box li {
+            margin: 0.25rem 0;
+            color: #424242;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗄️ Database Manager</h1>
+            <p>Saha CRM Sistemi - Database Yönetimi</p>
+        </div>
+        
+        <div class="content">
+            <!-- Database Durumu -->
+            <div class="section">
+                <h2>📊 Database Durumu</h2>
+                <button class="btn" onclick="checkDatabaseStatus()">
+                    Durumu Kontrol Et
+                </button>
+                <div id="dbStatus" class="status"></div>
+                <div id="tableList" class="table-list" style="display: none;"></div>
+            </div>
+            
+            <!-- Database Kurulumu -->
+            <div class="section">
+                <h2>🚀 Database Kurulumu</h2>
+                <div class="info-box">
+                    <h3>📋 Kurulum Adımları:</h3>
+                    <ul>
+                        <li>1. Render Dashboard'da PostgreSQL database oluşturun</li>
+                        <li>2. DATABASE_URL'i environment variables'a ekleyin</li>
+                        <li>3. Aşağıdaki butonlarla database'i kurun</li>
+                    </ul>
+                </div>
+                
+                <button class="btn success" onclick="setupDatabase()">
+                    Database'i Kur
+                </button>
+                <button class="btn warning" onclick="setupDatabaseOnly()">
+                    Sadece Schema Kur
+                </button>
+                <button class="btn" onclick="addSampleData()">
+                    Örnek Veri Ekle
+                </button>
+                
+                <div id="setupStatus" class="status"></div>
+                <div id="setupCredentials" class="credentials"></div>
+            </div>
+            
+            <!-- Database Yönetimi -->
+            <div class="section">
+                <h2>⚙️ Database Yönetimi</h2>
+                <button class="btn danger" onclick="resetDatabase()">
+                    Database'i Sıfırla
+                </button>
+                <button class="btn warning" onclick="clearAllData()">
+                    Tüm Verileri Sil
+                </button>
+                <button class="btn" onclick="backupDatabase()">
+                    Backup Al
+                </button>
+                
+                <div id="manageStatus" class="status"></div>
+            </div>
+            
+            <!-- Test Bağlantısı -->
+            <div class="section">
+                <h2>🔗 Bağlantı Testi</h2>
+                <button class="btn" onclick="testConnection()">
+                    Bağlantıyı Test Et
+                </button>
+                <button class="btn" onclick="testAPI()">
+                    API'yi Test Et
+                </button>
+                
+                <div id="testStatus" class="status"></div>
+            </div>
+            
+            <!-- Loading -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>İşlem yapılıyor...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global değişkenler
+        let isProcessing = false;
+        
+        // UI güncelleme fonksiyonları
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            isProcessing = true;
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            isProcessing = false;
+        }
+        
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.innerHTML = message;
+            element.style.display = 'block';
+        }
+        
+        function hideStatus(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+        
+        // Database durumu kontrolü
+        async function checkDatabaseStatus() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('dbStatus');
+            
+            try {
+                const response = await fetch('/api/database-status');
+                const result = await response.json();
+                
+                if (result.success) {
+                    let statusHtml = `
+                        <h3>✅ Database Bağlantısı Başarılı</h3>
+                        <p><strong>Database:</strong> ${result.database}</p>
+                        <p><strong>Host:</strong> ${result.host}</p>
+                        <p><strong>Port:</strong> ${result.port}</p>
+                    `;
+                    
+                    if (result.tables && result.tables.length > 0) {
+                        statusHtml += '<h4>📋 Mevcut Tablolar:</h4>';
+                        const tableList = document.getElementById('tableList');
+                        tableList.innerHTML = '';
+                        
+                        result.tables.forEach(table => {
+                            const tableItem = document.createElement('div');
+                            tableItem.className = 'table-item';
+                            tableItem.innerHTML = `
+                                <span class="table-name">${table.name}</span>
+                                <span class="table-status exists">✅ Mevcut</span>
+                            `;
+                            tableList.appendChild(tableItem);
+                        });
+                        
+                        tableList.style.display = 'block';
+                    }
+                    
+                    showStatus('dbStatus', statusHtml, 'success');
+                } else {
+                    showStatus('dbStatus', `
+                        <h3>❌ Database Bağlantı Hatası</h3>
+                        <p>${result.message}</p>
+                        <p>Lütfen DATABASE_URL environment variable'ını kontrol edin.</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('dbStatus', `
+                    <h3>❌ Bağlantı Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Database kurulumu
+        async function setupDatabase() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('setupStatus');
+            hideStatus('setupCredentials');
+            
+            try {
+                const response = await fetch('/api/setup-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('setupStatus', `
+                        <h3>✅ Database Başarıyla Kuruldu</h3>
+                        <p>${result.message}</p>
+                    `, 'success');
+                    
+                    // Admin bilgilerini göster
+                    const credentialsDiv = document.getElementById('setupCredentials');
+                    credentialsDiv.innerHTML = `
+                        <h3>📧 Admin Giriş Bilgileri</h3>
+                        <div class="cred-item">
+                            <span class="cred-label">Kullanıcı Adı:</span>
+                            <span class="cred-value">${result.admin.username}</span>
+                        </div>
+                        <div class="cred-item">
+                            <span class="cred-label">Şifre:</span>
+                            <span class="cred-value">${result.admin.password}</span>
+                        </div>
+                        <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+                            Bu bilgilerle <a href="/admin" style="color: #667eea;">admin paneline</a> giriş yapabilirsiniz.
+                        </p>
+                    `;
+                    credentialsDiv.style.display = 'block';
+                } else {
+                    showStatus('setupStatus', `
+                        <h3>❌ Database Kurulum Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('setupStatus', `
+                    <h3>❌ Kurulum Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Sadece schema kurulumu
+        async function setupDatabaseOnly() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('setupStatus');
+            
+            try {
+                const response = await fetch('/api/setup-schema-only', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('setupStatus', `
+                        <h3>✅ Schema Başarıyla Kuruldu</h3>
+                        <p>${result.message}</p>
+                    `, 'success');
+                } else {
+                    showStatus('setupStatus', `
+                        <h3>❌ Schema Kurulum Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('setupStatus', `
+                    <h3>❌ Schema Kurulum Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Örnek veri ekleme
+        async function addSampleData() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('setupStatus');
+            
+            try {
+                const response = await fetch('/api/add-sample-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('setupStatus', `
+                        <h3>✅ Örnek Veriler Eklendi</h3>
+                        <p>${result.message}</p>
+                    `, 'success');
+                } else {
+                    showStatus('setupStatus', `
+                        <h3>❌ Veri Ekleme Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('setupStatus', `
+                    <h3>❌ Veri Ekleme Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Database sıfırlama
+        async function resetDatabase() {
+            if (isProcessing) return;
+            
+            if (!confirm('⚠️ DİKKAT! Bu işlem tüm verileri silecek. Devam etmek istediğinizden emin misiniz?')) {
+                return;
+            }
+            
+            showLoading();
+            hideStatus('manageStatus');
+            
+            try {
+                const response = await fetch('/api/reset-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('manageStatus', `
+                        <h3>✅ Database Başarıyla Sıfırlandı</h3>
+                        <p>${result.message}</p>
+                    `, 'success');
+                } else {
+                    showStatus('manageStatus', `
+                        <h3>❌ Database Sıfırlama Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('manageStatus', `
+                    <h3>❌ Sıfırlama Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Tüm verileri silme
+        async function clearAllData() {
+            if (isProcessing) return;
+            
+            if (!confirm('⚠️ DİKKAT! Bu işlem tüm verileri silecek ama tabloları koruyacak. Devam etmek istediğinizden emin misiniz?')) {
+                return;
+            }
+            
+            showLoading();
+            hideStatus('manageStatus');
+            
+            try {
+                const response = await fetch('/api/clear-all-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('manageStatus', `
+                        <h3>✅ Tüm Veriler Silindi</h3>
+                        <p>${result.message}</p>
+                    `, 'success');
+                } else {
+                    showStatus('manageStatus', `
+                        <h3>❌ Veri Silme Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('manageStatus', `
+                    <h3>❌ Veri Silme Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Backup alma
+        async function backupDatabase() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('manageStatus');
+            
+            try {
+                const response = await fetch('/api/backup-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('manageStatus', `
+                        <h3>✅ Backup Başarıyla Alındı</h3>
+                        <p>${result.message}</p>
+                        <p><strong>Backup ID:</strong> ${result.backupId}</p>
+                    `, 'success');
+                } else {
+                    showStatus('manageStatus', `
+                        <h3>❌ Backup Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('manageStatus', `
+                    <h3>❌ Backup Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Bağlantı testi
+        async function testConnection() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('testStatus');
+            
+            try {
+                const response = await fetch('/api/test-connection');
+                const result = await response.json();
+                
+                if (result.success) {
+                    showStatus('testStatus', `
+                        <h3>✅ Bağlantı Başarılı</h3>
+                        <p>${result.message}</p>
+                        <p><strong>Response Time:</strong> ${result.responseTime}ms</p>
+                    `, 'success');
+                } else {
+                    showStatus('testStatus', `
+                        <h3>❌ Bağlantı Hatası</h3>
+                        <p>${result.message}</p>
+                    `, 'error');
+                }
+            } catch (error) {
+                showStatus('testStatus', `
+                    <h3>❌ Bağlantı Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // API testi
+        async function testAPI() {
+            if (isProcessing) return;
+            
+            showLoading();
+            hideStatus('testStatus');
+            
+            try {
+                const response = await fetch('/');
+                const result = await response.text();
+                
+                if (result.includes('Saha CRM Sistemi')) {
+                    showStatus('testStatus', `
+                        <h3>✅ API Çalışıyor</h3>
+                        <p>Ana sayfa başarıyla yüklendi</p>
+                        <p><strong>Response:</strong> ${result.substring(0, 100)}...</p>
+                    `, 'success');
+                } else {
+                    showStatus('testStatus', `
+                        <h3>⚠️ API Yanıtı Beklenmeyen</h3>
+                        <p>Ana sayfa yüklendi ama beklenen içerik yok</p>
+                    `, 'info');
+                }
+            } catch (error) {
+                showStatus('testStatus', `
+                    <h3>❌ API Hatası</h3>
+                    <p>${error.message}</p>
+                `, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Sayfa yüklendiğinde otomatik durum kontrolü
+        window.onload = function() {
+            // 2 saniye sonra otomatik durum kontrolü
+            setTimeout(() => {
+                checkDatabaseStatus();
+            }, 2000);
+        };
+    </script>
+</body>
+</html>

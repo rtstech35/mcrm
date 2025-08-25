@@ -21,6 +21,10 @@ app.get("/setup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "setup.html"));
 });
 
+app.get("/database-manager", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "database-manager.html"));
+});
+
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -400,6 +404,216 @@ app.post("/api/reset-database", async (req, res) => {
     res.status(500).json({ 
       error: error.message,
       message: 'Database reset başarısız'
+    });
+  }
+});
+
+// Database durumu kontrolü
+app.get("/api/database-status", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        current_database() as database,
+        inet_server_addr() as host,
+        inet_server_port() as port
+    `);
+    
+    const dbInfo = result.rows[0];
+    
+    // Tabloları kontrol et
+    const tablesResult = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    res.json({
+      success: true,
+      database: dbInfo.database,
+      host: dbInfo.host,
+      port: dbInfo.port,
+      tables: tablesResult.rows.map(row => ({ name: row.table_name }))
+    });
+  } catch (error) {
+    console.error('Database status hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Sadece schema kurulumu
+app.post("/api/setup-schema-only", async (req, res) => {
+  try {
+    console.log('📋 Schema kurulumu başlatılıyor...');
+    const fs = require("fs");
+    const path = require("path");
+    
+    const schemaPath = path.join(__dirname, "database", "schema.sql");
+    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
+    
+    await pool.query(schemaSQL);
+    
+    res.json({
+      success: true,
+      message: 'Database schema başarıyla oluşturuldu'
+    });
+  } catch (error) {
+    console.error('Schema kurulum hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Örnek veri ekleme
+app.post("/api/add-sample-data", async (req, res) => {
+  try {
+    console.log('📝 Örnek veriler ekleniyor...');
+    
+    // Roller
+    await pool.query(`
+      INSERT INTO roles (id, name, description) VALUES 
+      (1, 'Admin', 'Sistem yöneticisi'),
+      (2, 'Sales', 'Satış temsilcisi'),
+      (3, 'Production', 'Üretim sorumlusu'),
+      (4, 'Shipping', 'Sevkiyat sorumlusu'),
+      (5, 'Accounting', 'Muhasebe sorumlusu')
+      ON CONFLICT (id) DO NOTHING
+    `);
+
+    // Departmanlar
+    await pool.query(`
+      INSERT INTO departments (id, name, description) VALUES 
+      (1, 'IT', 'Bilgi Teknolojileri'),
+      (2, 'Sales', 'Satış Departmanı'),
+      (3, 'Production', 'Üretim Departmanı'),
+      (4, 'Shipping', 'Sevkiyat Departmanı'),
+      (5, 'Accounting', 'Muhasebe Departmanı')
+      ON CONFLICT (id) DO NOTHING
+    `);
+
+    // Admin kullanıcısı
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    
+    await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
+      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
+      ON CONFLICT (username) DO NOTHING
+    `, [hashedPassword]);
+
+    // Örnek ürünler
+    await pool.query(`
+      INSERT INTO products (name, description, unit_price, unit) VALUES 
+      ('Ürün A', 'Örnek ürün açıklaması', 100.00, 'adet'),
+      ('Ürün B', 'İkinci örnek ürün', 150.00, 'kg'),
+      ('Ürün C', 'Üçüncü örnek ürün', 75.50, 'metre')
+      ON CONFLICT DO NOTHING
+    `);
+
+    res.json({
+      success: true,
+      message: 'Örnek veriler başarıyla eklendi'
+    });
+  } catch (error) {
+    console.error('Örnek veri ekleme hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Tüm verileri silme
+app.post("/api/clear-all-data", async (req, res) => {
+  try {
+    console.log('🗑️ Tüm veriler siliniyor...');
+    
+    const tables = [
+      'customer_visits',
+      'order_items', 
+      'orders',
+      'products',
+      'customers',
+      'users',
+      'departments',
+      'roles'
+    ];
+    
+    for (const table of tables) {
+      await pool.query(`DELETE FROM ${table}`);
+      console.log(`✅ ${table} tablosundaki veriler silindi`);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Tüm veriler başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Veri silme hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Backup alma
+app.post("/api/backup-database", async (req, res) => {
+  try {
+    console.log('💾 Database backup alınıyor...');
+    
+    const backupId = `backup_${Date.now()}`;
+    
+    // Basit backup - tablo yapılarını ve verileri JSON olarak döndür
+    const tables = ['roles', 'departments', 'users', 'products', 'customers', 'orders', 'order_items', 'customer_visits'];
+    const backup = {};
+    
+    for (const table of tables) {
+      try {
+        const result = await pool.query(`SELECT * FROM ${table}`);
+        backup[table] = result.rows;
+      } catch (error) {
+        console.log(`⚠️ ${table} tablosu bulunamadı`);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Database backup başarıyla alındı',
+      backupId: backupId,
+      backup: backup
+    });
+  } catch (error) {
+    console.error('Backup hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Bağlantı testi
+app.get("/api/test-connection", async (req, res) => {
+  try {
+    const startTime = Date.now();
+    await pool.query('SELECT 1');
+    const responseTime = Date.now() - startTime;
+    
+    res.json({
+      success: true,
+      message: 'Database bağlantısı başarılı',
+      responseTime: responseTime
+    });
+  } catch (error) {
+    console.error('Bağlantı test hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });
