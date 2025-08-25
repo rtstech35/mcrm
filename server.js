@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
+const setupDatabase = require("./setup-database");
 
 const app = express();
 app.use(cors());
@@ -16,15 +17,32 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
+app.get("/setup", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "setup.html"));
+});
+
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-// Bağlantıyı test et
+// Bağlantıyı test et ve database setup yap
 pool.connect()
-  .then(() => console.log("✅ PostgreSQL bağlantısı başarılı"))
+  .then(async () => {
+    console.log("✅ PostgreSQL bağlantısı başarılı");
+    
+    // Production'da otomatik database setup
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        console.log("🔄 Production ortamında database setup kontrol ediliyor...");
+        await setupDatabase();
+        console.log("✅ Database setup tamamlandı");
+      } catch (error) {
+        console.log("⚠️ Database setup hatası (muhtemelen zaten kurulu):", error.message);
+      }
+    }
+  })
   .catch(err => console.error("❌ PostgreSQL bağlantı hatası:", err));
 
 // ---------------- TEST ---------------- //
@@ -339,6 +357,28 @@ app.get("/api/departments", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("Departmanlar alınamadı:", err);
     res.status(500).json({ error: "Departmanlar alınamadı" });
+  }
+});
+
+// ---------------- SETUP ENDPOINTS ---------------- //
+app.post("/api/setup-database", async (req, res) => {
+  try {
+    console.log('🔧 Database setup başlatılıyor...');
+    await setupDatabase();
+    res.json({ 
+      success: true,
+      message: 'Database başarıyla kuruldu',
+      admin: {
+        username: 'admin',
+        password: 'admin123'
+      }
+    });
+  } catch (error) {
+    console.error('🔧 Database setup hatası:', error);
+    res.status(500).json({ 
+      error: error.message,
+      message: 'Database setup başarısız'
+    });
   }
 });
 
