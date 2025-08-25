@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS customer_visits (
 );
 
 -- İrsaliyeler tablosu
-CREATE TABLE delivery_notes (
+CREATE TABLE IF NOT EXISTS delivery_notes (
     id SERIAL PRIMARY KEY,
     delivery_number VARCHAR(50) UNIQUE NOT NULL,
     order_id INTEGER REFERENCES orders(id),
@@ -118,7 +118,7 @@ CREATE TABLE delivery_notes (
 );
 
 -- Cari hesap hareketleri tablosu
-CREATE TABLE account_transactions (
+CREATE TABLE IF NOT EXISTS account_transactions (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER REFERENCES customers(id),
     transaction_type VARCHAR(20) NOT NULL,

@@ -19,6 +19,8 @@ async function resetDatabase() {
     console.log("🗑️ Mevcut tablolar siliniyor...");
     
     const dropQueries = [
+      "DROP TABLE IF EXISTS account_transactions CASCADE",
+      "DROP TABLE IF EXISTS delivery_notes CASCADE",
       "DROP TABLE IF EXISTS customer_visits CASCADE",
       "DROP TABLE IF EXISTS order_items CASCADE", 
       "DROP TABLE IF EXISTS orders CASCADE",
