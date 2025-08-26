@@ -1,15 +1,28 @@
+console.log('🚀 Server başlatılıyor...');
+
 require("dotenv").config();
+console.log('✅ Environment variables yüklendi');
+
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
-const setupDatabase = require("./setup-database");
+console.log('✅ Temel modüller yüklendi');
+
+let setupDatabase;
+try {
+  setupDatabase = require("./setup-database");
+  console.log('✅ setup-database.js yüklendi');
+} catch (error) {
+  console.log('⚠️ setup-database.js yüklenemedi:', error.message);
+}
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+console.log('✅ Express app yapılandırıldı');
 
 // ---------------- STATİK DOSYALAR ---------------- //
 app.use(express.static(path.join(__dirname, "public")));
@@ -30,32 +43,71 @@ app.get("/database-manager", (req, res) => {
 });
 
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+console.log('💾 Database bağlantısı yapılandırılıyor...');
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Tanımlı' : '❌ Tanımsız');
+
+let pool;
+try {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+  });
+  console.log('✅ Database pool oluşturuldu');
+} catch (error) {
+  console.error('❌ Database pool oluşturma hatası:', error);
+  // Dummy pool oluştur
+  pool = {
+    query: () => Promise.reject(new Error('Database bağlantısı yok')),
+    connect: () => Promise.reject(new Error('Database bağlantısı yok'))
+  };
+}
 
 // Bağlantıyı test et ve database setup yap
-pool.connect()
-  .then(async () => {
-    console.log("✅ PostgreSQL bağlantısı başarılı");
-    
-    // Production'da otomatik database setup
-    if (process.env.NODE_ENV === 'production') {
-      try {
-        console.log("🔄 Production ortamında database setup kontrol ediliyor...");
-        await setupDatabase();
-        console.log("✅ Database setup tamamlandı");
-      } catch (error) {
-        console.log("⚠️ Database setup hatası (muhtemelen zaten kurulu):", error.message);
+if (pool && pool.connect) {
+  pool.connect()
+    .then(async () => {
+      console.log("✅ PostgreSQL bağlantısı başarılı");
+
+      // Production'da otomatik database setup
+      if (process.env.NODE_ENV === 'production' && setupDatabase) {
+        try {
+          console.log("🔄 Production ortamında database setup kontrol ediliyor...");
+          await setupDatabase();
+          console.log("✅ Database setup tamamlandı");
+        } catch (error) {
+          console.log("⚠️ Database setup hatası (muhtemelen zaten kurulu):", error.message);
+        }
       }
-    }
-  })
-  .catch(err => console.error("❌ PostgreSQL bağlantı hatası:", err));
+    })
+    .catch(err => {
+      console.error("❌ PostgreSQL bağlantı hatası:", err);
+      console.log("⚠️ Server database olmadan devam ediyor...");
+    });
+} else {
+  console.log("⚠️ Database pool oluşturulamadı, server database olmadan çalışacak");
+}
 
 // ---------------- TEST ---------------- //
 app.get("/", (req, res) => {
-  res.send("Saha CRM Sistemi Çalışıyor 🚀 (Postgres)");
+  res.send(`
+    <html>
+      <head><title>CRM Server Status</title></head>
+      <body style="font-family: Arial; padding: 20px;">
+        <h1>🚀 Saha CRM Sistemi Çalışıyor</h1>
+        <p><strong>Server Durumu:</strong> ✅ Aktif</p>
+        <p><strong>Zaman:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+        <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
+        <p><strong>Database URL:</strong> ${process.env.DATABASE_URL ? '✅ Tanımlı' : '❌ Tanımsız'}</p>
+        <hr>
+        <h3>Test Linkleri:</h3>
+        <ul>
+          <li><a href="/setup">Setup Sayfası</a></li>
+          <li><a href="/admin">Admin Paneli</a></li>
+          <li><a href="/api/health">Health Check API</a></li>
+        </ul>
+      </body>
+    </html>
+  `);
 });
 
 // Database durumu kontrol API'si
@@ -3715,6 +3767,28 @@ app.post("/api/create-admin", async (req, res) => {
     console.error('🔧 Admin oluşturma hatası:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// ---------------- ERROR HANDLER ---------------- //
+app.use((err, req, res, next) => {
+  console.error('Sunucu hatası:', err);
+  res.status(500).json({ error: 'Sunucu hatası oluştu' });
+});
+
+// ---------------- 404 HANDLER ---------------- //
+app.use((req, res) => {
+  console.log('404 - Bulunamayan endpoint:', req.method, req.url);
+  res.status(404).json({ error: 'Endpoint bulunamadı: ' + req.url });
+});
+
+// ---------------- SUNUCU ---------------- //
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Tanımlı' : '❌ Tanımsız'}`);
+  console.log(`💾 Database URL: ${process.env.DATABASE_URL ? '✅ Tanımlı' : '❌ Tanımsız'}`);
+  console.log(`🌐 Server URL: https://mcrm-lx1p.onrender.com`);
 });
 
 // ---------------- ERROR HANDLER ---------------- //
