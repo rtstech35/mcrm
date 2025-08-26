@@ -405,22 +405,38 @@
             }
         }
 
-        function openUserModal() {
-            // Departman ve rol seçeneklerini doldur
-            const departmentSelect = document.getElementById('department_id');
-            const roleSelect = document.getElementById('role_id');
-            
-            departmentSelect.innerHTML = '<option value="">Seçiniz</option>';
-            window.departmentsData.forEach(dept => {
-                departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
-            });
-            
-            roleSelect.innerHTML = '<option value="">Seçiniz</option>';
-            window.rolesData.forEach(role => {
-                roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
-            });
-            
-            document.getElementById('userModal').style.display = 'block';
+        async function openUserModal() {
+            try {
+                // Departman ve rol verilerini yükle (eğer yüklenmemişse)
+                if (!window.departmentsData || !window.rolesData) {
+                    const [departmentsResponse, rolesResponse] = await Promise.all([
+                        apiCall('/api/departments'),
+                        apiCall('/api/roles')
+                    ]);
+
+                    window.departmentsData = departmentsResponse.departments || [];
+                    window.rolesData = rolesResponse.roles || [];
+                }
+
+                // Departman ve rol seçeneklerini doldur
+                const departmentSelect = document.getElementById('department_id');
+                const roleSelect = document.getElementById('role_id');
+
+                departmentSelect.innerHTML = '<option value="">Seçiniz</option>';
+                window.departmentsData.forEach(dept => {
+                    departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+                });
+
+                roleSelect.innerHTML = '<option value="">Seçiniz</option>';
+                window.rolesData.forEach(role => {
+                    roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
+                });
+
+                document.getElementById('userModal').style.display = 'block';
+            } catch (error) {
+                console.error('Modal açılırken hata:', error);
+                alert('Departman ve rol verileri yüklenirken hata oluştu: ' + error.message);
+            }
         }
 
         function closeModal(modalId) {

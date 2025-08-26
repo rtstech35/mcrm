@@ -342,6 +342,8 @@ body {
     padding: 2rem;
     width: 90%;
     max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
     border-radius: var(--radius);
     box-shadow: var(--shadow-lg);
     animation: modalSlideIn 0.3s ease-out;
