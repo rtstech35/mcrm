@@ -408,30 +408,62 @@
 
         async function openUserModal() {
             try {
-                // Departman ve rol verilerini yükle (eğer yüklenmemişse)
-                if (!window.departmentsData || !window.rolesData) {
-                    const [departmentsResponse, rolesResponse] = await Promise.all([
-                        apiCall('/api/departments'),
-                        apiCall('/api/roles')
-                    ]);
+                // Her zaman fresh data çek
+                const [departmentsResponse, rolesResponse] = await Promise.all([
+                    apiCall('/api/departments'),
+                    apiCall('/api/roles')
+                ]);
 
-                    window.departmentsData = departmentsResponse.departments || [];
-                    window.rolesData = rolesResponse.roles || [];
-                }
+                console.log('Departments response:', departmentsResponse);
+                console.log('Roles response:', rolesResponse);
+
+                window.departmentsData = departmentsResponse.departments || [];
+                window.rolesData = rolesResponse.roles || [];
+
+                console.log('Departments data:', window.departmentsData);
+                console.log('Roles data:', window.rolesData);
 
                 // Departman ve rol seçeneklerini doldur
                 const departmentSelect = document.getElementById('department_id');
                 const roleSelect = document.getElementById('role_id');
 
                 departmentSelect.innerHTML = '<option value="">Seçiniz</option>';
-                window.departmentsData.forEach(dept => {
-                    departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
-                });
+
+                if (window.departmentsData && window.departmentsData.length > 0) {
+                    window.departmentsData.forEach(dept => {
+                        departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+                    });
+                } else {
+                    // Fallback departmanlar
+                    console.log('Departmanlar bulunamadı, fallback kullanılıyor');
+                    departmentSelect.innerHTML += `
+                        <option value="1">Satış Departmanı</option>
+                        <option value="2">Üretim Departmanı</option>
+                        <option value="3">Sevkiyat Departmanı</option>
+                        <option value="4">Muhasebe Departmanı</option>
+                        <option value="5">IT Departmanı</option>
+                    `;
+                }
 
                 roleSelect.innerHTML = '<option value="">Seçiniz</option>';
-                window.rolesData.forEach(role => {
-                    roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
-                });
+                console.log('Rol seçenekleri dolduruluyor:', window.rolesData);
+
+                if (window.rolesData && window.rolesData.length > 0) {
+                    window.rolesData.forEach(role => {
+                        console.log('Rol ekleniyor:', role);
+                        roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
+                    });
+                } else {
+                    // Fallback roller
+                    console.log('Roller bulunamadı, fallback kullanılıyor');
+                    roleSelect.innerHTML += `
+                        <option value="1">Admin</option>
+                        <option value="2">Manager</option>
+                        <option value="3">Employee</option>
+                        <option value="4">Viewer</option>
+                    `;
+                }
+                console.log('Rol select HTML:', roleSelect.innerHTML);
 
                 document.getElementById('userModal').style.display = 'block';
                 console.log('User modal açıldı');

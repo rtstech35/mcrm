@@ -337,15 +337,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ---------------- ROLES & DEPARTMENTS ---------------- //
-app.get("/api/roles", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM roles ORDER BY name");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Roller alınamadı:", err);
-    res.status(500).json({ error: "Roller alınamadı" });
-  }
-});
+
 
 
 
