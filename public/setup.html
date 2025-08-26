@@ -160,6 +160,10 @@
         <button class="setup-btn" onclick="migrateProductsVat()" id="migrateBtn" style="background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%); margin-left: 10px;">
             Ürün KDV Düzelt
         </button>
+
+        <button class="setup-btn" onclick="createComprehensiveData()" id="comprehensiveBtn" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); margin-left: 10px;">
+            Kapsamlı Örnek Veri
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -412,6 +416,56 @@
             } finally {
                 migrateBtn.disabled = false;
                 migrateBtn.textContent = 'Ürün KDV Düzelt';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function createComprehensiveData() {
+            const comprehensiveBtn = document.getElementById('comprehensiveBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Kapsamlı örnek veri oluşturulacak:\n- Her departman/rol için kullanıcılar\n- 5 adet müşteri\n- 5 adet ürün\n- Her müşteri için borç/alacak kayıtları\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            comprehensiveBtn.disabled = true;
+            comprehensiveBtn.textContent = 'Oluşturuluyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/create-comprehensive-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Oluşturulan veriler:</strong><br>
+                            • ${result.stats.users} kullanıcı<br>
+                            • ${result.stats.customers} müşteri<br>
+                            • ${result.stats.products} ürün<br>
+                            • ${result.stats.transactions} cari hesap işlemi<br>
+                            <br>
+                            <strong>Artık sistem tam örneklerle dolu!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                comprehensiveBtn.disabled = false;
+                comprehensiveBtn.textContent = 'Kapsamlı Örnek Veri';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }

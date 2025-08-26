@@ -659,6 +659,138 @@ app.post("/api/migrate-products-vat", async (req, res) => {
   }
 });
 
+// Kapsamlı örnek veri oluştur
+app.post("/api/create-comprehensive-data", async (req, res) => {
+  try {
+    console.log('🎯 Kapsamlı örnek veri oluşturuluyor...');
+
+    const bcrypt = require("bcryptjs");
+    let stats = { users: 0, customers: 0, products: 0, transactions: 0 };
+
+    // 1. Roller ve departmanları kontrol et
+    const rolesResult = await pool.query('SELECT * FROM roles ORDER BY id');
+    const departmentsResult = await pool.query('SELECT * FROM departments ORDER BY id');
+
+    // 2. Her departman ve rol kombinasyonu için kullanıcı oluştur
+    const hashedPassword = await bcrypt.hash('123456', 10);
+
+    for (const dept of departmentsResult.rows) {
+      for (const role of rolesResult.rows) {
+        const username = `${dept.name.toLowerCase().replace(/\s+/g, '')}_${role.name.toLowerCase()}`;
+        const fullName = `${dept.name} ${role.name}`;
+        const email = `${username}@example.com`;
+
+        await pool.query(`
+          INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active)
+          VALUES ($1, $2, $3, $4, $5, $6, true)
+          ON CONFLICT (username) DO NOTHING
+        `, [username, hashedPassword, fullName, email, role.id, dept.id]);
+
+        stats.users++;
+      }
+    }
+
+    // 3. 5 adet müşteri oluştur
+    const customerNames = [
+      'ABC Teknoloji Ltd. Şti.',
+      'XYZ İnşaat A.Ş.',
+      'Mavi Deniz Lojistik',
+      'Altın Gıda San. Tic.',
+      'Yeşil Enerji Çözümleri'
+    ];
+
+    const contactPersons = ['Ahmet Yılmaz', 'Fatma Kaya', 'Mehmet Demir', 'Ayşe Şahin', 'Ali Özkan'];
+    const phones = ['0555 123 4567', '0532 987 6543', '0544 111 2233', '0505 444 5566', '0533 777 8899'];
+
+    // Satış temsilcisi olarak ilk kullanıcıyı al
+    const salesRepResult = await pool.query('SELECT id FROM users WHERE is_active = true LIMIT 1');
+    const salesRepId = salesRepResult.rows[0]?.id || 1;
+
+    for (let i = 0; i < 5; i++) {
+      await pool.query(`
+        INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
+        VALUES ($1, $2, $3, $4, $5, $6, 'active')
+        ON CONFLICT (company_name) DO NOTHING
+      `, [
+        customerNames[i],
+        contactPersons[i],
+        phones[i],
+        `info@${customerNames[i].toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}.com`,
+        `${customerNames[i]} Adresi, İstanbul`,
+        salesRepId
+      ]);
+
+      stats.customers++;
+    }
+
+    // 4. 5 adet ürün oluştur
+    const products = [
+      { name: 'Premium Yazılım Paketi', price: 2500.00, description: 'Kurumsal yazılım çözümü', unit: 'adet' },
+      { name: 'Endüstriyel Makine', price: 15000.00, description: 'Yüksek performanslı üretim makinesi', unit: 'adet' },
+      { name: 'Lojistik Hizmeti', price: 500.00, description: 'Kapıdan kapıya teslimat', unit: 'ton' },
+      { name: 'Organik Gıda Paketi', price: 150.00, description: 'Doğal ve sağlıklı gıda ürünleri', unit: 'kg' },
+      { name: 'Solar Panel Sistemi', price: 8000.00, description: 'Yenilenebilir enerji çözümü', unit: 'kW' }
+    ];
+
+    for (const product of products) {
+      const vatRate = 20;
+      const priceWithVat = product.price * (1 + vatRate / 100);
+
+      await pool.query(`
+        INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, true)
+        ON CONFLICT (name) DO NOTHING
+      `, [product.name, product.description, product.price, vatRate, priceWithVat, product.unit]);
+
+      stats.products++;
+    }
+
+    // 5. Her müşteri için borç ve alacak kaydı oluştur
+    const customersResult = await pool.query('SELECT id, company_name FROM customers ORDER BY id LIMIT 5');
+
+    for (const customer of customersResult.rows) {
+      // Borç kaydı
+      await pool.query(`
+        INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
+        VALUES ($1, 'debit', $2, CURRENT_DATE - INTERVAL '30 days', $3, $4, $5)
+      `, [
+        customer.id,
+        Math.floor(Math.random() * 5000) + 1000, // 1000-6000 TL arası
+        `${customer.company_name} - Satış faturası`,
+        `FAT-${Date.now()}-${customer.id}`,
+        salesRepId
+      ]);
+
+      // Alacak kaydı
+      await pool.query(`
+        INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
+        VALUES ($1, 'credit', $2, CURRENT_DATE - INTERVAL '15 days', $3, $4, $5)
+      `, [
+        customer.id,
+        Math.floor(Math.random() * 3000) + 500, // 500-3500 TL arası
+        `${customer.company_name} - Ödeme`,
+        `ODM-${Date.now()}-${customer.id}`,
+        salesRepId
+      ]);
+
+      stats.transactions += 2;
+    }
+
+    res.json({
+      success: true,
+      message: 'Kapsamlı örnek veri başarıyla oluşturuldu',
+      stats: stats
+    });
+
+  } catch (error) {
+    console.error('Kapsamlı veri oluşturma hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Backup alma
 app.post("/api/backup-database", async (req, res) => {
   try {
