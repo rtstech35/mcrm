@@ -122,15 +122,18 @@
         async function loadCustomerData() {
             try {
                 // Müşteri bilgileri
-                customerData = await apiCall(`/api/customers/${customerId}`);
+                const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                customerData = customerResponse.customer || customerResponse;
                 displayCustomerInfo();
 
                 // Ziyaret sayısı
-                const visits = await apiCall(`/api/visits?customer_id=${customerId}`);
+                const visitsResponse = await apiCall(`/api/visits?customer_id=${customerId}`);
+                const visits = visitsResponse.visits || visitsResponse;
                 document.getElementById('totalVisits').textContent = visits.length;
 
                 // Sipariş bilgileri
-                const orders = await apiCall(`/api/orders?customer_id=${customerId}`);
+                const ordersResponse = await apiCall(`/api/orders?customer_id=${customerId}`);
+                const orders = ordersResponse.orders || ordersResponse;
                 document.getElementById('totalOrders').textContent = orders.length;
                 
                 const totalAmount = orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);

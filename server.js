@@ -976,6 +976,104 @@ app.post("/api/customers", async (req, res) => {
   }
 });
 
+// Tek müşteri getir
+app.get("/api/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT c.*, u.full_name as sales_rep_name
+      FROM customers c
+      LEFT JOIN users u ON c.assigned_sales_rep = u.id
+      WHERE c.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Müşteri bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      customer: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Customer get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Müşteri güncelle
+app.put("/api/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
+
+    const result = await pool.query(`
+      UPDATE customers SET
+        company_name = $1,
+        contact_person = $2,
+        phone = $3,
+        email = $4,
+        address = $5,
+        assigned_sales_rep = $6
+      WHERE id = $7
+      RETURNING *
+    `, [company_name, contact_person, phone, email, address, assigned_sales_rep, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Müşteri bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      customer: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Customer update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Müşteri sil
+app.delete("/api/customers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      DELETE FROM customers WHERE id = $1 RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Müşteri bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Müşteri başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Customer delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Ürünler API
 app.get("/api/products", async (req, res) => {
   try {
@@ -1023,17 +1121,73 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
+// Ziyaretler API
+app.get("/api/visits", async (req, res) => {
+  try {
+    const { customer_id } = req.query;
+    let query = `
+      SELECT cv.*, c.company_name, u.full_name as sales_rep_name
+      FROM customer_visits cv
+      LEFT JOIN customers c ON cv.customer_id = c.id
+      LEFT JOIN users u ON cv.sales_rep_id = u.id
+      ORDER BY cv.visit_date DESC
+    `;
+    let params = [];
+
+    if (customer_id) {
+      query = `
+        SELECT cv.*, c.company_name, u.full_name as sales_rep_name
+        FROM customer_visits cv
+        LEFT JOIN customers c ON cv.customer_id = c.id
+        LEFT JOIN users u ON cv.sales_rep_id = u.id
+        WHERE cv.customer_id = $1
+        ORDER BY cv.visit_date DESC
+      `;
+      params = [customer_id];
+    }
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      visits: result.rows
+    });
+  } catch (error) {
+    console.error('Visits API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Siparişler API
 app.get("/api/orders", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { customer_id } = req.query;
+    let query = `
       SELECT o.*, c.company_name, u.full_name as sales_rep_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN users u ON o.sales_rep_id = u.id
       ORDER BY o.created_at DESC
-    `);
-    
+    `;
+    let params = [];
+
+    if (customer_id) {
+      query = `
+        SELECT o.*, c.company_name, u.full_name as sales_rep_name
+        FROM orders o
+        LEFT JOIN customers c ON o.customer_id = c.id
+        LEFT JOIN users u ON o.sales_rep_id = u.id
+        WHERE o.customer_id = $1
+        ORDER BY o.created_at DESC
+      `;
+      params = [customer_id];
+    }
+
+    const result = await pool.query(query, params);
+
     res.json({
       success: true,
       orders: result.rows
