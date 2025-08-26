@@ -2035,7 +2035,7 @@
                         <div style="text-align: center;">
                             <b>Yeni Müşteri</b><br>
                             <span style="color: #6366f1;">Koordinat: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}</span><br>
-                            <button onclick="alert('Müşteri ekleme formu açılacak')" style="margin-top: 5px; padding: 3px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Kaydet</button>
+                            <button onclick="openCustomerModalWithLocation(${e.latlng.lat}, ${e.latlng.lng})" style="margin-top: 5px; padding: 3px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">Kaydet</button>
                         </div>
                     `).openPopup();
                 }
@@ -4070,6 +4070,15 @@
                 console.error('Müşteri modal açılırken hata:', error);
                 document.getElementById('customerModal').style.display = 'block';
             }
+        }
+        
+        async function openCustomerModalWithLocation(lat, lng) {
+            await openCustomerModal();
+            
+            // Koordinatları adres alanına ekle
+            const addressField = document.getElementById('customer_address');
+            const currentAddress = addressField.value;
+            addressField.value = currentAddress + (currentAddress ? '\n' : '') + `Koordinat: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         }
 
         async function openTransactionModal() {
