@@ -2710,16 +2710,72 @@ app.get("/api/setup", async (req, res) => {
   try {
     console.log('🔧 Setup başlatılıyor...');
     
-    const fs = require("fs");
-    const path = require("path");
     const bcrypt = require("bcryptjs");
     
-    // Schema dosyasını oku ve çalıştır
-    const schemaPath = path.join(__dirname, "database", "schema.sql");
-    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
-    await pool.query(schemaSQL);
+    // Basit tablolar oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(50) UNIQUE NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS departments (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        full_name VARCHAR(100) NOT NULL,
+        role_id INTEGER,
+        department_id INTEGER,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS customers (
+        id SERIAL PRIMARY KEY,
+        company_name VARCHAR(200) NOT NULL,
+        contact_person VARCHAR(100),
+        phone VARCHAR(20),
+        email VARCHAR(100),
+        address TEXT,
+        assigned_sales_rep INTEGER,
+        customer_status VARCHAR(20) DEFAULT 'potential',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        unit_price DECIMAL(10,2) NOT NULL,
+        unit VARCHAR(20) DEFAULT 'adet',
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        order_number VARCHAR(50) UNIQUE NOT NULL,
+        customer_id INTEGER,
+        sales_rep_id INTEGER,
+        order_date DATE NOT NULL,
+        total_amount DECIMAL(12,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     
-    // Admin kullanıcısı ekle
+    // Temel veriler
+    await pool.query(`INSERT INTO roles (id, name) VALUES (1, 'Admin') ON CONFLICT (name) DO NOTHING`);
+    await pool.query(`INSERT INTO departments (id, name) VALUES (1, 'IT') ON CONFLICT (id) DO NOTHING`);
+    
+    // Admin kullanıcısı
     const hashedPassword = await bcrypt.hash("admin123", 10);
     await pool.query(`
       INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
