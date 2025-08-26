@@ -152,6 +152,10 @@
         <button class="setup-btn" onclick="fixRolesDepartments()" id="fixBtn" style="background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%); margin-left: 10px;">
             Rol/Departman Düzelt
         </button>
+
+        <button class="setup-btn" onclick="addMissingRolesDepartments()" id="addBtn" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); margin-left: 10px;">
+            Güvenli Ekle
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -321,6 +325,48 @@
             } finally {
                 fixBtn.disabled = false;
                 fixBtn.textContent = 'Rol/Departman Düzelt';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function addMissingRolesDepartments() {
+            const addBtn = document.getElementById('addBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            addBtn.disabled = true;
+            addBtn.textContent = 'Ekleniyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/add-missing-roles-departments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Bu işlem mevcut verileri korur ve sadece eksik olanları ekler.</strong><br>
+                            Roller: Admin, Manager, Employee, Viewer<br>
+                            Departmanlar: Satış, Üretim, Sevkiyat, Muhasebe, IT, İK, Kalite Kontrol
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                addBtn.disabled = false;
+                addBtn.textContent = 'Güvenli Ekle';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }

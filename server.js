@@ -553,20 +553,28 @@ app.post("/api/fix-roles-departments", async (req, res) => {
   try {
     console.log('🔧 Rol ve Departman verileri düzeltiliyor...');
 
-    // Önce mevcut verileri sil
-    await pool.query('DELETE FROM roles');
-    await pool.query('DELETE FROM departments');
-
-    // Yeni rol verilerini ekle
+    // Önce yeni rolleri ekle (mevcut ID'leri güncelle)
     await pool.query(`
       INSERT INTO roles (id, name, description) VALUES
       (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
       (2, 'Manager', 'Yönetici - Departman yönetimi'),
       (3, 'Employee', 'Çalışan - Temel işlemler'),
       (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description
     `);
 
-    // Yeni departman verilerini ekle
+    // Eski rolleri sil (5 ve üzeri ID'ler)
+    await pool.query('DELETE FROM roles WHERE id > 4');
+
+    // Kullanıcıların rol_id'lerini güncelle (eski rol ID'leri varsa)
+    await pool.query(`
+      UPDATE users SET role_id = 1
+      WHERE role_id NOT IN (1, 2, 3, 4) OR role_id IS NULL
+    `);
+
+    // Departmanları güncelle
     await pool.query(`
       INSERT INTO departments (id, name, description) VALUES
       (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
@@ -576,6 +584,18 @@ app.post("/api/fix-roles-departments", async (req, res) => {
       (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
       (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
       (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description
+    `);
+
+    // Eski departmanları sil (8 ve üzeri ID'ler)
+    await pool.query('DELETE FROM departments WHERE id > 7');
+
+    // Kullanıcıların department_id'lerini güncelle
+    await pool.query(`
+      UPDATE users SET department_id = 5
+      WHERE department_id NOT IN (1, 2, 3, 4, 5, 6, 7) OR department_id IS NULL
     `);
 
     res.json({
@@ -584,6 +604,47 @@ app.post("/api/fix-roles-departments", async (req, res) => {
     });
   } catch (error) {
     console.error('Rol/Departman düzeltme hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Güvenli rol/departman ekleme (mevcut verileri korur)
+app.post("/api/add-missing-roles-departments", async (req, res) => {
+  try {
+    console.log('🔧 Eksik rol ve departman verileri ekleniyor...');
+
+    // Eksik rolleri ekle
+    await pool.query(`
+      INSERT INTO roles (id, name, description) VALUES
+      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
+      (2, 'Manager', 'Yönetici - Departman yönetimi'),
+      (3, 'Employee', 'Çalışan - Temel işlemler'),
+      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
+      ON CONFLICT (id) DO NOTHING
+    `);
+
+    // Eksik departmanları ekle
+    await pool.query(`
+      INSERT INTO departments (id, name, description) VALUES
+      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
+      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
+      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
+      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
+      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
+      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
+      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
+      ON CONFLICT (id) DO NOTHING
+    `);
+
+    res.json({
+      success: true,
+      message: 'Eksik rol ve departman verileri güvenli şekilde eklendi'
+    });
+  } catch (error) {
+    console.error('Güvenli rol/departman ekleme hatası:', error);
     res.status(500).json({
       success: false,
       message: error.message
