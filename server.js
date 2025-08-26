@@ -707,20 +707,24 @@ app.post("/api/create-comprehensive-data", async (req, res) => {
     const salesRepId = salesRepResult.rows[0]?.id || 1;
 
     for (let i = 0; i < 5; i++) {
-      await pool.query(`
-        INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
-        VALUES ($1, $2, $3, $4, $5, $6, 'active')
-        ON CONFLICT (company_name) DO NOTHING
-      `, [
-        customerNames[i],
-        contactPersons[i],
-        phones[i],
-        `info@${customerNames[i].toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}.com`,
-        `${customerNames[i]} Adresi, İstanbul`,
-        salesRepId
-      ]);
+      // Önce müşteri var mı kontrol et
+      const existingCustomer = await pool.query('SELECT id FROM customers WHERE company_name = $1', [customerNames[i]]);
 
-      stats.customers++;
+      if (existingCustomer.rows.length === 0) {
+        await pool.query(`
+          INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
+          VALUES ($1, $2, $3, $4, $5, $6, 'active')
+        `, [
+          customerNames[i],
+          contactPersons[i],
+          phones[i],
+          `info@${customerNames[i].toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}.com`,
+          `${customerNames[i]} Adresi, İstanbul`,
+          salesRepId
+        ]);
+
+        stats.customers++;
+      }
     }
 
     // 4. 5 adet ürün oluştur
@@ -733,47 +737,74 @@ app.post("/api/create-comprehensive-data", async (req, res) => {
     ];
 
     for (const product of products) {
-      const vatRate = 20;
-      const priceWithVat = product.price * (1 + vatRate / 100);
+      // Önce ürün var mı kontrol et
+      const existingProduct = await pool.query('SELECT id FROM products WHERE name = $1', [product.name]);
 
-      await pool.query(`
-        INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, true)
-        ON CONFLICT (name) DO NOTHING
-      `, [product.name, product.description, product.price, vatRate, priceWithVat, product.unit]);
+      if (existingProduct.rows.length === 0) {
+        // Önce vat_rate ve price_with_vat kolonları var mı kontrol et
+        const columnsResult = await pool.query(`
+          SELECT column_name FROM information_schema.columns
+          WHERE table_name = 'products' AND column_name IN ('vat_rate', 'price_with_vat')
+        `);
 
-      stats.products++;
+        const hasVatColumns = columnsResult.rows.length === 2;
+
+        if (hasVatColumns) {
+          const vatRate = 20;
+          const priceWithVat = product.price * (1 + vatRate / 100);
+
+          await pool.query(`
+            INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6, true)
+          `, [product.name, product.description, product.price, vatRate, priceWithVat, product.unit]);
+        } else {
+          await pool.query(`
+            INSERT INTO products (name, description, unit_price, unit, is_active)
+            VALUES ($1, $2, $3, $4, true)
+          `, [product.name, product.description, product.price, product.unit]);
+        }
+
+        stats.products++;
+      }
     }
 
     // 5. Her müşteri için borç ve alacak kaydı oluştur
     const customersResult = await pool.query('SELECT id, company_name FROM customers ORDER BY id LIMIT 5');
 
     for (const customer of customersResult.rows) {
-      // Borç kaydı
-      await pool.query(`
-        INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
-        VALUES ($1, 'debit', $2, CURRENT_DATE - INTERVAL '30 days', $3, $4, $5)
-      `, [
-        customer.id,
-        Math.floor(Math.random() * 5000) + 1000, // 1000-6000 TL arası
-        `${customer.company_name} - Satış faturası`,
-        `FAT-${Date.now()}-${customer.id}`,
-        salesRepId
-      ]);
+      // Mevcut işlemleri kontrol et
+      const existingTransactions = await pool.query(
+        'SELECT COUNT(*) as count FROM account_transactions WHERE customer_id = $1',
+        [customer.id]
+      );
 
-      // Alacak kaydı
-      await pool.query(`
-        INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
-        VALUES ($1, 'credit', $2, CURRENT_DATE - INTERVAL '15 days', $3, $4, $5)
-      `, [
-        customer.id,
-        Math.floor(Math.random() * 3000) + 500, // 500-3500 TL arası
-        `${customer.company_name} - Ödeme`,
-        `ODM-${Date.now()}-${customer.id}`,
-        salesRepId
-      ]);
+      if (parseInt(existingTransactions.rows[0].count) === 0) {
+        // Borç kaydı
+        await pool.query(`
+          INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
+          VALUES ($1, 'debit', $2, CURRENT_DATE - INTERVAL '30 days', $3, $4, $5)
+        `, [
+          customer.id,
+          Math.floor(Math.random() * 5000) + 1000, // 1000-6000 TL arası
+          `${customer.company_name} - Satış faturası`,
+          `FAT-${Date.now()}-${customer.id}`,
+          salesRepId
+        ]);
 
-      stats.transactions += 2;
+        // Alacak kaydı
+        await pool.query(`
+          INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
+          VALUES ($1, 'credit', $2, CURRENT_DATE - INTERVAL '15 days', $3, $4, $5)
+        `, [
+          customer.id,
+          Math.floor(Math.random() * 3000) + 500, // 500-3500 TL arası
+          `${customer.company_name} - Ödeme`,
+          `ODM-${Date.now()}-${customer.id}`,
+          salesRepId
+        ]);
+
+        stats.transactions += 2;
+      }
     }
 
     res.json({
