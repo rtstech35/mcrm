@@ -105,7 +105,8 @@
         async function loadData() {
             try {
                 // Müşterileri yükle
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 const customerSelect = document.getElementById('customer_id');
                 customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
                 customers.forEach(customer => {
@@ -113,7 +114,8 @@
                 });
 
                 // Ürünleri yükle
-                products = await apiCall('/api/products');
+                const productsResponse = await apiCall('/api/products');
+                products = productsResponse.products || [];
                 displayProducts();
 
                 // Bugünün tarihini ayarla

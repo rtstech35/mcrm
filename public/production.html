@@ -97,8 +97,9 @@
 
         async function showDashboard() {
             try {
-                const orders = await apiCall('/api/orders');
-                
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
+
                 const pendingOrders = orders.filter(o => o.status === 'pending').length;
                 const productionOrders = orders.filter(o => o.status === 'production').length;
                 const completedOrders = orders.filter(o => o.status === 'completed').length;
@@ -182,7 +183,8 @@
 
         async function showAllOrders() {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 
                 let html = `
                     <div class="card">
@@ -257,7 +259,8 @@
 
         async function showProduction() {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 const productionOrders = orders.filter(o => o.status === 'production');
                 
                 let html = `
@@ -371,7 +374,8 @@
         
         async function showFilteredOrders(status) {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 const filteredOrders = orders.filter(o => o.status === status);
                 
                 const statusText = {

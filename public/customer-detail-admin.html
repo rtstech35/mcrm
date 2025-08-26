@@ -303,7 +303,8 @@
         async function loadTabData() {
             try {
                 // Siparişleri yükle
-                const orders = await apiCall(`/api/orders?customer_id=${customerId}`);
+                const ordersResponse = await apiCall(`/api/orders?customer_id=${customerId}`);
+                const orders = ordersResponse.orders || [];
                 document.getElementById('ordersList').innerHTML = orders.map(order => `
                     <div class="list-item" onclick="viewOrder(${order.id})">
                         <div style="display: flex; justify-content: space-between; align-items: center;">

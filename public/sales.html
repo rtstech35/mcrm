@@ -401,7 +401,8 @@
 
         async function showOrders() {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 const myOrders = orders.filter(o => o.sales_rep_id == currentUser.id);
                 
                 let html = `
