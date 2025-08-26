@@ -756,8 +756,8 @@
                                     <div class="stat-label">Aylık Satış</div>
                                     <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${(stats.monthlySalesTarget || 0).toLocaleString('tr-TR')} ₺</div>
                                 </div>
-                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--primary), var(--accent)); border-radius: 8px; position: relative; overflow: hidden;">
-                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${salesPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
+                                <div style="width: 80px; height: 60px; position: relative;">
+                                    <canvas id="salesChart" width="80" height="60" style="border-radius: 8px;"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -769,8 +769,8 @@
                                     <div class="stat-label">Aylık Ziyaret</div>
                                     <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${stats.monthlyVisitTarget || 0}</div>
                                 </div>
-                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--success), var(--warning)); border-radius: 8px; position: relative; overflow: hidden;">
-                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${visitPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
+                                <div style="width: 80px; height: 60px; position: relative;">
+                                    <canvas id="visitsChart" width="80" height="60" style="border-radius: 8px;"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -782,8 +782,8 @@
                                     <div class="stat-label">Aylık Tahsilat</div>
                                     <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${(stats.monthlyCollectionTarget || 0).toLocaleString('tr-TR')} ₺</div>
                                 </div>
-                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--warning), var(--danger)); border-radius: 8px; position: relative; overflow: hidden;">
-                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${collectionPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
+                                <div style="width: 80px; height: 60px; position: relative;">
+                                    <canvas id="collectionChart" width="80" height="60" style="border-radius: 8px;"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -793,49 +793,72 @@
 
                     <!-- Sipariş Durumu 4 Kutu -->
                     <div class="card" style="margin-bottom: 2rem;">
-                        <h2>📦 Sipariş Durumu</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2>📦 Sipariş Durumu</h2>
+                            <div style="width: 200px; height: 100px;">
+                                <canvas id="ordersDonutChart" width="200" height="100"></canvas>
+                            </div>
+                        </div>
                         <div class="grid grid-4" style="margin-top: 1rem;">
-                            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white; position: relative; overflow: hidden;">
                                 <div class="stat-number" style="color: white;">${stats.pendingOrders || 0}</div>
                                 <div class="stat-label" style="color: rgba(255,255,255,0.9);">Bekleyen</div>
+                                <div style="position: absolute; top: 10px; right: 10px; font-size: 1.5rem; opacity: 0.3;">⏳</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; position: relative; overflow: hidden;">
                                 <div class="stat-number" style="color: white;">${stats.productionOrders || 0}</div>
                                 <div class="stat-label" style="color: rgba(255,255,255,0.9);">Üretimde</div>
+                                <div style="position: absolute; top: 10px; right: 10px; font-size: 1.5rem; opacity: 0.3;">⚙️</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; position: relative; overflow: hidden;">
                                 <div class="stat-number" style="color: white;">${stats.completedOrders || 0}</div>
                                 <div class="stat-label" style="color: rgba(255,255,255,0.9);">Tamamlanan</div>
+                                <div style="position: absolute; top: 10px; right: 10px; font-size: 1.5rem; opacity: 0.3;">✅</div>
                             </div>
-                            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white; position: relative; overflow: hidden;">
                                 <div class="stat-number" style="color: white;">${stats.deliveredOrders || 0}</div>
                                 <div class="stat-label" style="color: rgba(255,255,255,0.9);">Teslim Edilen</div>
+                                <div style="position: absolute; top: 10px; right: 10px; font-size: 1.5rem; opacity: 0.3;">🚚</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Randevu Takibi -->
                     <div class="card" style="margin-bottom: 2rem;">
-                        <h2>📅 Bugünkü Randevular</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2>📅 Bugünkü Randevular</h2>
+                            <div style="width: 150px; height: 80px;">
+                                <canvas id="appointmentsChart" width="150" height="80"></canvas>
+                            </div>
+                        </div>
                         <div style="margin-top: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px; margin-bottom: 0.5rem;">
-                                <div>
-                                    <div style="font-weight: 600;">09:00 - ABC Teknoloji</div>
-                                    <div style="font-size: 0.875rem; color: var(--text-light);">Satış görüşmesi</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: linear-gradient(90deg, #fff3cd, #ffeaa7); border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 1.5rem;">🕰️</div>
+                                    <div>
+                                        <div style="font-weight: 600;">09:00 - ABC Teknoloji</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-light);">Satış görüşmesi</div>
+                                    </div>
                                 </div>
                                 <span class="status-badge warning">Bekleyen</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px; margin-bottom: 0.5rem;">
-                                <div>
-                                    <div style="font-weight: 600;">14:00 - XYZ İnşaat</div>
-                                    <div style="font-size: 0.875rem; color: var(--text-light);">Proje sunumu</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: linear-gradient(90deg, #d4edda, #c3e6cb); border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #28a745;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 1.5rem;">✅</div>
+                                    <div>
+                                        <div style="font-weight: 600;">14:00 - XYZ İnşaat</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-light);">Proje sunumu</div>
+                                    </div>
                                 </div>
                                 <span class="status-badge success">Tamamlandı</span>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px;">
-                                <div>
-                                    <div style="font-weight: 600;">16:30 - DEF Lojistik</div>
-                                    <div style="font-size: 0.875rem; color: var(--text-light);">Teknik toplantı</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: linear-gradient(90deg, #cce7ff, #b3d9ff); border-radius: 8px; border-left: 4px solid #007bff;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="font-size: 1.5rem;">💼</div>
+                                    <div>
+                                        <div style="font-weight: 600;">16:30 - DEF Lojistik</div>
+                                        <div style="font-size: 0.875rem; color: var(--text-light);">Teknik toplantı</div>
+                                    </div>
                                 </div>
                                 <span class="status-badge info">Devam Eden</span>
                             </div>
@@ -877,6 +900,15 @@
                         </div>
                     </div>
                 `;
+                
+                // Grafikleri çiz
+                setTimeout(() => {
+                    drawSalesChart(stats.currentMonthlySales || 0, stats.monthlySalesTarget || 100000);
+                    drawVisitsChart(stats.currentMonthlyVisits || 0, stats.monthlyVisitTarget || 50);
+                    drawCollectionChart(stats.currentMonthlyCollection || 0, stats.monthlyCollectionTarget || 80000);
+                    drawOrdersDonutChart(stats);
+                    drawAppointmentsChart();
+                }, 100);
                 
             } catch (error) {
                 console.error('Dashboard yüklenemedi:', error);
@@ -1773,6 +1805,177 @@
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
             window.location.href = '/';
+        }
+
+        // Grafik çizim fonksiyonları
+        function drawSalesChart(current, target) {
+            const canvas = document.getElementById('salesChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const percentage = target > 0 ? (current / target) * 100 : 0;
+            const angle = (percentage / 100) * 2 * Math.PI;
+            
+            // Arka plan daire
+            ctx.beginPath();
+            ctx.arc(40, 30, 25, 0, 2 * Math.PI);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fill();
+            
+            // Progress daire
+            ctx.beginPath();
+            ctx.arc(40, 30, 25, -Math.PI/2, -Math.PI/2 + angle);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#3b82f6';
+            ctx.stroke();
+            
+            // Yüzde metni
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.round(percentage) + '%', 40, 35);
+        }
+        
+        function drawVisitsChart(current, target) {
+            const canvas = document.getElementById('visitsChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const percentage = target > 0 ? (current / target) * 100 : 0;
+            
+            // Bar chart
+            const barWidth = 8;
+            const maxHeight = 50;
+            const barHeight = (percentage / 100) * maxHeight;
+            
+            // Arka plan barlar
+            for (let i = 0; i < 6; i++) {
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(10 + i * 12, 10, barWidth, maxHeight);
+                
+                // Progress barlar
+                if (i < 6 * (percentage / 100)) {
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(10 + i * 12, 10 + maxHeight - barHeight, barWidth, barHeight);
+                }
+            }
+        }
+        
+        function drawCollectionChart(current, target) {
+            const canvas = document.getElementById('collectionChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const percentage = target > 0 ? (current / target) * 100 : 0;
+            
+            // Line chart
+            const points = [20, 35, 25, 40, 30, 45];
+            const scaledPoints = points.map(p => p * (percentage / 100));
+            
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            scaledPoints.forEach((point, index) => {
+                const x = 10 + index * 12;
+                const y = 50 - point;
+                if (index === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            
+            ctx.stroke();
+            
+            // Noktalar
+            scaledPoints.forEach((point, index) => {
+                const x = 10 + index * 12;
+                const y = 50 - point;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.fillStyle = '#f59e0b';
+                ctx.fill();
+            });
+        }
+        
+        function drawOrdersDonutChart(stats) {
+            const canvas = document.getElementById('ordersDonutChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = 100;
+            const centerY = 50;
+            const radius = 35;
+            const innerRadius = 20;
+            
+            const data = [
+                { value: stats.pendingOrders || 5, color: '#f59e0b', label: 'Bekleyen' },
+                { value: stats.productionOrders || 8, color: '#6366f1', label: 'Üretimde' },
+                { value: stats.completedOrders || 12, color: '#06b6d4', label: 'Tamamlanan' },
+                { value: stats.deliveredOrders || 15, color: '#10b981', label: 'Teslim' }
+            ];
+            
+            const total = data.reduce((sum, item) => sum + item.value, 0);
+            let currentAngle = -Math.PI / 2;
+            
+            data.forEach(item => {
+                const sliceAngle = (item.value / total) * 2 * Math.PI;
+                
+                // Dış daire
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+                ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+                ctx.closePath();
+                ctx.fillStyle = item.color;
+                ctx.fill();
+                
+                currentAngle += sliceAngle;
+            });
+            
+            // Merkez daire
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            // Toplam sayı
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(total.toString(), centerX, centerY + 5);
+        }
+        
+        function drawAppointmentsChart() {
+            const canvas = document.getElementById('appointmentsChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Basit progress bar
+            const completed = 2;
+            const total = 3;
+            const percentage = (completed / total) * 100;
+            
+            // Arka plan
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(10, 30, 130, 20);
+            
+            // Progress
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(10, 30, (130 * percentage / 100), 20);
+            
+            // Metin
+            ctx.fillStyle = '#1f2937';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${completed}/${total} Tamamlandı`, 75, 65);
         }
 
         // Harita çizim fonksiyonu
