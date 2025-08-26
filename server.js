@@ -667,6 +667,59 @@ app.get("/api/test-connection", async (req, res) => {
   }
 });
 
+// Dashboard için eksik endpoint'ler
+app.get("/api/dashboard/monthly-sales", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT COALESCE(SUM(total_amount), 0) as monthlySales 
+      FROM orders 
+      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+    `);
+    
+    res.json({
+      success: true,
+      monthlySales: parseFloat(result.rows[0].monthlysales) || 0,
+      target: 600000
+    });
+  } catch (error) {
+    console.error('Monthly sales hatası:', error);
+    res.status(500).json({
+      success: false,
+      monthlySales: 0,
+      target: 600000
+    });
+  }
+});
+
+app.get("/api/dashboard/customer-status", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COUNT(CASE WHEN customer_status = 'active' THEN 1 END) as active,
+        COUNT(CASE WHEN customer_status = 'potential' THEN 1 END) as potential,
+        COUNT(CASE WHEN customer_status = 'inactive' THEN 1 END) as inactive
+      FROM customers
+    `);
+    
+    const row = result.rows[0];
+    res.json({
+      success: true,
+      active: parseInt(row.active) || 0,
+      potential: parseInt(row.potential) || 0,
+      inactive: parseInt(row.inactive) || 0
+    });
+  } catch (error) {
+    console.error('Customer status hatası:', error);
+    res.status(500).json({
+      success: false,
+      active: 0,
+      potential: 0,
+      inactive: 0
+    });
+  }
+});
+
 // ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
 app.post("/api/create-admin", async (req, res) => {
   try {
