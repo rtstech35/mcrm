@@ -125,7 +125,8 @@
         // Siparişleri yükle
         async function loadOrders() {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 console.log('Tüm siparişler:', orders);
                 
                 // Filtreleme

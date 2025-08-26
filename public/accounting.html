@@ -131,8 +131,10 @@
 
         async function showDashboard() {
             try {
-                const orders = await apiCall('/api/orders');
-                const customers = await apiCall('/api/customers');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
                 const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
@@ -217,7 +219,8 @@
 
         async function showAccounts() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 let html = `
                     <div class="card">
@@ -318,8 +321,9 @@
 
         async function openPaymentModal() {
             try {
-                const customers = await apiCall('/api/customers');
-                
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+
                 const customerSelect = document.getElementById('customer_id');
                 customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
                 customers.forEach(customer => {
