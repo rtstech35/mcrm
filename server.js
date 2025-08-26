@@ -347,15 +347,7 @@ app.get("/api/roles", async (req, res) => {
   }
 });
 
-app.get("/api/departments", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM departments ORDER BY name");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Departmanlar alınamadı:", err);
-    res.status(500).json({ error: "Departmanlar alınamadı" });
-  }
-});
+
 
 // ---------------- SETUP ENDPOINTS ---------------- //
 app.post("/api/setup-database", async (req, res) => {

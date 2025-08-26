@@ -39,6 +39,7 @@
                 <button onclick="showCustomers()">Müşteriler</button>
                 <button onclick="showProducts()">Ürünler</button>
                 <button onclick="showOrders()">Siparişler</button>
+                <button onclick="showDepartments()">Departmanlar</button>
                 <button onclick="logout()">Çıkış</button>
             </div>
         </div>
@@ -230,6 +231,34 @@
                 }
             } catch (error) {
                 document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
+            }
+        }
+
+        async function showDepartments() {
+            try {
+                const response = await fetch('/api/departments');
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h2>Departman Yönetimi</h2>';
+                    html += '<p><em>Yeni departman eklemek için <a href="/admin" target="_blank">Admin Paneli</a>ni kullanın.</em></p>';
+                    html += '<table class="data-table">';
+                    html += '<tr><th>ID</th><th>Departman Adı</th><th>Açıklama</th></tr>';
+
+                    data.departments.forEach(dept => {
+                        html += `<tr>
+                            <td>${dept.id}</td>
+                            <td>${dept.name}</td>
+                            <td>${dept.description || '-'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    document.getElementById('content').innerHTML = '<h2>Departman Yönetimi</h2><p>Hata: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('content').innerHTML = '<h2>Departman Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
             }
         }
 

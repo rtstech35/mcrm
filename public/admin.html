@@ -126,6 +126,25 @@
         </div>
     </div>
 
+    <!-- Departman Modal -->
+    <div id="departmentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('departmentModal')">&times;</span>
+            <h3>Yeni Departman</h3>
+            <form id="departmentForm">
+                <div class="form-group">
+                    <label>Departman Adı:</label>
+                    <input type="text" id="department_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="department_description" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -470,6 +489,29 @@
                 document.getElementById('userForm').reset();
                 closeModal('userModal');
                 showUsers();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        document.getElementById('departmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                name: document.getElementById('department_name').value,
+                description: document.getElementById('department_description').value
+            };
+
+            try {
+                await apiCall('/api/departments', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                alert('Departman başarıyla oluşturuldu!');
+                document.getElementById('departmentForm').reset();
+                closeModal('departmentModal');
+                showDepartments();
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
