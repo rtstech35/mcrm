@@ -208,7 +208,7 @@ app.get("/api/profile", authenticateToken, async (req, res) => {
 });
 
 // ---------------- ÜRÜNLER ---------------- //
-app.get("/api/products", authenticateToken, async (req, res) => {
+app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products ORDER BY id DESC");
     res.json(result.rows);
@@ -218,7 +218,7 @@ app.get("/api/products", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/products", authenticateToken, async (req, res) => {
+app.post("/api/products", async (req, res) => {
   try {
     const { name, price, description, category } = req.body;
     if (!name || !price) {
@@ -333,7 +333,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 });
 
 // ---------------- ROLES & DEPARTMENTS ---------------- //
-app.get("/api/roles", authenticateToken, async (req, res) => {
+app.get("/api/roles", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM roles ORDER BY name");
     res.json(result.rows);
@@ -343,7 +343,7 @@ app.get("/api/roles", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/departments", authenticateToken, async (req, res) => {
+app.get("/api/departments", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM departments ORDER BY name");
     res.json(result.rows);
