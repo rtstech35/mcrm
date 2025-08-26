@@ -209,6 +209,12 @@ body {
     background: #dc2626;
 }
 
+/* Modal form button spacing */
+.modal form .btn {
+    margin-top: 1.5rem;
+    width: 100%;
+}
+
 /* Form Styles */
 .form-group {
     margin-bottom: 1.5rem;
