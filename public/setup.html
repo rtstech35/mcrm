@@ -156,6 +156,10 @@
         <button class="setup-btn" onclick="addMissingRolesDepartments()" id="addBtn" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); margin-left: 10px;">
             Güvenli Ekle
         </button>
+
+        <button class="setup-btn" onclick="migrateProductsVat()" id="migrateBtn" style="background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%); margin-left: 10px;">
+            Ürün KDV Düzelt
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -367,6 +371,47 @@
             } finally {
                 addBtn.disabled = false;
                 addBtn.textContent = 'Güvenli Ekle';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function migrateProductsVat() {
+            const migrateBtn = document.getElementById('migrateBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            migrateBtn.disabled = true;
+            migrateBtn.textContent = 'Düzeltiliyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-products-vat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Eklenen kolonlar:</strong> vat_rate (KDV oranı), price_with_vat (KDV dahil fiyat)<br>
+                            <strong>Artık ürün ekleme çalışmalı!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                migrateBtn.disabled = false;
+                migrateBtn.textContent = 'Ürün KDV Düzelt';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }

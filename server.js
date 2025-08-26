@@ -222,24 +222,7 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-app.post("/api/products", async (req, res) => {
-  try {
-    const { name, price, description, category } = req.body;
-    if (!name || !price) {
-      return res.status(400).json({ error: "Ürün adı ve fiyat zorunlu" });
-    }
-    
-    await pool.query(
-      "INSERT INTO products (name, price, description, category) VALUES ($1, $2, $3, $4)",
-      [name, parseFloat(price), description || '', category || 'Genel']
-    );
-    
-    res.json({ success: true, message: "Ürün başarıyla eklendi" });
-  } catch (err) {
-    console.error("Ürün eklenemedi:", err);
-    res.status(500).json({ error: "Ürün eklenemedi" });
-  }
-});
+
 
 // ---------------- SİPARİŞLER (ESKİ - KALDIRILDI) ---------------- //
 // Bu endpoint'ler yeni API'lerle değiştirildi
@@ -644,6 +627,38 @@ app.post("/api/add-missing-roles-departments", async (req, res) => {
   }
 });
 
+// Products tablosuna KDV kolonları ekle
+app.post("/api/migrate-products-vat", async (req, res) => {
+  try {
+    console.log('🔧 Products tablosuna KDV kolonları ekleniyor...');
+
+    // Kolonları ekle (eğer yoksa)
+    await pool.query(`
+      ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS vat_rate DECIMAL(5,2) DEFAULT 20,
+      ADD COLUMN IF NOT EXISTS price_with_vat DECIMAL(10,2)
+    `);
+
+    // Mevcut ürünler için KDV dahil fiyatı hesapla
+    await pool.query(`
+      UPDATE products
+      SET price_with_vat = unit_price * (1 + COALESCE(vat_rate, 20) / 100)
+      WHERE price_with_vat IS NULL
+    `);
+
+    res.json({
+      success: true,
+      message: 'Products tablosu KDV kolonları ile güncellendi'
+    });
+  } catch (error) {
+    console.error('Products migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Backup alma
 app.post("/api/backup-database", async (req, res) => {
   try {
@@ -804,6 +819,117 @@ app.post("/api/users", async (req, res) => {
   }
 });
 
+// Tek kullanıcı getir
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT u.*, r.name as role_name, d.name as department_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('User get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Kullanıcı güncelle
+app.put("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, password, full_name, role_id, department_id, phone } = req.body;
+
+    let query = `
+      UPDATE users SET
+        username = $1,
+        email = $2,
+        full_name = $3,
+        role_id = $4,
+        department_id = $5,
+        phone = $6
+    `;
+    let params = [username, email, full_name, role_id, department_id, phone];
+
+    // Eğer şifre verilmişse, hash'leyip güncelle
+    if (password && password.trim() !== '') {
+      const bcrypt = require("bcryptjs");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      query += `, password_hash = $7 WHERE id = $8 RETURNING *`;
+      params.push(hashedPassword, id);
+    } else {
+      query += ` WHERE id = $7 RETURNING *`;
+      params.push(id);
+    }
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('User update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Kullanıcı sil
+app.delete("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      DELETE FROM users WHERE id = $1 RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Kullanıcı başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('User delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Müşteriler API
 app.get("/api/customers", async (req, res) => {
   try {
@@ -874,14 +1000,16 @@ app.get("/api/products", async (req, res) => {
 
 app.post("/api/products", async (req, res) => {
   try {
-    const { name, description, unit_price, unit } = req.body;
-    
+    const { name, description, unit_price, vat_rate, price_with_vat, unit } = req.body;
+
+    console.log('Ürün ekleme isteği:', req.body);
+
     const result = await pool.query(`
-      INSERT INTO products (name, description, unit_price, unit, is_active)
-      VALUES ($1, $2, $3, $4, true)
+      INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
       RETURNING *
-    `, [name, description, unit_price, unit]);
-    
+    `, [name, description, parseFloat(unit_price), parseFloat(vat_rate), parseFloat(price_with_vat), unit]);
+
     res.json({
       success: true,
       product: result.rows[0]
