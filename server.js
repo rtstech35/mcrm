@@ -813,6 +813,1671 @@ app.post("/api/create-comprehensive-data", async (req, res) => {
   }
 });
 
+// Rol Yönetimi API'leri
+app.get("/api/roles", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT r.*,
+             COUNT(u.id) as user_count
+      FROM roles r
+      LEFT JOIN users u ON r.id = u.role_id
+      GROUP BY r.id, r.name, r.description, r.created_at
+      ORDER BY r.id ASC
+    `);
+
+    console.log('Roles API - Bulunan rol sayısı:', result.rows.length);
+
+    res.json({
+      success: true,
+      roles: result.rows
+    });
+  } catch (error) {
+    console.error('Roles API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek rol getir
+app.get("/api/roles/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT r.*,
+             COUNT(u.id) as user_count
+      FROM roles r
+      LEFT JOIN users u ON r.id = u.role_id
+      WHERE r.id = $1
+      GROUP BY r.id, r.name, r.description, r.created_at
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Rol bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      role: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Role get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Yeni rol oluştur
+app.post("/api/roles", async (req, res) => {
+  try {
+    const { name, description, level, is_active } = req.body;
+
+    // Rol adı benzersizlik kontrolü
+    const existingRole = await pool.query('SELECT id FROM roles WHERE name = $1', [name]);
+    if (existingRole.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu rol adı zaten kullanılıyor'
+      });
+    }
+
+    const result = await pool.query(`
+      INSERT INTO roles (name, description, level, is_active)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [name, description, level || 2, is_active !== false]);
+
+    res.json({
+      success: true,
+      role: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Role create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Rol güncelle
+app.put("/api/roles/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, level, is_active } = req.body;
+
+    // Admin rolü koruması
+    if (id === '1') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin rolü değiştirilemez'
+      });
+    }
+
+    // Rol adı benzersizlik kontrolü (kendisi hariç)
+    const existingRole = await pool.query('SELECT id FROM roles WHERE name = $1 AND id != $2', [name, id]);
+    if (existingRole.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu rol adı zaten kullanılıyor'
+      });
+    }
+
+    const result = await pool.query(`
+      UPDATE roles SET
+        name = $1,
+        description = $2,
+        level = $3,
+        is_active = $4
+      WHERE id = $5
+      RETURNING *
+    `, [name, description, level || 2, is_active !== false, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Rol bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      role: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Role update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Rol sil
+app.delete("/api/roles/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Admin rolü koruması
+    if (id === '1') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin rolü silinemez'
+      });
+    }
+
+    // Bu role sahip kullanıcı var mı kontrol et
+    const usersWithRole = await pool.query('SELECT COUNT(*) as count FROM users WHERE role_id = $1', [id]);
+    const userCount = parseInt(usersWithRole.rows[0].count);
+
+    if (userCount > 0) {
+      // Kullanıcıları varsayılan role (Employee - ID: 3) ata
+      await pool.query('UPDATE users SET role_id = 3 WHERE role_id = $1', [id]);
+    }
+
+    const result = await pool.query('DELETE FROM roles WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Rol bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Rol başarıyla silindi. ${userCount} kullanıcı Employee rolüne atandı.`
+    });
+  } catch (error) {
+    console.error('Role delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Rol sistemi migration
+app.post("/api/migrate-roles", async (req, res) => {
+  try {
+    console.log('🔄 Rol sistemi migration başlatılıyor...');
+
+    // Level kolonu ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'level') THEN
+              ALTER TABLE roles ADD COLUMN level INTEGER DEFAULT 2;
+          END IF;
+      END $$;
+    `);
+
+    // is_active kolonu ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'is_active') THEN
+              ALTER TABLE roles ADD COLUMN is_active BOOLEAN DEFAULT true;
+          END IF;
+      END $$;
+    `);
+
+    // Mevcut rolleri güncelle
+    await pool.query(`
+      UPDATE roles SET
+          level = CASE
+              WHEN name ILIKE '%admin%' THEN 4
+              WHEN name ILIKE '%manager%' THEN 3
+              WHEN name ILIKE '%employee%' OR name ILIKE '%sales%' OR name ILIKE '%production%' OR name ILIKE '%shipping%' OR name ILIKE '%accounting%' OR name ILIKE '%warehouse%' THEN 2
+              ELSE 1
+          END,
+          is_active = true
+      WHERE level IS NULL OR is_active IS NULL;
+    `);
+
+    // Temel rollerin varlığını kontrol et ve eksikleri ekle
+    const basicRoles = [
+      { name: 'Admin', description: 'Sistem Yöneticisi - Tüm yetkilere sahip', level: 4, permissions: '{"all": true}' },
+      { name: 'Manager', description: 'Departman Yöneticisi - Yönetim yetkileri', level: 3, permissions: '{"department": ["read", "create", "update"], "reports": ["read"]}' },
+      { name: 'Employee', description: 'Çalışan - Temel işlem yetkileri', level: 2, permissions: '{"basic": ["read", "create", "update"]}' },
+      { name: 'Viewer', description: 'Görüntüleyici - Sadece okuma yetkisi', level: 1, permissions: '{"all": ["read"]}' }
+    ];
+
+    for (const role of basicRoles) {
+      await pool.query(`
+        INSERT INTO roles (name, description, level, is_active, permissions)
+        SELECT $1, $2, $3, true, $4::jsonb
+        WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = $1)
+      `, [role.name, role.description, role.level, role.permissions]);
+    }
+
+    console.log('✅ Rol sistemi migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'Rol sistemi başarıyla güncellendi'
+    });
+
+  } catch (error) {
+    console.error('Rol migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Departman Yönetimi API'leri
+app.get("/api/departments", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT d.*,
+             COUNT(u.id) as user_count,
+             m.full_name as manager_name
+      FROM departments d
+      LEFT JOIN users u ON d.id = u.department_id
+      LEFT JOIN users m ON d.manager_id = m.id
+      GROUP BY d.id, d.name, d.description, d.code, d.manager_id, d.is_active, d.created_at, m.full_name
+      ORDER BY d.id ASC
+    `);
+
+    console.log('Departments API - Bulunan departman sayısı:', result.rows.length);
+
+    res.json({
+      success: true,
+      departments: result.rows
+    });
+  } catch (error) {
+    console.error('Departments API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek departman getir
+app.get("/api/departments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT d.*,
+             COUNT(u.id) as user_count,
+             m.full_name as manager_name
+      FROM departments d
+      LEFT JOIN users u ON d.id = u.department_id
+      LEFT JOIN users m ON d.manager_id = m.id
+      WHERE d.id = $1
+      GROUP BY d.id, d.name, d.description, d.code, d.manager_id, d.is_active, d.created_at, m.full_name
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Departman bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      department: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Department get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Yeni departman oluştur
+app.post("/api/departments", async (req, res) => {
+  try {
+    const { name, description, code, manager_id, is_active } = req.body;
+
+    // Departman adı benzersizlik kontrolü
+    const existingDept = await pool.query('SELECT id FROM departments WHERE name = $1', [name]);
+    if (existingDept.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu departman adı zaten kullanılıyor'
+      });
+    }
+
+    // Kod benzersizlik kontrolü (eğer kod verilmişse)
+    if (code) {
+      const existingCode = await pool.query('SELECT id FROM departments WHERE code = $1', [code]);
+      if (existingCode.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bu departman kodu zaten kullanılıyor'
+        });
+      }
+    }
+
+    const result = await pool.query(`
+      INSERT INTO departments (name, description, code, manager_id, is_active)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [name, description, code || null, manager_id || null, is_active !== false]);
+
+    res.json({
+      success: true,
+      department: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Department create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Departman güncelle
+app.put("/api/departments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, code, manager_id, is_active } = req.body;
+
+    // Departman adı benzersizlik kontrolü (kendisi hariç)
+    const existingDept = await pool.query('SELECT id FROM departments WHERE name = $1 AND id != $2', [name, id]);
+    if (existingDept.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu departman adı zaten kullanılıyor'
+      });
+    }
+
+    // Kod benzersizlik kontrolü (eğer kod verilmişse ve kendisi hariç)
+    if (code) {
+      const existingCode = await pool.query('SELECT id FROM departments WHERE code = $1 AND id != $2', [code, id]);
+      if (existingCode.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bu departman kodu zaten kullanılıyor'
+        });
+      }
+    }
+
+    const result = await pool.query(`
+      UPDATE departments SET
+        name = $1,
+        description = $2,
+        code = $3,
+        manager_id = $4,
+        is_active = $5
+      WHERE id = $6
+      RETURNING *
+    `, [name, description, code || null, manager_id || null, is_active !== false, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Departman bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      department: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Department update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Departman sil
+app.delete("/api/departments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Bu departmana ait kullanıcı var mı kontrol et
+    const usersInDept = await pool.query('SELECT COUNT(*) as count FROM users WHERE department_id = $1', [id]);
+    const userCount = parseInt(usersInDept.rows[0].count);
+
+    if (userCount > 0) {
+      // Kullanıcıları varsayılan departmana (Satış Departmanı - ID: 1) ata
+      await pool.query('UPDATE users SET department_id = 1 WHERE department_id = $1', [id]);
+    }
+
+    const result = await pool.query('DELETE FROM departments WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Departman bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Departman başarıyla silindi. ${userCount} kullanıcı Satış Departmanına atandı.`
+    });
+  } catch (error) {
+    console.error('Department delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Departman sistemi migration
+app.post("/api/migrate-departments", async (req, res) => {
+  try {
+    console.log('🏢 Departman sistemi migration başlatılıyor...');
+
+    // Code kolonu ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'code') THEN
+              ALTER TABLE departments ADD COLUMN code VARCHAR(10) UNIQUE;
+          END IF;
+      END $$;
+    `);
+
+    // Manager_id kolonu ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'manager_id') THEN
+              ALTER TABLE departments ADD COLUMN manager_id INTEGER;
+          END IF;
+      END $$;
+    `);
+
+    // is_active kolonu ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'is_active') THEN
+              ALTER TABLE departments ADD COLUMN is_active BOOLEAN DEFAULT true;
+          END IF;
+      END $$;
+    `);
+
+    // Foreign key constraint ekle (eğer yoksa)
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (
+              SELECT 1 FROM information_schema.table_constraints
+              WHERE constraint_name = 'departments_manager_id_fkey'
+              AND table_name = 'departments'
+          ) THEN
+              ALTER TABLE departments ADD CONSTRAINT departments_manager_id_fkey
+              FOREIGN KEY (manager_id) REFERENCES users(id);
+          END IF;
+      END $$;
+    `);
+
+    // Mevcut departmanları güncelle
+    await pool.query(`
+      UPDATE departments SET
+          is_active = true,
+          code = CASE
+              WHEN name ILIKE '%satış%' OR name ILIKE '%sales%' THEN 'SALES'
+              WHEN name ILIKE '%üretim%' OR name ILIKE '%production%' THEN 'PROD'
+              WHEN name ILIKE '%sevkiyat%' OR name ILIKE '%shipping%' THEN 'SHIP'
+              WHEN name ILIKE '%muhasebe%' OR name ILIKE '%accounting%' THEN 'ACC'
+              WHEN name ILIKE '%it%' OR name ILIKE '%bilgi%' THEN 'IT'
+              WHEN name ILIKE '%insan%' OR name ILIKE '%hr%' THEN 'HR'
+              WHEN name ILIKE '%kalite%' OR name ILIKE '%quality%' THEN 'QC'
+              ELSE UPPER(LEFT(name, 4))
+          END
+      WHERE is_active IS NULL OR code IS NULL;
+    `);
+
+    console.log('✅ Departman sistemi migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'Departman sistemi başarıyla güncellendi'
+    });
+
+  } catch (error) {
+    console.error('Departman migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Kullanıcı Hedefleri API'leri
+app.get("/api/user-targets", async (req, res) => {
+  try {
+    const { year, month, user_id } = req.query;
+
+    let query = `
+      SELECT ut.*,
+             u.full_name, u.username, u.email,
+             r.name as role_name,
+             d.name as department_name
+      FROM user_targets ut
+      JOIN users u ON ut.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE ut.is_active = true
+    `;
+
+    const params = [];
+    let paramIndex = 1;
+
+    if (year) {
+      query += ` AND ut.target_year = $${paramIndex}`;
+      params.push(parseInt(year));
+      paramIndex++;
+    }
+
+    if (month) {
+      query += ` AND ut.target_month = $${paramIndex}`;
+      params.push(parseInt(month));
+      paramIndex++;
+    }
+
+    if (user_id) {
+      query += ` AND ut.user_id = $${paramIndex}`;
+      params.push(parseInt(user_id));
+      paramIndex++;
+    }
+
+    query += ` ORDER BY ut.target_year DESC, ut.target_month DESC, u.full_name ASC`;
+
+    const result = await pool.query(query, params);
+
+    console.log('User Targets API - Bulunan hedef sayısı:', result.rows.length);
+
+    res.json({
+      success: true,
+      targets: result.rows
+    });
+  } catch (error) {
+    console.error('User Targets API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek kullanıcının belirli ay hedefini getir
+app.get("/api/user-targets/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { year, month } = req.query;
+
+    const result = await pool.query(`
+      SELECT ut.*,
+             u.full_name, u.username, u.email,
+             r.name as role_name,
+             d.name as department_name
+      FROM user_targets ut
+      JOIN users u ON ut.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE ut.user_id = $1 AND ut.target_year = $2 AND ut.target_month = $3
+    `, [userId, year, month]);
+
+    res.json({
+      success: true,
+      target: result.rows[0] || null
+    });
+  } catch (error) {
+    console.error('User Target get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Yeni hedef oluştur
+app.post("/api/user-targets", async (req, res) => {
+  try {
+    const {
+      user_id, target_year, target_month,
+      sales_target, visit_target, production_target,
+      revenue_target, collection_target, notes
+    } = req.body;
+
+    // Aynı kullanıcı için aynı ay hedefi var mı kontrol et
+    const existingTarget = await pool.query(
+      'SELECT id FROM user_targets WHERE user_id = $1 AND target_year = $2 AND target_month = $3',
+      [user_id, target_year, target_month]
+    );
+
+    if (existingTarget.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu kullanıcı için bu ay zaten hedef belirlenmiş'
+      });
+    }
+
+    const result = await pool.query(`
+      INSERT INTO user_targets (
+        user_id, target_year, target_month,
+        sales_target, visit_target, production_target,
+        revenue_target, collection_target, notes,
+        created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      user_id, target_year, target_month,
+      sales_target || 0, visit_target || 0, production_target || 0,
+      revenue_target || 0, collection_target || 0, notes,
+      1 // TODO: Gerçek kullanıcı ID'si
+    ]);
+
+    res.json({
+      success: true,
+      target: result.rows[0]
+    });
+  } catch (error) {
+    console.error('User Target create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Hedef güncelle
+app.put("/api/user-targets/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      sales_target, visit_target, production_target,
+      revenue_target, collection_target, notes
+    } = req.body;
+
+    const result = await pool.query(`
+      UPDATE user_targets SET
+        sales_target = $1,
+        visit_target = $2,
+        production_target = $3,
+        revenue_target = $4,
+        collection_target = $5,
+        notes = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      RETURNING *
+    `, [
+      sales_target || 0, visit_target || 0, production_target || 0,
+      revenue_target || 0, collection_target || 0, notes, id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Hedef bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      target: result.rows[0]
+    });
+  } catch (error) {
+    console.error('User Target update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Hedef sil
+app.delete("/api/user-targets/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM user_targets WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Hedef bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Hedef başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('User Target delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Hedef sistemi migration
+app.post("/api/migrate-targets", async (req, res) => {
+  try {
+    console.log('🎯 Hedef sistemi migration başlatılıyor...');
+
+    // user_targets tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_targets (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          target_year INTEGER NOT NULL,
+          target_month INTEGER NOT NULL,
+
+          sales_target DECIMAL(12,2) DEFAULT 0,
+          sales_achieved DECIMAL(12,2) DEFAULT 0,
+
+          visit_target INTEGER DEFAULT 0,
+          visit_achieved INTEGER DEFAULT 0,
+
+          production_target INTEGER DEFAULT 0,
+          production_achieved INTEGER DEFAULT 0,
+
+          revenue_target DECIMAL(12,2) DEFAULT 0,
+          revenue_achieved DECIMAL(12,2) DEFAULT 0,
+
+          collection_target DECIMAL(12,2) DEFAULT 0,
+          collection_achieved DECIMAL(12,2) DEFAULT 0,
+
+          notes TEXT,
+          is_active BOOLEAN DEFAULT true,
+          created_by INTEGER REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+          UNIQUE(user_id, target_year, target_month)
+      );
+    `);
+
+    // İndeksler ekle
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_targets_user_id ON user_targets(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_targets_year_month ON user_targets(target_year, target_month);
+      CREATE INDEX IF NOT EXISTS idx_user_targets_active ON user_targets(is_active);
+    `);
+
+    // Örnek hedefler oluştur
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    const users = await pool.query('SELECT id, role_id FROM users');
+
+    for (const user of users.rows) {
+      // Bu ay için hedef
+      const salesTarget = user.role_id === 1 ? 150000 : user.role_id === 2 ? 80000 : user.role_id === 3 ? 50000 : 25000;
+      const visitTarget = [1, 2, 3].includes(user.role_id) ? 20 : 5;
+      const productionTarget = user.role_id === 3 ? 100 : 0;
+      const revenueTarget = user.role_id === 1 ? 200000 : user.role_id === 2 ? 120000 : 60000;
+      const collectionTarget = [1, 2].includes(user.role_id) ? 80000 : 30000;
+
+      await pool.query(`
+        INSERT INTO user_targets (
+          user_id, target_year, target_month,
+          sales_target, visit_target, production_target, revenue_target, collection_target,
+          notes, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT (user_id, target_year, target_month) DO NOTHING
+      `, [
+        user.id, currentYear, currentMonth,
+        salesTarget, visitTarget, productionTarget, revenueTarget, collectionTarget,
+        'Otomatik oluşturulan örnek hedef', 1
+      ]);
+
+      // Gelecek ay için hedef (eğer aralık değilse)
+      if (currentMonth < 12) {
+        await pool.query(`
+          INSERT INTO user_targets (
+            user_id, target_year, target_month,
+            sales_target, visit_target, production_target, revenue_target, collection_target,
+            notes, created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ON CONFLICT (user_id, target_year, target_month) DO NOTHING
+        `, [
+          user.id, currentYear, currentMonth + 1,
+          Math.round(salesTarget * 1.1), visitTarget + 2, productionTarget + 10,
+          Math.round(revenueTarget * 1.1), Math.round(collectionTarget * 1.05),
+          'Otomatik oluşturulan gelecek ay hedefi', 1
+        ]);
+      }
+    }
+
+    console.log('✅ Hedef sistemi migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'Hedef sistemi başarıyla oluşturuldu'
+    });
+
+  } catch (error) {
+    console.error('Hedef migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// İrsaliye Yönetimi API'leri
+app.get("/api/delivery-notes", async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    let query = `
+      SELECT dn.*,
+             c.company_name as customer_name,
+             c.address as customer_address,
+             u.full_name as delivered_by_name,
+             o.order_number
+      FROM delivery_notes dn
+      LEFT JOIN customers c ON dn.customer_id = c.id
+      LEFT JOIN users u ON dn.delivered_by = u.id
+      LEFT JOIN orders o ON dn.order_id = o.id
+    `;
+
+    const params = [];
+
+    if (status) {
+      query += ` WHERE dn.status = $1`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY dn.created_at DESC`;
+
+    const result = await pool.query(query, params);
+
+    console.log('Delivery Notes API - Bulunan irsaliye sayısı:', result.rows.length);
+
+    res.json({
+      success: true,
+      delivery_notes: result.rows
+    });
+  } catch (error) {
+    console.error('Delivery Notes API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek irsaliye getir
+app.get("/api/delivery-notes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT dn.*,
+             c.company_name as customer_name,
+             c.address as customer_address,
+             u.full_name as delivered_by_name,
+             o.order_number
+      FROM delivery_notes dn
+      LEFT JOIN customers c ON dn.customer_id = c.id
+      LEFT JOIN users u ON dn.delivered_by = u.id
+      LEFT JOIN orders o ON dn.order_id = o.id
+      WHERE dn.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'İrsaliye bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      delivery_note: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Delivery Note get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// İrsaliye numarası oluştur
+app.get("/api/delivery-notes/generate-number", async (req, res) => {
+  try {
+    const now = new Date();
+    const year = now.getFullYear().toString().substr(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+
+    // Bugün oluşturulan irsaliye sayısını bul
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const countResult = await pool.query(
+      'SELECT COUNT(*) as count FROM delivery_notes WHERE created_at >= $1 AND created_at < $2',
+      [todayStart, todayEnd]
+    );
+
+    const dailyCount = parseInt(countResult.rows[0].count) + 1;
+    const sequenceNumber = dailyCount.toString().padStart(3, '0');
+
+    const deliveryNumber = `IRS${year}${month}${day}${sequenceNumber}`;
+
+    res.json({
+      success: true,
+      delivery_number: deliveryNumber
+    });
+  } catch (error) {
+    console.error('Delivery number generation hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Yeni irsaliye oluştur
+app.post("/api/delivery-notes", async (req, res) => {
+  try {
+    const {
+      delivery_number, order_id, customer_id, delivered_by,
+      delivery_date, delivery_time, delivery_address, notes, internal_notes
+    } = req.body;
+
+    // İrsaliye numarası benzersizlik kontrolü
+    const existingDelivery = await pool.query('SELECT id FROM delivery_notes WHERE delivery_number = $1', [delivery_number]);
+    if (existingDelivery.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu irsaliye numarası zaten kullanılıyor'
+      });
+    }
+
+    const result = await pool.query(`
+      INSERT INTO delivery_notes (
+        delivery_number, order_id, customer_id, delivered_by,
+        delivery_date, delivery_time, delivery_address, notes, internal_notes,
+        status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `, [
+      delivery_number, order_id || null, customer_id, delivered_by || null,
+      delivery_date, delivery_time || null, delivery_address, notes, internal_notes,
+      'pending', 1 // TODO: Gerçek kullanıcı ID'si
+    ]);
+
+    res.json({
+      success: true,
+      delivery_note: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Delivery Note create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// İrsaliye güncelle
+app.put("/api/delivery-notes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      delivery_number, order_id, customer_id, delivered_by,
+      delivery_date, delivery_time, delivery_address, notes, internal_notes, status
+    } = req.body;
+
+    // İrsaliye numarası benzersizlik kontrolü (kendisi hariç)
+    const existingDelivery = await pool.query('SELECT id FROM delivery_notes WHERE delivery_number = $1 AND id != $2', [delivery_number, id]);
+    if (existingDelivery.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu irsaliye numarası zaten kullanılıyor'
+      });
+    }
+
+    const result = await pool.query(`
+      UPDATE delivery_notes SET
+        delivery_number = $1,
+        order_id = $2,
+        customer_id = $3,
+        delivered_by = $4,
+        delivery_date = $5,
+        delivery_time = $6,
+        delivery_address = $7,
+        notes = $8,
+        internal_notes = $9,
+        status = COALESCE($10, status),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11
+      RETURNING *
+    `, [
+      delivery_number, order_id || null, customer_id, delivered_by || null,
+      delivery_date, delivery_time || null, delivery_address, notes, internal_notes,
+      status, id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'İrsaliye bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      delivery_note: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Delivery Note update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// İrsaliye sil
+app.delete("/api/delivery-notes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM delivery_notes WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'İrsaliye bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'İrsaliye başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Delivery Note delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// İrsaliye sistemi migration
+app.post("/api/migrate-delivery-notes", async (req, res) => {
+  try {
+    console.log('📋 İrsaliye sistemi migration başlatılıyor...');
+
+    // Mevcut delivery_notes tablosunu sil ve yeniden oluştur
+    await pool.query('DROP TABLE IF EXISTS delivery_note_items CASCADE');
+    await pool.query('DROP TABLE IF EXISTS delivery_notes CASCADE');
+
+    // Yeni delivery_notes tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE delivery_notes (
+          id SERIAL PRIMARY KEY,
+          delivery_number VARCHAR(50) UNIQUE NOT NULL,
+          order_id INTEGER REFERENCES orders(id),
+          customer_id INTEGER REFERENCES customers(id),
+
+          delivery_date DATE NOT NULL,
+          delivery_time TIME,
+          delivered_by INTEGER REFERENCES users(id),
+          delivery_address TEXT,
+
+          customer_signature TEXT,
+          customer_name VARCHAR(100),
+          customer_title VARCHAR(100),
+          signature_date TIMESTAMP,
+          signature_ip VARCHAR(45),
+          signature_device_info TEXT,
+
+          status VARCHAR(20) DEFAULT 'pending',
+          notes TEXT,
+          internal_notes TEXT,
+
+          attachments JSONB,
+
+          created_by INTEGER REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // İrsaliye detay tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE delivery_note_items (
+          id SERIAL PRIMARY KEY,
+          delivery_note_id INTEGER REFERENCES delivery_notes(id) ON DELETE CASCADE,
+          product_id INTEGER REFERENCES products(id),
+          product_name VARCHAR(200) NOT NULL,
+          quantity INTEGER NOT NULL,
+          unit_price DECIMAL(10,2),
+          total_price DECIMAL(10,2),
+          unit VARCHAR(20) DEFAULT 'adet',
+          notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // İndeksler ekle
+    await pool.query(`
+      CREATE INDEX idx_delivery_notes_customer_id ON delivery_notes(customer_id);
+      CREATE INDEX idx_delivery_notes_order_id ON delivery_notes(order_id);
+      CREATE INDEX idx_delivery_notes_status ON delivery_notes(status);
+      CREATE INDEX idx_delivery_notes_delivery_date ON delivery_notes(delivery_date);
+      CREATE INDEX idx_delivery_note_items_delivery_note_id ON delivery_note_items(delivery_note_id);
+    `);
+
+    // Örnek irsaliyeler oluştur
+    const customers = await pool.query('SELECT id, company_name, address FROM customers LIMIT 5');
+    const users = await pool.query('SELECT id FROM users LIMIT 1');
+
+    if (customers.rows.length > 0 && users.rows.length > 0) {
+      const userId = users.rows[0].id;
+
+      for (let i = 0; i < customers.rows.length; i++) {
+        const customer = customers.rows[i];
+        const deliveryNumber = `IRS${new Date().getFullYear().toString().substr(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${(i + 1).toString().padStart(3, '0')}`;
+
+        const deliveryDate = new Date();
+        deliveryDate.setDate(deliveryDate.getDate() + i);
+
+        const status = i % 4 === 0 ? 'delivered' : i % 3 === 0 ? 'in_transit' : 'pending';
+
+        const result = await pool.query(`
+          INSERT INTO delivery_notes (
+            delivery_number, customer_id, delivery_date, delivery_time,
+            delivered_by, delivery_address, status, notes, internal_notes,
+            created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id
+        `, [
+          deliveryNumber, customer.id, deliveryDate.toISOString().split('T')[0], '14:00:00',
+          userId, customer.address, status,
+          `Örnek irsaliye - ${customer.company_name} için teslimat`,
+          'Dahili not: Dikkatli teslimat yapılacak', userId
+        ]);
+
+        // Eğer teslim edilmişse örnek imza ekle
+        if (status === 'delivered') {
+          await pool.query(`
+            UPDATE delivery_notes SET
+              customer_signature = $1,
+              customer_name = $2,
+              customer_title = $3,
+              signature_date = $4,
+              signature_ip = $5
+            WHERE id = $6
+          `, [
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'Yetkili Kişi', 'Satın Alma Müdürü', new Date(), '192.168.1.100',
+            result.rows[0].id
+          ]);
+        }
+      }
+    }
+
+    console.log('✅ İrsaliye sistemi migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'İrsaliye sistemi başarıyla güncellendi'
+    });
+
+  } catch (error) {
+    console.error('İrsaliye migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Randevu/Görev Yönetimi API'leri
+app.get("/api/appointments", async (req, res) => {
+  try {
+    const { type, status, assigned_to, customer_id } = req.query;
+
+    let query = `
+      SELECT a.*,
+             u.full_name as assigned_to_name,
+             r.name as assigned_to_role,
+             c.company_name as customer_name
+      FROM appointments a
+      LEFT JOIN users u ON a.assigned_to = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN customers c ON a.customer_id = c.id
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let paramIndex = 1;
+
+    if (type) {
+      query += ` AND a.type = $${paramIndex}`;
+      params.push(type);
+      paramIndex++;
+    }
+
+    if (status) {
+      query += ` AND a.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (assigned_to) {
+      query += ` AND a.assigned_to = $${paramIndex}`;
+      params.push(parseInt(assigned_to));
+      paramIndex++;
+    }
+
+    if (customer_id) {
+      query += ` AND a.customer_id = $${paramIndex}`;
+      params.push(parseInt(customer_id));
+      paramIndex++;
+    }
+
+    query += ` ORDER BY a.start_date ASC, a.start_time ASC`;
+
+    const result = await pool.query(query, params);
+
+    console.log('Appointments API - Bulunan randevu sayısı:', result.rows.length);
+
+    res.json({
+      success: true,
+      appointments: result.rows
+    });
+  } catch (error) {
+    console.error('Appointments API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek randevu getir
+app.get("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT a.*,
+             u.full_name as assigned_to_name,
+             r.name as assigned_to_role,
+             c.company_name as customer_name
+      FROM appointments a
+      LEFT JOIN users u ON a.assigned_to = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN customers c ON a.customer_id = c.id
+      WHERE a.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Randevu bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      appointment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Appointment get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Yeni randevu oluştur
+app.post("/api/appointments", async (req, res) => {
+  try {
+    const {
+      title, description, type, priority,
+      start_date, start_time, end_date, end_time, all_day,
+      assigned_to, customer_id, order_id,
+      location, address, latitude, longitude,
+      reminder_minutes
+    } = req.body;
+
+    const result = await pool.query(`
+      INSERT INTO appointments (
+        title, description, type, priority,
+        start_date, start_time, end_date, end_time, all_day,
+        assigned_to, customer_id, order_id,
+        location, address, latitude, longitude,
+        reminder_minutes, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING *
+    `, [
+      title, description, type, priority,
+      start_date, start_time || null, end_date || null, end_time || null, all_day || false,
+      assigned_to, customer_id || null, order_id || null,
+      location, address, latitude || null, longitude || null,
+      reminder_minutes || 15, 1 // TODO: Gerçek kullanıcı ID'si
+    ]);
+
+    res.json({
+      success: true,
+      appointment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Appointment create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Randevu güncelle
+app.put("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title, description, type, priority,
+      start_date, start_time, end_date, end_time, all_day,
+      assigned_to, customer_id, order_id,
+      location, address, latitude, longitude,
+      reminder_minutes, status
+    } = req.body;
+
+    const result = await pool.query(`
+      UPDATE appointments SET
+        title = $1,
+        description = $2,
+        type = $3,
+        priority = $4,
+        start_date = $5,
+        start_time = $6,
+        end_date = $7,
+        end_time = $8,
+        all_day = $9,
+        assigned_to = $10,
+        customer_id = $11,
+        order_id = $12,
+        location = $13,
+        address = $14,
+        latitude = $15,
+        longitude = $16,
+        reminder_minutes = $17,
+        status = COALESCE($18, status),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $19
+      RETURNING *
+    `, [
+      title, description, type, priority,
+      start_date, start_time || null, end_date || null, end_time || null, all_day || false,
+      assigned_to, customer_id || null, order_id || null,
+      location, address, latitude || null, longitude || null,
+      reminder_minutes || 15, status, id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Randevu bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      appointment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Appointment update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Randevu tamamla
+app.post("/api/appointments/:id/complete", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completion_notes } = req.body;
+
+    const result = await pool.query(`
+      UPDATE appointments SET
+        status = 'completed',
+        completion_notes = $1,
+        completion_date = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING *
+    `, [completion_notes, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Randevu bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      appointment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Appointment complete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Randevu sil
+app.delete("/api/appointments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM appointments WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Randevu bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Randevu başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Appointment delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Randevu sistemi migration
+app.post("/api/migrate-appointments", async (req, res) => {
+  try {
+    console.log('📅 Randevu sistemi migration başlatılıyor...');
+
+    // appointments tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS appointments (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(200) NOT NULL,
+          description TEXT,
+
+          type VARCHAR(50) NOT NULL,
+          priority VARCHAR(20) DEFAULT 'medium',
+
+          start_date DATE NOT NULL,
+          start_time TIME,
+          end_date DATE,
+          end_time TIME,
+          all_day BOOLEAN DEFAULT false,
+
+          customer_id INTEGER REFERENCES customers(id),
+          order_id INTEGER REFERENCES orders(id),
+          assigned_to INTEGER REFERENCES users(id) NOT NULL,
+
+          location TEXT,
+          address TEXT,
+          latitude DECIMAL(10, 8),
+          longitude DECIMAL(11, 8),
+
+          status VARCHAR(20) DEFAULT 'pending',
+          completion_notes TEXT,
+          completion_date TIMESTAMP,
+
+          reminder_minutes INTEGER DEFAULT 15,
+          reminder_sent BOOLEAN DEFAULT false,
+
+          is_recurring BOOLEAN DEFAULT false,
+          recurrence_pattern JSONB,
+
+          created_by INTEGER REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // appointment_participants tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS appointment_participants (
+          id SERIAL PRIMARY KEY,
+          appointment_id INTEGER REFERENCES appointments(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id),
+          customer_contact_id INTEGER,
+          participant_type VARCHAR(20) DEFAULT 'attendee',
+          response_status VARCHAR(20) DEFAULT 'pending',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // İndeksler ekle
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_appointments_assigned_to ON appointments(assigned_to);
+      CREATE INDEX IF NOT EXISTS idx_appointments_customer_id ON appointments(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_appointments_start_date ON appointments(start_date);
+      CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
+      CREATE INDEX IF NOT EXISTS idx_appointments_type ON appointments(type);
+    `);
+
+    // Örnek randevular oluştur
+    const users = await pool.query('SELECT id, full_name FROM users LIMIT 3');
+    const customers = await pool.query('SELECT id, company_name FROM customers LIMIT 2');
+
+    if (users.rows.length > 0 && customers.rows.length > 0) {
+      const appointmentTypes = ['appointment', 'task', 'visit', 'call', 'meeting'];
+      const priorities = ['low', 'medium', 'high', 'urgent'];
+      const statuses = ['pending', 'in_progress', 'completed'];
+
+      let appointmentCount = 0;
+
+      for (const user of users.rows) {
+        for (const customer of customers.rows) {
+          appointmentCount++;
+
+          const type = appointmentTypes[(appointmentCount - 1) % 5];
+          const priority = priorities[(appointmentCount - 1) % 4];
+          const status = statuses[(appointmentCount - 1) % 3];
+
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() + appointmentCount);
+
+          const startTime = appointmentCount % 3 === 1 ? '09:00:00' :
+                           appointmentCount % 3 === 2 ? '14:00:00' : '16:30:00';
+
+          const result = await pool.query(`
+            INSERT INTO appointments (
+              title, description, type, priority,
+              start_date, start_time, assigned_to, customer_id,
+              location, address, status, reminder_minutes, created_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING id
+          `, [
+            `${customer.company_name} ile ${type}`,
+            `Örnek randevu açıklaması - ${customer.company_name} firması ile yapılacak ${type}`,
+            type, priority,
+            startDate.toISOString().split('T')[0], startTime,
+            user.id, customer.id,
+            `${customer.company_name} Ofisi`,
+            `Örnek adres - ${customer.company_name}`,
+            status,
+            priority === 'urgent' ? 5 : priority === 'high' ? 15 : 30,
+            1
+          ]);
+
+          // Bazı randevuları tamamlanmış olarak işaretle
+          if (appointmentCount % 4 === 0) {
+            await pool.query(`
+              UPDATE appointments SET
+                status = 'completed',
+                completion_notes = 'Randevu başarıyla tamamlandı. Müşteri ile görüşme yapıldı.',
+                completion_date = CURRENT_TIMESTAMP - INTERVAL '${appointmentCount} hours'
+              WHERE id = $1
+            `, [result.rows[0].id]);
+          }
+        }
+      }
+
+      // Bazı görevler ekle (müşteri bağımsız)
+      for (const user of users.rows.slice(0, 2)) {
+        appointmentCount++;
+
+        await pool.query(`
+          INSERT INTO appointments (
+            title, description, type, priority,
+            start_date, start_time, all_day,
+            assigned_to, location, status, reminder_minutes, created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `, [
+          'Haftalık Rapor Hazırlama',
+          'Haftalık satış raporunu hazırla ve yöneticiye sun',
+          'task', 'medium',
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          '10:00:00', false,
+          user.id, 'Ofis', 'pending', 60, 1
+        ]);
+      }
+    }
+
+    console.log('✅ Randevu sistemi migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'Randevu sistemi başarıyla oluşturuldu'
+    });
+
+  } catch (error) {
+    console.error('Randevu migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Backup alma
 app.post("/api/backup-database", async (req, res) => {
   try {

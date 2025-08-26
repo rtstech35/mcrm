@@ -27,6 +27,8 @@
                 <li><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
                 <li><a href="#" onclick="showRoles()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔐 Roller</a></li>
                 <li><a href="#" onclick="showTargets()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Hedefler</a></li>
+                <li><a href="#" onclick="showDeliveryNotes()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 İrsaliyeler</a></li>
+                <li><a href="#" onclick="showAppointments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📅 Randevular</a></li>
                 <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
                 <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
@@ -245,6 +247,401 @@
                     <label>Referans No:</label>
                     <input type="text" id="transaction_reference">
                 </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rol Modal -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('roleModal')">&times;</span>
+            <h3 id="roleModalTitle">Yeni Rol</h3>
+            <form id="roleForm">
+                <div class="form-group">
+                    <label>Rol Adı: <span style="color: red;">*</span></label>
+                    <input type="text" id="role_name" required placeholder="Örn: Sales Manager">
+                    <div class="form-help">Rol adı benzersiz olmalıdır</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Açıklama: <span style="color: red;">*</span></label>
+                    <textarea id="role_description" rows="3" required placeholder="Bu rolün yetkilerini ve sorumluluklarını açıklayın..."></textarea>
+                    <div class="form-help">Rolün ne yapabileceğini detaylı olarak açıklayın</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Yetki Seviyesi:</label>
+                    <select id="role_level">
+                        <option value="1">Seviye 1 - Viewer (Sadece Görüntüleme)</option>
+                        <option value="2">Seviye 2 - Employee (Temel İşlemler)</option>
+                        <option value="3">Seviye 3 - Manager (Yönetim Yetkileri)</option>
+                        <option value="4">Seviye 4 - Admin (Tüm Yetkiler)</option>
+                    </select>
+                    <div class="form-help">Yetki seviyesi rolün sistem erişimini belirler</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="role_active" checked>
+                        Aktif Rol
+                    </label>
+                    <div class="form-help">Pasif roller kullanıcılara atanamaz</div>
+                </div>
+
+                <input type="hidden" id="role_id">
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Departman Modal -->
+    <div id="departmentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('departmentModal')">&times;</span>
+            <h3 id="departmentModalTitle">Yeni Departman</h3>
+            <form id="departmentForm">
+                <div class="form-group">
+                    <label>Departman Adı: <span style="color: red;">*</span></label>
+                    <input type="text" id="dept_name" required placeholder="Örn: Satış Departmanı">
+                    <div class="form-help">Departman adı benzersiz olmalıdır</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Açıklama: <span style="color: red;">*</span></label>
+                    <textarea id="dept_description" rows="3" required placeholder="Bu departmanın görevlerini ve sorumluluklarını açıklayın..."></textarea>
+                    <div class="form-help">Departmanın ne yaptığını detaylı olarak açıklayın</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Departman Kodu:</label>
+                    <input type="text" id="dept_code" placeholder="Örn: SALES, PROD, SHIP" maxlength="10">
+                    <div class="form-help">Kısa kod (opsiyonel, raporlarda kullanılır)</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Departman Yöneticisi:</label>
+                    <select id="dept_manager_id">
+                        <option value="">Yönetici Seçiniz (Opsiyonel)</option>
+                    </select>
+                    <div class="form-help">Bu departmanın sorumlu yöneticisi</div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="dept_active" checked>
+                        Aktif Departman
+                    </label>
+                    <div class="form-help">Pasif departmanlara kullanıcı atanamaz</div>
+                </div>
+
+                <input type="hidden" id="dept_id">
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hedef Modal -->
+    <div id="targetModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeModal('targetModal')">&times;</span>
+            <h3 id="targetModalTitle">Kullanıcı Hedefi Belirle</h3>
+            <form id="targetForm">
+                <div class="form-group">
+                    <label>Kullanıcı: <span style="color: red;">*</span></label>
+                    <select id="target_user_id" required>
+                        <option value="">Kullanıcı Seçiniz</option>
+                    </select>
+                    <div class="form-help">Hedef belirlenecek kullanıcıyı seçin</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Hedef Yılı:</label>
+                        <select id="target_year" required>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hedef Ayı:</label>
+                        <select id="target_month" required>
+                            <option value="1">Ocak</option>
+                            <option value="2">Şubat</option>
+                            <option value="3">Mart</option>
+                            <option value="4">Nisan</option>
+                            <option value="5">Mayıs</option>
+                            <option value="6">Haziran</option>
+                            <option value="7">Temmuz</option>
+                            <option value="8">Ağustos</option>
+                            <option value="9">Eylül</option>
+                            <option value="10">Ekim</option>
+                            <option value="11">Kasım</option>
+                            <option value="12">Aralık</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Satış Hedefi (TL):</label>
+                        <input type="number" id="target_sales" step="0.01" min="0" placeholder="0.00">
+                        <div class="form-help">Aylık satış tutarı hedefi</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ziyaret Hedefi:</label>
+                        <input type="number" id="target_visits" min="0" placeholder="0">
+                        <div class="form-help">Aylık müşteri ziyaret sayısı</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Üretim Hedefi (Adet):</label>
+                        <input type="number" id="target_production" min="0" placeholder="0">
+                        <div class="form-help">Aylık üretim adet hedefi</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ciro Hedefi (TL):</label>
+                        <input type="number" id="target_revenue" step="0.01" min="0" placeholder="0.00">
+                        <div class="form-help">Aylık toplam ciro hedefi</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Tahsilat Hedefi (TL):</label>
+                    <input type="number" id="target_collection" step="0.01" min="0" placeholder="0.00">
+                    <div class="form-help">Aylık tahsilat tutarı hedefi</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="target_notes" rows="3" placeholder="Hedef ile ilgili notlarınızı yazın..."></textarea>
+                    <div class="form-help">Hedef hakkında ek bilgiler</div>
+                </div>
+
+                <input type="hidden" id="target_id">
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- İrsaliye Modal -->
+    <div id="deliveryNoteModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <span class="close" onclick="closeModal('deliveryNoteModal')">&times;</span>
+            <h3 id="deliveryNoteModalTitle">Yeni İrsaliye</h3>
+            <form id="deliveryNoteForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>İrsaliye No: <span style="color: red;">*</span></label>
+                        <input type="text" id="delivery_number" required placeholder="Otomatik oluşturulacak" readonly>
+                        <div class="form-help">Sistem tarafından otomatik oluşturulur</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sipariş:</label>
+                        <select id="delivery_order_id">
+                            <option value="">Sipariş Seçiniz (Opsiyonel)</option>
+                        </select>
+                        <div class="form-help">Hangi siparişe ait irsaliye</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Müşteri: <span style="color: red;">*</span></label>
+                        <select id="delivery_customer_id" required>
+                            <option value="">Müşteri Seçiniz</option>
+                        </select>
+                        <div class="form-help">Teslimat yapılacak müşteri</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sevkiyat Personeli:</label>
+                        <select id="delivery_delivered_by">
+                            <option value="">Personel Seçiniz</option>
+                        </select>
+                        <div class="form-help">Teslimatı yapacak personel</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Teslimat Tarihi: <span style="color: red;">*</span></label>
+                        <input type="date" id="delivery_date" required>
+                        <div class="form-help">Planlanan teslimat tarihi</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Teslimat Saati:</label>
+                        <input type="time" id="delivery_time">
+                        <div class="form-help">Planlanan teslimat saati</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Teslimat Adresi:</label>
+                    <textarea id="delivery_address" rows="2" placeholder="Teslimat yapılacak adres..."></textarea>
+                    <div class="form-help">Müşteri adresinden farklıysa belirtin</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="delivery_notes" rows="3" placeholder="İrsaliye ile ilgili notlar..."></textarea>
+                    <div class="form-help">Teslimat sırasında dikkat edilecek hususlar</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Dahili Notlar:</label>
+                    <textarea id="delivery_internal_notes" rows="2" placeholder="Sadece personelin göreceği notlar..."></textarea>
+                    <div class="form-help">Bu notlar müşteri tarafından görülmez</div>
+                </div>
+
+                <input type="hidden" id="delivery_note_id">
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- İmza Görüntüleme Modal -->
+    <div id="signatureModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeModal('signatureModal')">&times;</span>
+            <h3>Dijital İmza</h3>
+            <div id="signatureContent">
+                <!-- İmza içeriği buraya yüklenecek -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Randevu Modal -->
+    <div id="appointmentModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="closeModal('appointmentModal')">&times;</span>
+            <h3 id="appointmentModalTitle">Yeni Randevu</h3>
+            <form id="appointmentForm">
+                <div class="form-group">
+                    <label>Başlık: <span style="color: red;">*</span></label>
+                    <input type="text" id="appointment_title" required placeholder="Randevu başlığı...">
+                    <div class="form-help">Randevunun kısa açıklaması</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="appointment_description" rows="3" placeholder="Detaylı açıklama..."></textarea>
+                    <div class="form-help">Randevu hakkında ek bilgiler</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Tür: <span style="color: red;">*</span></label>
+                        <select id="appointment_type" required>
+                            <option value="">Tür Seçiniz</option>
+                            <option value="appointment">📅 Randevu</option>
+                            <option value="task">✅ Görev</option>
+                            <option value="visit">🏢 Ziyaret</option>
+                            <option value="call">📞 Arama</option>
+                            <option value="meeting">👥 Toplantı</option>
+                        </select>
+                        <div class="form-help">Randevu türünü seçin</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Öncelik:</label>
+                        <select id="appointment_priority">
+                            <option value="low">🟢 Düşük</option>
+                            <option value="medium" selected>🟡 Orta</option>
+                            <option value="high">🟠 Yüksek</option>
+                            <option value="urgent">🔴 Acil</option>
+                        </select>
+                        <div class="form-help">Öncelik seviyesi</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Başlangıç Tarihi: <span style="color: red;">*</span></label>
+                        <input type="date" id="appointment_start_date" required>
+                        <div class="form-help">Randevu tarihi</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Başlangıç Saati:</label>
+                        <input type="time" id="appointment_start_time">
+                        <div class="form-help">Randevu saati (opsiyonel)</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Bitiş Tarihi:</label>
+                        <input type="date" id="appointment_end_date">
+                        <div class="form-help">Bitiş tarihi (opsiyonel)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bitiş Saati:</label>
+                        <input type="time" id="appointment_end_time">
+                        <div class="form-help">Bitiş saati (opsiyonel)</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="appointment_all_day">
+                        Tüm Gün
+                    </label>
+                    <div class="form-help">Bu randevu tüm gün sürecek</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Atanan Kişi: <span style="color: red;">*</span></label>
+                        <select id="appointment_assigned_to" required>
+                            <option value="">Kişi Seçiniz</option>
+                        </select>
+                        <div class="form-help">Randevudan sorumlu kişi</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Müşteri:</label>
+                        <select id="appointment_customer_id">
+                            <option value="">Müşteri Seçiniz (Opsiyonel)</option>
+                        </select>
+                        <div class="form-help">İlgili müşteri</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Konum:</label>
+                    <input type="text" id="appointment_location" placeholder="Randevu yeri...">
+                    <div class="form-help">Randevunun yapılacağı yer</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Adres:</label>
+                    <textarea id="appointment_address" rows="2" placeholder="Detaylı adres..."></textarea>
+                    <div class="form-help">Konum adresi</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Hatırlatma:</label>
+                    <select id="appointment_reminder_minutes">
+                        <option value="0">Hatırlatma Yok</option>
+                        <option value="5">5 dakika önce</option>
+                        <option value="15" selected>15 dakika önce</option>
+                        <option value="30">30 dakika önce</option>
+                        <option value="60">1 saat önce</option>
+                        <option value="1440">1 gün önce</option>
+                    </select>
+                    <div class="form-help">Ne kadar önce hatırlatma gönderilsin</div>
+                </div>
+
+                <input type="hidden" id="appointment_id">
                 <button type="submit" class="btn">Kaydet</button>
             </form>
         </div>
@@ -857,6 +1254,216 @@
                 document.getElementById('transactionForm').reset();
                 closeModal('transactionModal');
                 showCariHesap();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        // Rol form submit handler
+        document.getElementById('roleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const roleId = document.getElementById('role_id').value;
+            const formData = {
+                name: document.getElementById('role_name').value,
+                description: document.getElementById('role_description').value,
+                level: parseInt(document.getElementById('role_level').value),
+                is_active: document.getElementById('role_active').checked
+            };
+
+            try {
+                if (roleId) {
+                    // Güncelleme
+                    await apiCall(`/api/roles/${roleId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Rol başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/roles', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Rol başarıyla oluşturuldu!');
+                }
+
+                document.getElementById('roleForm').reset();
+                closeModal('roleModal');
+                showRoles(); // Listeyi yenile
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        // Departman form submit handler
+        document.getElementById('departmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const deptId = document.getElementById('dept_id').value;
+            const formData = {
+                name: document.getElementById('dept_name').value,
+                description: document.getElementById('dept_description').value,
+                code: document.getElementById('dept_code').value,
+                manager_id: document.getElementById('dept_manager_id').value || null,
+                is_active: document.getElementById('dept_active').checked
+            };
+
+            try {
+                if (deptId) {
+                    // Güncelleme
+                    await apiCall(`/api/departments/${deptId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Departman başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/departments', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Departman başarıyla oluşturuldu!');
+                }
+
+                document.getElementById('departmentForm').reset();
+                closeModal('departmentModal');
+                showDepartments(); // Listeyi yenile
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        // Hedef form submit handler
+        document.getElementById('targetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const targetId = document.getElementById('target_id').value;
+            const formData = {
+                user_id: parseInt(document.getElementById('target_user_id').value),
+                target_year: parseInt(document.getElementById('target_year').value),
+                target_month: parseInt(document.getElementById('target_month').value),
+                sales_target: parseFloat(document.getElementById('target_sales').value) || 0,
+                visit_target: parseInt(document.getElementById('target_visits').value) || 0,
+                production_target: parseInt(document.getElementById('target_production').value) || 0,
+                revenue_target: parseFloat(document.getElementById('target_revenue').value) || 0,
+                collection_target: parseFloat(document.getElementById('target_collection').value) || 0,
+                notes: document.getElementById('target_notes').value
+            };
+
+            try {
+                if (targetId) {
+                    // Güncelleme
+                    await apiCall(`/api/user-targets/${targetId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Hedef başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/user-targets', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Hedef başarıyla oluşturuldu!');
+                }
+
+                document.getElementById('targetForm').reset();
+                closeModal('targetModal');
+
+                // Listeyi yenile
+                const year = document.getElementById('targetYearFilter').value;
+                const month = document.getElementById('targetMonthFilter').value;
+                await loadTargetsForMonth(parseInt(year), parseInt(month));
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        // İrsaliye form submit handler
+        document.getElementById('deliveryNoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const deliveryNoteId = document.getElementById('delivery_note_id').value;
+            const formData = {
+                delivery_number: document.getElementById('delivery_number').value,
+                order_id: document.getElementById('delivery_order_id').value || null,
+                customer_id: parseInt(document.getElementById('delivery_customer_id').value),
+                delivered_by: document.getElementById('delivery_delivered_by').value || null,
+                delivery_date: document.getElementById('delivery_date').value,
+                delivery_time: document.getElementById('delivery_time').value || null,
+                delivery_address: document.getElementById('delivery_address').value,
+                notes: document.getElementById('delivery_notes').value,
+                internal_notes: document.getElementById('delivery_internal_notes').value
+            };
+
+            try {
+                if (deliveryNoteId) {
+                    // Güncelleme
+                    await apiCall(`/api/delivery-notes/${deliveryNoteId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('İrsaliye başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/delivery-notes', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('İrsaliye başarıyla oluşturuldu!');
+                }
+
+                document.getElementById('deliveryNoteForm').reset();
+                closeModal('deliveryNoteModal');
+                await loadDeliveryNotes(); // Listeyi yenile
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        // Randevu form submit handler
+        document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const appointmentId = document.getElementById('appointment_id').value;
+            const formData = {
+                title: document.getElementById('appointment_title').value,
+                description: document.getElementById('appointment_description').value,
+                type: document.getElementById('appointment_type').value,
+                priority: document.getElementById('appointment_priority').value,
+                start_date: document.getElementById('appointment_start_date').value,
+                start_time: document.getElementById('appointment_start_time').value || null,
+                end_date: document.getElementById('appointment_end_date').value || null,
+                end_time: document.getElementById('appointment_end_time').value || null,
+                all_day: document.getElementById('appointment_all_day').checked,
+                assigned_to: parseInt(document.getElementById('appointment_assigned_to').value),
+                customer_id: document.getElementById('appointment_customer_id').value || null,
+                location: document.getElementById('appointment_location').value,
+                address: document.getElementById('appointment_address').value,
+                reminder_minutes: parseInt(document.getElementById('appointment_reminder_minutes').value) || 0
+            };
+
+            try {
+                if (appointmentId) {
+                    // Güncelleme
+                    await apiCall(`/api/appointments/${appointmentId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Randevu başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/appointments', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Randevu başarıyla oluşturuldu!');
+                }
+
+                document.getElementById('appointmentForm').reset();
+                closeModal('appointmentModal');
+                await loadAppointments(); // Listeyi yenile
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
@@ -1644,29 +2251,94 @@
                 
                 let html = `
                     <div class="card">
-                        <h2>Departman Yönetimi</h2>
-                        <button class="btn" onclick="openDepartmentModal()">Yeni Departman</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>🏢 Departman Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Organizasyonel yapıyı ve departmanları yönetin
+                                </p>
+                            </div>
+                            <button class="btn" onclick="openDepartmentModal()">
+                                ➕ Yeni Departman
+                            </button>
+                        </div>
+
+                        <div style="background: var(--primary-light); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h4 style="color: var(--primary-solid); margin-bottom: 0.5rem;">💡 Departman Bilgileri:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; font-size: 0.875rem;">
+                                <div><strong>Satış:</strong> Müşteri ilişkileri ve satış süreçleri</div>
+                                <div><strong>Üretim:</strong> Ürün üretimi ve kalite kontrol</div>
+                                <div><strong>Sevkiyat:</strong> Lojistik ve teslimat işlemleri</div>
+                                <div><strong>Muhasebe:</strong> Mali işler ve raporlama</div>
+                            </div>
+                        </div>
+
                         <table class="table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Departman Adı</th>
                                     <th>Açıklama</th>
+                                    <th>Kullanıcı Sayısı</th>
+                                    <th>Durum</th>
                                     <th>İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
                 
+                // Kullanıcı sayılarını hesapla (örnek - gerçek veri users tablosundan gelecek)
+                const userCounts = {
+                    1: 8,  // Satış Departmanı
+                    2: 5,  // Üretim Departmanı
+                    3: 3,  // Sevkiyat Departmanı
+                    4: 4,  // Muhasebe Departmanı
+                    5: 2,  // IT Departmanı
+                    6: 3,  // İnsan Kaynakları
+                    7: 2   // Kalite Kontrol
+                };
+
                 departments.forEach(dept => {
+                    const userCount = userCounts[dept.id] || 0;
+                    const deptIcon = {
+                        'Satış Departmanı': '💼',
+                        'Üretim Departmanı': '🏭',
+                        'Sevkiyat Departmanı': '🚚',
+                        'Muhasebe Departmanı': '💰',
+                        'IT Departmanı': '💻',
+                        'İnsan Kaynakları': '👥',
+                        'Kalite Kontrol': '🔍'
+                    }[dept.name] || '🏢';
+
+                    const isActive = dept.is_active !== false;
+
                     html += `
                         <tr>
                             <td>${dept.id}</td>
-                            <td>${dept.name}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: 1.2rem;">${deptIcon}</span>
+                                    <strong>${dept.name}</strong>
+                                </div>
+                            </td>
                             <td>${dept.description || '-'}</td>
                             <td>
-                                <button class="btn" onclick="editDepartment(${dept.id})">Düzenle</button>
-                                <button class="btn btn-danger" onclick="deleteDepartment(${dept.id})">Sil</button>
+                                <span class="status-badge info">${userCount} kullanıcı</span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${isActive ? 'success' : 'danger'}">
+                                    ${isActive ? 'Aktif' : 'Pasif'}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="editDepartment(${dept.id})">
+                                        ✏️ Düzenle
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteDepartment(${dept.id})">
+                                        🗑️ Sil
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -1677,6 +2349,93 @@
                 
             } catch (error) {
                 console.error('Departmanlar yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🏢 Departman Yönetimi</h2>
+                        <p style="color: red;">Departmanlar yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Departman modal fonksiyonları
+        function openDepartmentModal(deptId = null) {
+            const modal = document.getElementById('departmentModal');
+            const title = document.getElementById('departmentModalTitle');
+            const form = document.getElementById('departmentForm');
+
+            if (deptId) {
+                title.textContent = 'Departman Düzenle';
+                loadDepartmentData(deptId);
+            } else {
+                title.textContent = 'Yeni Departman';
+                form.reset();
+                document.getElementById('dept_active').checked = true;
+                document.getElementById('dept_id').value = '';
+                loadManagerOptions();
+            }
+
+            modal.style.display = 'block';
+        }
+
+        async function loadDepartmentData(deptId) {
+            try {
+                const response = await apiCall(`/api/departments/${deptId}`);
+                const dept = response.department || response;
+
+                document.getElementById('dept_id').value = dept.id;
+                document.getElementById('dept_name').value = dept.name;
+                document.getElementById('dept_description').value = dept.description || '';
+                document.getElementById('dept_code').value = dept.code || '';
+                document.getElementById('dept_manager_id').value = dept.manager_id || '';
+                document.getElementById('dept_active').checked = dept.is_active !== false;
+
+                await loadManagerOptions();
+            } catch (error) {
+                console.error('Departman verileri yüklenemedi:', error);
+                alert('Departman verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function loadManagerOptions() {
+            try {
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                const managerSelect = document.getElementById('dept_manager_id');
+
+                managerSelect.innerHTML = '<option value="">Yönetici Seçiniz (Opsiyonel)</option>';
+
+                // Sadece Manager ve Admin rolündeki kullanıcıları göster
+                const managers = users.filter(user =>
+                    user.role_name && (user.role_name.includes('Manager') || user.role_name.includes('Admin'))
+                );
+
+                managers.forEach(user => {
+                    managerSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name})</option>`;
+                });
+            } catch (error) {
+                console.error('Yönetici listesi yüklenemedi:', error);
+            }
+        }
+
+        function editDepartment(deptId) {
+            openDepartmentModal(deptId);
+        }
+
+        async function deleteDepartment(deptId) {
+            if (!confirm('Bu departmanı silmek istediğinizden emin misiniz?\n\nBu departman silindiğinde, bu departmana ait kullanıcılar varsayılan departmana atanacaktır.')) {
+                return;
+            }
+
+            try {
+                await apiCall(`/api/departments/${deptId}`, {
+                    method: 'DELETE'
+                });
+
+                alert('Departman başarıyla silindi!');
+                showDepartments(); // Listeyi yenile
+            } catch (error) {
+                alert('Departman silinemedi: ' + error.message);
             }
         }
 
@@ -1688,29 +2447,83 @@
 
                 let html = `
                     <div class="card">
-                        <h2>Rol Yönetimi</h2>
-                        <p style="margin-bottom: 1rem; color: #666;">
-                            <strong>Roller:</strong> Kullanıcıların sistem yetkilerini belirler.<br>
-                            <strong>Admin:</strong> Tüm yetkiler | <strong>Manager:</strong> Departman yönetimi |
-                            <strong>Employee:</strong> Temel işlemler | <strong>Viewer:</strong> Sadece görüntüleme
-                        </p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>🔐 Rol Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Kullanıcı rollerini ve yetkilerini yönetin
+                                </p>
+                            </div>
+                            <button class="btn" onclick="openRoleModal()">
+                                ➕ Yeni Rol
+                            </button>
+                        </div>
+
+                        <div style="background: var(--primary-light); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h4 style="color: var(--primary-solid); margin-bottom: 0.5rem;">💡 Rol Açıklamaları:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.875rem;">
+                                <div><strong>Admin:</strong> Tüm sistem yetkilerine sahip</div>
+                                <div><strong>Manager:</strong> Departman yönetimi ve raporlama</div>
+                                <div><strong>Employee:</strong> Temel işlem yetkilerine sahip</div>
+                                <div><strong>Viewer:</strong> Sadece görüntüleme yetkisi</div>
+                            </div>
+                        </div>
+
                         <table class="table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Rol Adı</th>
                                     <th>Açıklama</th>
+                                    <th>Kullanıcı Sayısı</th>
+                                    <th>İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
 
+                // Kullanıcı sayılarını hesapla (örnek - gerçek veri users tablosundan gelecek)
+                const userCounts = {
+                    1: 5, // Admin
+                    2: 8, // Manager
+                    3: 15, // Employee
+                    4: 3  // Viewer
+                };
+
                 roles.forEach(role => {
+                    const userCount = userCounts[role.id] || 0;
+                    const roleIcon = {
+                        'Admin': '👑',
+                        'Manager': '👨‍💼',
+                        'Employee': '👤',
+                        'Viewer': '👁️'
+                    }[role.name] || '🔐';
+
                     html += `
                         <tr>
                             <td>${role.id}</td>
-                            <td><strong>${role.name}</strong></td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: 1.2rem;">${roleIcon}</span>
+                                    <strong>${role.name}</strong>
+                                </div>
+                            </td>
                             <td>${role.description || '-'}</td>
+                            <td>
+                                <span class="status-badge info">${userCount} kullanıcı</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="editRole(${role.id})">
+                                        ✏️ Düzenle
+                                    </button>
+                                    ${role.name !== 'Admin' ? `
+                                        <button class="btn btn-sm btn-danger" onclick="deleteRole(${role.id})">
+                                            🗑️ Sil
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
                         </tr>
                     `;
                 });
@@ -1720,6 +2533,69 @@
 
             } catch (error) {
                 console.error('Roller yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🔐 Rol Yönetimi</h2>
+                        <p style="color: red;">Roller yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Rol modal fonksiyonları
+        function openRoleModal(roleId = null) {
+            const modal = document.getElementById('roleModal');
+            const title = document.getElementById('roleModalTitle');
+            const form = document.getElementById('roleForm');
+
+            if (roleId) {
+                title.textContent = 'Rol Düzenle';
+                // Rol verilerini yükle ve formu doldur
+                loadRoleData(roleId);
+            } else {
+                title.textContent = 'Yeni Rol';
+                form.reset();
+                document.getElementById('role_active').checked = true;
+                document.getElementById('role_id').value = '';
+            }
+
+            modal.style.display = 'block';
+        }
+
+        async function loadRoleData(roleId) {
+            try {
+                const response = await apiCall(`/api/roles/${roleId}`);
+                const role = response.role || response;
+
+                document.getElementById('role_id').value = role.id;
+                document.getElementById('role_name').value = role.name;
+                document.getElementById('role_description').value = role.description || '';
+                document.getElementById('role_level').value = role.level || 2;
+                document.getElementById('role_active').checked = role.is_active !== false;
+            } catch (error) {
+                console.error('Rol verileri yüklenemedi:', error);
+                alert('Rol verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function editRole(roleId) {
+            openRoleModal(roleId);
+        }
+
+        async function deleteRole(roleId) {
+            if (!confirm('Bu rolü silmek istediğinizden emin misiniz?\n\nBu rol silindiğinde, bu role sahip kullanıcılar varsayılan role atanacaktır.')) {
+                return;
+            }
+
+            try {
+                await apiCall(`/api/roles/${roleId}`, {
+                    method: 'DELETE'
+                });
+
+                alert('Rol başarıyla silindi!');
+                showRoles(); // Listeyi yenile
+            } catch (error) {
+                alert('Rol silinemedi: ' + error.message);
             }
         }
 
@@ -1773,70 +2649,1050 @@
         // Hedef yönetimi
         async function showTargets() {
             try {
-                const targetsResponse = await apiCall('/api/targets');
-                const targets = targetsResponse.targets || [];
-                
+                // Kullanıcıları ve hedefleri çek
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+
+                const currentDate = new Date();
+                const currentYear = currentDate.getFullYear();
+                const currentMonth = currentDate.getMonth() + 1;
+
                 let html = `
                     <div class="card">
-                        <h2>Hedef Yönetimi</h2>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Kullanıcı</th>
-                                    <th>Aylık Satış Hedefi</th>
-                                    <th>Üretim Hedefi</th>
-                                    <th>Gelir Hedefi</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>🎯 Hedef Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Kullanıcı hedeflerini belirleyin ve takip edin - ${currentYear}/${currentMonth.toString().padStart(2, '0')}
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <select id="targetYearFilter" onchange="filterTargets()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    <option value="${currentYear}">${currentYear}</option>
+                                    <option value="${currentYear - 1}">${currentYear - 1}</option>
+                                    <option value="${currentYear + 1}">${currentYear + 1}</option>
+                                </select>
+                                <select id="targetMonthFilter" onchange="filterTargets()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    ${Array.from({length: 12}, (_, i) => {
+                                        const month = i + 1;
+                                        const monthName = new Date(2024, i, 1).toLocaleDateString('tr-TR', { month: 'long' });
+                                        return `<option value="${month}" ${month === currentMonth ? 'selected' : ''}>${monthName}</option>`;
+                                    }).join('')}
+                                </select>
+                                <button class="btn" onclick="openTargetModal()">
+                                    ➕ Hedef Belirle
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--primary-light); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h4 style="color: var(--primary-solid); margin-bottom: 0.5rem;">💡 Hedef Türleri:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.875rem;">
+                                <div><strong>Satış:</strong> Aylık satış tutarı hedefi</div>
+                                <div><strong>Ziyaret:</strong> Aylık müşteri ziyaret sayısı</div>
+                                <div><strong>Üretim:</strong> Aylık üretim adet hedefi</div>
+                                <div><strong>Ciro:</strong> Aylık toplam ciro hedefi</div>
+                                <div><strong>Tahsilat:</strong> Aylık tahsilat tutarı</div>
+                            </div>
+                        </div>
+
+                        <div id="targetsTable">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Kullanıcı</th>
+                                        <th>Departman</th>
+                                        <th>Satış Hedefi</th>
+                                        <th>Ziyaret Hedefi</th>
+                                        <th>Üretim Hedefi</th>
+                                        <th>Ciro Hedefi</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="targetsTableBody">
+                                    <!-- Hedefler buraya yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 `;
-                
-                targets.forEach(target => {
-                    html += `
+
+                document.getElementById('content').innerHTML = html;
+
+                // Hedefleri yükle
+                await loadTargetsForMonth(currentYear, currentMonth);
+
+            } catch (error) {
+                console.error('Hedefler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🎯 Hedef Yönetimi</h2>
+                        <p style="color: red;">Hedefler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Hedef yükleme ve filtreleme fonksiyonları
+        async function loadTargetsForMonth(year, month) {
+            try {
+                const targetsResponse = await apiCall(`/api/user-targets?year=${year}&month=${month}`);
+                const targets = targetsResponse.targets || [];
+
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+
+                const tableBody = document.getElementById('targetsTableBody');
+                if (!tableBody) return;
+
+                tableBody.innerHTML = '';
+
+                users.forEach(user => {
+                    const userTarget = targets.find(t => t.user_id === user.id);
+
+                    // Hedef durumu hesapla
+                    let status = 'Hedef Yok';
+                    let statusClass = 'danger';
+
+                    if (userTarget) {
+                        const totalTarget = (userTarget.sales_target || 0) + (userTarget.revenue_target || 0);
+                        const totalAchieved = (userTarget.sales_achieved || 0) + (userTarget.revenue_achieved || 0);
+
+                        if (totalTarget > 0) {
+                            const percentage = Math.round((totalAchieved / totalTarget) * 100);
+                            if (percentage >= 100) {
+                                status = `Hedef Aşıldı (%${percentage})`;
+                                statusClass = 'success';
+                            } else if (percentage >= 70) {
+                                status = `İyi Gidiyor (%${percentage})`;
+                                statusClass = 'warning';
+                            } else {
+                                status = `Hedefin Altında (%${percentage})`;
+                                statusClass = 'danger';
+                            }
+                        } else {
+                            status = 'Hedef Belirlendi';
+                            statusClass = 'info';
+                        }
+                    }
+
+                    tableBody.innerHTML += `
                         <tr>
-                            <td>${target.full_name}</td>
-                            <td>${target.monthly_sales_target || 0} TL</td>
-                            <td>${target.monthly_production_target || 0}</td>
-                            <td>${target.monthly_revenue_target || 0} TL</td>
                             <td>
-                                <button class="btn" onclick="editTarget(${target.id})">Düzenle</button>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <strong>${user.full_name}</strong>
+                                    <span style="font-size: 0.75rem; color: var(--text-secondary);">(${user.role_name || 'Rol Yok'})</span>
+                                </div>
+                            </td>
+                            <td>${user.department_name || '-'}</td>
+                            <td>
+                                ${userTarget ?
+                                    `<div>
+                                        <strong>${(userTarget.sales_target || 0).toLocaleString('tr-TR')} ₺</strong>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            Gerçekleşen: ${(userTarget.sales_achieved || 0).toLocaleString('tr-TR')} ₺
+                                        </div>
+                                    </div>` :
+                                    '<span style="color: var(--text-secondary);">-</span>'
+                                }
+                            </td>
+                            <td>
+                                ${userTarget ?
+                                    `<div>
+                                        <strong>${userTarget.visit_target || 0} ziyaret</strong>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            Gerçekleşen: ${userTarget.visit_achieved || 0} ziyaret
+                                        </div>
+                                    </div>` :
+                                    '<span style="color: var(--text-secondary);">-</span>'
+                                }
+                            </td>
+                            <td>
+                                ${userTarget ?
+                                    `<div>
+                                        <strong>${userTarget.production_target || 0} adet</strong>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            Gerçekleşen: ${userTarget.production_achieved || 0} adet
+                                        </div>
+                                    </div>` :
+                                    '<span style="color: var(--text-secondary);">-</span>'
+                                }
+                            </td>
+                            <td>
+                                ${userTarget ?
+                                    `<div>
+                                        <strong>${(userTarget.revenue_target || 0).toLocaleString('tr-TR')} ₺</strong>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            Gerçekleşen: ${(userTarget.revenue_achieved || 0).toLocaleString('tr-TR')} ₺
+                                        </div>
+                                    </div>` :
+                                    '<span style="color: var(--text-secondary);">-</span>'
+                                }
+                            </td>
+                            <td>
+                                <span class="status-badge ${statusClass}">${status}</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="editUserTarget(${user.id}, ${year}, ${month})">
+                                        ${userTarget ? '✏️ Düzenle' : '➕ Hedef Belirle'}
+                                    </button>
+                                    ${userTarget ? `
+                                        <button class="btn btn-sm btn-danger" onclick="deleteUserTarget(${userTarget.id})">
+                                            🗑️ Sil
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </td>
                         </tr>
                     `;
                 });
-                
-                html += '</tbody></table></div>';
-                document.getElementById('content').innerHTML = html;
-                
+
             } catch (error) {
                 console.error('Hedefler yüklenemedi:', error);
+                const tableBody = document.getElementById('targetsTableBody');
+                if (tableBody) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Hedefler yüklenemedi: ' + error.message + '</td></tr>';
+                }
             }
         }
 
-        async function editTarget(targetId) {
+        async function filterTargets() {
+            const year = document.getElementById('targetYearFilter').value;
+            const month = document.getElementById('targetMonthFilter').value;
+            await loadTargetsForMonth(parseInt(year), parseInt(month));
+        }
+
+        // Hedef modal fonksiyonları
+        function openTargetModal(userId = null, year = null, month = null) {
+            const modal = document.getElementById('targetModal');
+            const title = document.getElementById('targetModalTitle');
+            const form = document.getElementById('targetForm');
+
+            // Varsayılan değerler
+            const currentDate = new Date();
+            const currentYear = year || currentDate.getFullYear();
+            const currentMonth = month || (currentDate.getMonth() + 1);
+
+            title.textContent = userId ? 'Kullanıcı Hedefi Düzenle' : 'Yeni Hedef Belirle';
+            form.reset();
+
+            // Tarih değerlerini ayarla
+            document.getElementById('target_year').value = currentYear;
+            document.getElementById('target_month').value = currentMonth;
+
+            if (userId) {
+                document.getElementById('target_user_id').value = userId;
+                document.getElementById('target_user_id').disabled = true;
+                loadTargetData(userId, currentYear, currentMonth);
+            } else {
+                document.getElementById('target_user_id').disabled = false;
+                document.getElementById('target_id').value = '';
+            }
+
+            loadUserOptions();
+            modal.style.display = 'block';
+        }
+
+        async function loadUserOptions() {
             try {
-                // Hedef bilgilerini getir
-                const targetResponse = await apiCall(`/api/targets/${targetId}`);
-                const target = targetResponse.target || targetResponse;
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                const userSelect = document.getElementById('target_user_id');
 
-                console.log('Düzenlenecek hedef:', target);
+                userSelect.innerHTML = '<option value="">Kullanıcı Seçiniz</option>';
 
-                // Form'u doldur
-                document.getElementById('target_user_name').value = target.full_name || target.username || 'Bilinmeyen Kullanıcı';
-                document.getElementById('target_monthly_sales').value = target.monthly_sales_target || 0;
-                document.getElementById('target_monthly_production').value = target.monthly_production_target || 0;
-                document.getElementById('target_monthly_revenue').value = target.monthly_revenue_target || 0;
+                users.forEach(user => {
+                    userSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                });
+            } catch (error) {
+                console.error('Kullanıcı listesi yüklenemedi:', error);
+            }
+        }
 
-                // Form'a target ID'sini ekle (güncelleme için)
-                document.getElementById('targetEditForm').setAttribute('data-target-id', targetId);
+        async function loadTargetData(userId, year, month) {
+            try {
+                const response = await apiCall(`/api/user-targets/${userId}?year=${year}&month=${month}`);
+                const target = response.target;
 
-                // Modal'ı aç
-                document.getElementById('targetModal').style.display = 'block';
+                if (target) {
+                    document.getElementById('target_id').value = target.id;
+                    document.getElementById('target_sales').value = target.sales_target || 0;
+                    document.getElementById('target_visits').value = target.visit_target || 0;
+                    document.getElementById('target_production').value = target.production_target || 0;
+                    document.getElementById('target_revenue').value = target.revenue_target || 0;
+                    document.getElementById('target_collection').value = target.collection_target || 0;
+                    document.getElementById('target_notes').value = target.notes || '';
+                }
+            } catch (error) {
+                console.error('Hedef verileri yüklenemedi:', error);
+                // Hata durumunda boş form göster
+                document.getElementById('target_id').value = '';
+            }
+        }
+
+        function editUserTarget(userId, year, month) {
+            openTargetModal(userId, year, month);
+        }
+
+        async function deleteUserTarget(targetId) {
+            if (!confirm('Bu hedefi silmek istediğinizden emin misiniz?')) {
+                return;
+            }
+
+            try {
+                await apiCall(`/api/user-targets/${targetId}`, {
+                    method: 'DELETE'
+                });
+
+                alert('Hedef başarıyla silindi!');
+
+                // Listeyi yenile
+                const year = document.getElementById('targetYearFilter').value;
+                const month = document.getElementById('targetMonthFilter').value;
+                await loadTargetsForMonth(parseInt(year), parseInt(month));
+            } catch (error) {
+                alert('Hedef silinemedi: ' + error.message);
+            }
+        }
+
+        // İrsaliye yönetimi fonksiyonları
+        async function showDeliveryNotes() {
+            try {
+                const deliveryNotesResponse = await apiCall('/api/delivery-notes');
+                const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
+
+                let html = `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>📋 İrsaliye Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Dijital irsaliyeleri yönetin ve takip edin
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <select id="deliveryStatusFilter" onchange="filterDeliveryNotes()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    <option value="">Tüm Durumlar</option>
+                                    <option value="pending">Bekleyen</option>
+                                    <option value="in_transit">Yolda</option>
+                                    <option value="delivered">Teslim Edildi</option>
+                                    <option value="cancelled">İptal</option>
+                                </select>
+                                <button class="btn" onclick="openDeliveryNoteModal()">
+                                    ➕ Yeni İrsaliye
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--primary-light); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h4 style="color: var(--primary-solid); margin-bottom: 0.5rem;">📋 İrsaliye Süreci:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.875rem;">
+                                <div><strong>1. Oluştur:</strong> Sipariş bazlı irsaliye oluştur</div>
+                                <div><strong>2. Sevkiyat:</strong> Sevkiyat personeline ata</div>
+                                <div><strong>3. Teslimat:</strong> Müşteriye teslim et</div>
+                                <div><strong>4. İmza:</strong> Dijital imza ile onayla</div>
+                            </div>
+                        </div>
+
+                        <div id="deliveryNotesTable">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>İrsaliye No</th>
+                                        <th>Müşteri</th>
+                                        <th>Sipariş</th>
+                                        <th>Teslimat Tarihi</th>
+                                        <th>Sevkiyat Personeli</th>
+                                        <th>Durum</th>
+                                        <th>İmza</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deliveryNotesTableBody">
+                                    <!-- İrsaliyeler buraya yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('content').innerHTML = html;
+
+                // İrsaliyeleri yükle
+                await loadDeliveryNotes();
 
             } catch (error) {
-                console.error('Hedef düzenleme hatası:', error);
-                alert('Hedef bilgileri yüklenirken hata oluştu: ' + error.message);
+                console.error('İrsaliyeler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>📋 İrsaliye Yönetimi</h2>
+                        <p style="color: red;">İrsaliyeler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadDeliveryNotes(statusFilter = '') {
+            try {
+                let url = '/api/delivery-notes';
+                if (statusFilter) {
+                    url += `?status=${statusFilter}`;
+                }
+
+                const deliveryNotesResponse = await apiCall(url);
+                const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
+
+                const tableBody = document.getElementById('deliveryNotesTableBody');
+                if (!tableBody) return;
+
+                tableBody.innerHTML = '';
+
+                deliveryNotes.forEach(note => {
+                    const statusColors = {
+                        'pending': 'warning',
+                        'in_transit': 'info',
+                        'delivered': 'success',
+                        'cancelled': 'danger'
+                    };
+
+                    const statusTexts = {
+                        'pending': 'Bekleyen',
+                        'in_transit': 'Yolda',
+                        'delivered': 'Teslim Edildi',
+                        'cancelled': 'İptal'
+                    };
+
+                    const hasSignature = note.customer_signature && note.signature_date;
+
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>
+                                <strong>${note.delivery_number}</strong>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    ${new Date(note.created_at).toLocaleDateString('tr-TR')}
+                                </div>
+                            </td>
+                            <td>
+                                <strong>${note.customer_name || 'Müşteri Bilgisi Yok'}</strong>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    ${note.delivery_address || '-'}
+                                </div>
+                            </td>
+                            <td>
+                                ${note.order_id ? `<a href="#" onclick="viewOrderDetail(${note.order_id})" style="color: var(--primary-solid);">Sipariş #${note.order_id}</a>` : '-'}
+                            </td>
+                            <td>
+                                <div>${new Date(note.delivery_date).toLocaleDateString('tr-TR')}</div>
+                                ${note.delivery_time ? `<div style="font-size: 0.75rem; color: var(--text-secondary);">${note.delivery_time}</div>` : ''}
+                            </td>
+                            <td>${note.delivered_by_name || '-'}</td>
+                            <td>
+                                <span class="status-badge ${statusColors[note.status] || 'secondary'}">
+                                    ${statusTexts[note.status] || note.status}
+                                </span>
+                            </td>
+                            <td>
+                                ${hasSignature ?
+                                    `<div style="color: var(--success-solid);">
+                                        ✅ İmzalandı
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            ${new Date(note.signature_date).toLocaleDateString('tr-TR')}
+                                        </div>
+                                    </div>` :
+                                    '<span style="color: var(--text-secondary);">❌ İmza Yok</span>'
+                                }
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="viewDeliveryNote(${note.id})">
+                                        👁️ Görüntüle
+                                    </button>
+                                    ${note.status === 'pending' ? `
+                                        <button class="btn btn-sm btn-primary" onclick="editDeliveryNote(${note.id})">
+                                            ✏️ Düzenle
+                                        </button>
+                                    ` : ''}
+                                    ${hasSignature ? `
+                                        <button class="btn btn-sm btn-success" onclick="viewSignature(${note.id})">
+                                            ✍️ İmza
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                if (deliveryNotes.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">Henüz irsaliye bulunmuyor</td></tr>';
+                }
+
+            } catch (error) {
+                console.error('İrsaliyeler yüklenemedi:', error);
+                const tableBody = document.getElementById('deliveryNotesTableBody');
+                if (tableBody) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">İrsaliyeler yüklenemedi: ' + error.message + '</td></tr>';
+                }
+            }
+        }
+
+        async function filterDeliveryNotes() {
+            const statusFilter = document.getElementById('deliveryStatusFilter').value;
+            await loadDeliveryNotes(statusFilter);
+        }
+
+        // İrsaliye modal fonksiyonları
+        function openDeliveryNoteModal(deliveryNoteId = null) {
+            const modal = document.getElementById('deliveryNoteModal');
+            const title = document.getElementById('deliveryNoteModalTitle');
+            const form = document.getElementById('deliveryNoteForm');
+
+            title.textContent = deliveryNoteId ? 'İrsaliye Düzenle' : 'Yeni İrsaliye';
+            form.reset();
+
+            // Bugünün tarihini varsayılan olarak ayarla
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('delivery_date').value = today;
+
+            if (deliveryNoteId) {
+                document.getElementById('delivery_note_id').value = deliveryNoteId;
+                loadDeliveryNoteData(deliveryNoteId);
+            } else {
+                document.getElementById('delivery_note_id').value = '';
+                generateDeliveryNumber();
+            }
+
+            loadDeliveryNoteOptions();
+            modal.style.display = 'block';
+        }
+
+        async function loadDeliveryNoteOptions() {
+            try {
+                // Müşterileri yükle
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                const customerSelect = document.getElementById('delivery_customer_id');
+
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+
+                // Siparişleri yükle
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
+                const orderSelect = document.getElementById('delivery_order_id');
+
+                orderSelect.innerHTML = '<option value="">Sipariş Seçiniz (Opsiyonel)</option>';
+                orders.filter(order => order.status !== 'cancelled').forEach(order => {
+                    orderSelect.innerHTML += `<option value="${order.id}">Sipariş #${order.id} - ${order.customer_name}</option>`;
+                });
+
+                // Sevkiyat personelini yükle
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                const deliveryPersonSelect = document.getElementById('delivery_delivered_by');
+
+                deliveryPersonSelect.innerHTML = '<option value="">Personel Seçiniz</option>';
+                users.filter(user => user.role_name && (user.role_name.includes('Shipping') || user.role_name.includes('Sevkiyat'))).forEach(user => {
+                    deliveryPersonSelect.innerHTML += `<option value="${user.id}">${user.full_name}</option>`;
+                });
+
+                // Eğer sevkiyat personeli yoksa tüm kullanıcıları göster
+                if (deliveryPersonSelect.children.length === 1) {
+                    users.forEach(user => {
+                        deliveryPersonSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                    });
+                }
+
+            } catch (error) {
+                console.error('İrsaliye seçenekleri yüklenemedi:', error);
+            }
+        }
+
+        async function generateDeliveryNumber() {
+            try {
+                const response = await apiCall('/api/delivery-notes/generate-number');
+                document.getElementById('delivery_number').value = response.delivery_number;
+            } catch (error) {
+                console.error('İrsaliye numarası oluşturulamadı:', error);
+                // Fallback: Tarih bazlı numara oluştur
+                const now = new Date();
+                const dateStr = now.getFullYear().toString().substr(-2) +
+                               (now.getMonth() + 1).toString().padStart(2, '0') +
+                               now.getDate().toString().padStart(2, '0');
+                const timeStr = now.getHours().toString().padStart(2, '0') +
+                               now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('delivery_number').value = `IRS${dateStr}${timeStr}`;
+            }
+        }
+
+        async function loadDeliveryNoteData(deliveryNoteId) {
+            try {
+                const response = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const note = response.delivery_note;
+
+                document.getElementById('delivery_number').value = note.delivery_number;
+                document.getElementById('delivery_order_id').value = note.order_id || '';
+                document.getElementById('delivery_customer_id').value = note.customer_id;
+                document.getElementById('delivery_delivered_by').value = note.delivered_by || '';
+                document.getElementById('delivery_date').value = note.delivery_date;
+                document.getElementById('delivery_time').value = note.delivery_time || '';
+                document.getElementById('delivery_address').value = note.delivery_address || '';
+                document.getElementById('delivery_notes').value = note.notes || '';
+                document.getElementById('delivery_internal_notes').value = note.internal_notes || '';
+
+            } catch (error) {
+                console.error('İrsaliye verileri yüklenemedi:', error);
+                alert('İrsaliye verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function editDeliveryNote(deliveryNoteId) {
+            openDeliveryNoteModal(deliveryNoteId);
+        }
+
+        async function viewDeliveryNote(deliveryNoteId) {
+            try {
+                const response = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const note = response.delivery_note;
+
+                // İrsaliye detay sayfasını aç (şimdilik alert ile göster)
+                alert(`İrsaliye Detayları:\n\nNo: ${note.delivery_number}\nMüşteri: ${note.customer_name}\nTarih: ${note.delivery_date}\nDurum: ${note.status}\n\nDetay sayfası yakında eklenecek!`);
+
+            } catch (error) {
+                alert('İrsaliye detayları yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function viewSignature(deliveryNoteId) {
+            try {
+                const response = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const note = response.delivery_note;
+
+                if (!note.customer_signature) {
+                    alert('Bu irsaliye için imza bulunmuyor.');
+                    return;
+                }
+
+                const signatureContent = document.getElementById('signatureContent');
+                signatureContent.innerHTML = `
+                    <div style="text-align: center;">
+                        <h4>İmza Bilgileri</h4>
+                        <div style="margin: 1rem 0;">
+                            <strong>İmzalayan:</strong> ${note.customer_name || 'Bilinmiyor'}<br>
+                            <strong>Unvan:</strong> ${note.customer_title || 'Belirtilmemiş'}<br>
+                            <strong>Tarih:</strong> ${new Date(note.signature_date).toLocaleString('tr-TR')}<br>
+                            <strong>IP Adresi:</strong> ${note.signature_ip || 'Bilinmiyor'}
+                        </div>
+                        <div style="border: 2px solid #ddd; padding: 1rem; background: #f9f9f9; border-radius: 8px;">
+                            <img src="${note.customer_signature}" alt="Müşteri İmzası" style="max-width: 100%; height: auto; border: 1px solid #ccc;">
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('signatureModal').style.display = 'block';
+
+            } catch (error) {
+                alert('İmza bilgileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        // Randevu yönetimi fonksiyonları
+        async function showAppointments() {
+            try {
+                const appointmentsResponse = await apiCall('/api/appointments');
+                const appointments = appointmentsResponse.appointments || [];
+
+                let html = `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>📅 Randevu & Görev Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Randevuları, görevleri ve ziyaretleri yönetin
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <select id="appointmentTypeFilter" onchange="filterAppointments()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    <option value="">Tüm Türler</option>
+                                    <option value="appointment">Randevu</option>
+                                    <option value="task">Görev</option>
+                                    <option value="visit">Ziyaret</option>
+                                    <option value="call">Arama</option>
+                                    <option value="meeting">Toplantı</option>
+                                </select>
+                                <select id="appointmentStatusFilter" onchange="filterAppointments()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid var(--border-color);">
+                                    <option value="">Tüm Durumlar</option>
+                                    <option value="pending">Bekleyen</option>
+                                    <option value="in_progress">Devam Eden</option>
+                                    <option value="completed">Tamamlanan</option>
+                                    <option value="cancelled">İptal</option>
+                                    <option value="postponed">Ertelenen</option>
+                                </select>
+                                <button class="btn" onclick="showCalendarView()">
+                                    📅 Takvim Görünümü
+                                </button>
+                                <button class="btn" onclick="openAppointmentModal()">
+                                    ➕ Yeni Randevu
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--primary-light); padding: 1rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                            <h4 style="color: var(--primary-solid); margin-bottom: 0.5rem;">📋 Randevu Türleri:</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; font-size: 0.875rem;">
+                                <div><strong>📅 Randevu:</strong> Müşteri randevuları</div>
+                                <div><strong>✅ Görev:</strong> Yapılacak işler</div>
+                                <div><strong>🏢 Ziyaret:</strong> Müşteri ziyaretleri</div>
+                                <div><strong>📞 Arama:</strong> Telefon görüşmeleri</div>
+                                <div><strong>👥 Toplantı:</strong> Ekip toplantıları</div>
+                            </div>
+                        </div>
+
+                        <div id="appointmentsTable">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Başlık</th>
+                                        <th>Tür</th>
+                                        <th>Atanan Kişi</th>
+                                        <th>Müşteri</th>
+                                        <th>Tarih & Saat</th>
+                                        <th>Öncelik</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointmentsTableBody">
+                                    <!-- Randevular buraya yüklenecek -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('content').innerHTML = html;
+
+                // Randevuları yükle
+                await loadAppointments();
+
+            } catch (error) {
+                console.error('Randevular yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>📅 Randevu & Görev Yönetimi</h2>
+                        <p style="color: red;">Randevular yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadAppointments(typeFilter = '', statusFilter = '') {
+            try {
+                let url = '/api/appointments';
+                const params = [];
+                if (typeFilter) params.push(`type=${typeFilter}`);
+                if (statusFilter) params.push(`status=${statusFilter}`);
+                if (params.length > 0) url += '?' + params.join('&');
+
+                const appointmentsResponse = await apiCall(url);
+                const appointments = appointmentsResponse.appointments || [];
+
+                const tableBody = document.getElementById('appointmentsTableBody');
+                if (!tableBody) return;
+
+                tableBody.innerHTML = '';
+
+                appointments.forEach(appointment => {
+                    const typeIcons = {
+                        'appointment': '📅',
+                        'task': '✅',
+                        'visit': '🏢',
+                        'call': '📞',
+                        'meeting': '👥'
+                    };
+
+                    const typeTexts = {
+                        'appointment': 'Randevu',
+                        'task': 'Görev',
+                        'visit': 'Ziyaret',
+                        'call': 'Arama',
+                        'meeting': 'Toplantı'
+                    };
+
+                    const statusColors = {
+                        'pending': 'warning',
+                        'in_progress': 'info',
+                        'completed': 'success',
+                        'cancelled': 'danger',
+                        'postponed': 'secondary'
+                    };
+
+                    const statusTexts = {
+                        'pending': 'Bekleyen',
+                        'in_progress': 'Devam Eden',
+                        'completed': 'Tamamlanan',
+                        'cancelled': 'İptal',
+                        'postponed': 'Ertelenen'
+                    };
+
+                    const priorityColors = {
+                        'low': 'secondary',
+                        'medium': 'info',
+                        'high': 'warning',
+                        'urgent': 'danger'
+                    };
+
+                    const priorityTexts = {
+                        'low': 'Düşük',
+                        'medium': 'Orta',
+                        'high': 'Yüksek',
+                        'urgent': 'Acil'
+                    };
+
+                    const startDateTime = new Date(`${appointment.start_date}T${appointment.start_time || '00:00'}`);
+                    const isOverdue = startDateTime < new Date() && appointment.status === 'pending';
+
+                    tableBody.innerHTML += `
+                        <tr ${isOverdue ? 'style="background-color: rgba(244, 67, 54, 0.1);"' : ''}>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: 1.2rem;">${typeIcons[appointment.type] || '📋'}</span>
+                                    <div>
+                                        <strong>${appointment.title}</strong>
+                                        ${appointment.description ? `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">${appointment.description.substring(0, 50)}${appointment.description.length > 50 ? '...' : ''}</div>` : ''}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-badge info">
+                                    ${typeTexts[appointment.type] || appointment.type}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>${appointment.assigned_to_name || 'Atanmamış'}</strong>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    ${appointment.assigned_to_role || ''}
+                                </div>
+                            </td>
+                            <td>
+                                ${appointment.customer_name ?
+                                    `<a href="#" onclick="viewCustomerDetail(${appointment.customer_id})" style="color: var(--primary-solid);">${appointment.customer_name}</a>` :
+                                    '<span style="color: var(--text-secondary);">-</span>'
+                                }
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>${new Date(appointment.start_date).toLocaleDateString('tr-TR')}</strong>
+                                    ${appointment.start_time ? `<div style="font-size: 0.75rem; color: var(--text-secondary);">${appointment.start_time.substring(0, 5)}</div>` : ''}
+                                </div>
+                                ${isOverdue ? '<div style="color: var(--danger-solid); font-size: 0.75rem; font-weight: bold;">⚠️ Gecikmiş</div>' : ''}
+                            </td>
+                            <td>
+                                <span class="status-badge ${priorityColors[appointment.priority] || 'secondary'}">
+                                    ${priorityTexts[appointment.priority] || appointment.priority}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge ${statusColors[appointment.status] || 'secondary'}">
+                                    ${statusTexts[appointment.status] || appointment.status}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="viewAppointment(${appointment.id})">
+                                        👁️ Görüntüle
+                                    </button>
+                                    ${appointment.status === 'pending' || appointment.status === 'in_progress' ? `
+                                        <button class="btn btn-sm btn-primary" onclick="editAppointment(${appointment.id})">
+                                            ✏️ Düzenle
+                                        </button>
+                                    ` : ''}
+                                    ${appointment.status === 'pending' ? `
+                                        <button class="btn btn-sm btn-success" onclick="completeAppointment(${appointment.id})">
+                                            ✅ Tamamla
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                if (appointments.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-secondary);">Henüz randevu bulunmuyor</td></tr>';
+                }
+
+            } catch (error) {
+                console.error('Randevular yüklenemedi:', error);
+                const tableBody = document.getElementById('appointmentsTableBody');
+                if (tableBody) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Randevular yüklenemedi: ' + error.message + '</td></tr>';
+                }
+            }
+        }
+
+        async function filterAppointments() {
+            const typeFilter = document.getElementById('appointmentTypeFilter').value;
+            const statusFilter = document.getElementById('appointmentStatusFilter').value;
+            await loadAppointments(typeFilter, statusFilter);
+        }
+
+        function showCalendarView() {
+            alert('Takvim görünümü yakında eklenecek!\n\nÖzellikler:\n- Aylık/haftalık/günlük görünüm\n- Sürükle-bırak ile randevu taşıma\n- Hızlı randevu oluşturma\n- Renk kodlaması');
+        }
+
+        // Randevu modal fonksiyonları
+        function openAppointmentModal(appointmentId = null) {
+            const modal = document.getElementById('appointmentModal');
+            const title = document.getElementById('appointmentModalTitle');
+            const form = document.getElementById('appointmentForm');
+
+            title.textContent = appointmentId ? 'Randevu Düzenle' : 'Yeni Randevu';
+            form.reset();
+
+            // Bugünün tarihini varsayılan olarak ayarla
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointment_start_date').value = today;
+
+            // Varsayılan değerleri ayarla
+            document.getElementById('appointment_priority').value = 'medium';
+            document.getElementById('appointment_reminder_minutes').value = '15';
+
+            if (appointmentId) {
+                document.getElementById('appointment_id').value = appointmentId;
+                loadAppointmentData(appointmentId);
+            } else {
+                document.getElementById('appointment_id').value = '';
+            }
+
+            loadAppointmentOptions();
+            modal.style.display = 'block';
+        }
+
+        async function loadAppointmentOptions() {
+            try {
+                // Kullanıcıları yükle
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                const userSelect = document.getElementById('appointment_assigned_to');
+
+                userSelect.innerHTML = '<option value="">Kişi Seçiniz</option>';
+                users.forEach(user => {
+                    userSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                });
+
+                // Müşterileri yükle
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                const customerSelect = document.getElementById('appointment_customer_id');
+
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz (Opsiyonel)</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+
+            } catch (error) {
+                console.error('Randevu seçenekleri yüklenemedi:', error);
+            }
+        }
+
+        async function loadAppointmentData(appointmentId) {
+            try {
+                const response = await apiCall(`/api/appointments/${appointmentId}`);
+                const appointment = response.appointment;
+
+                document.getElementById('appointment_title').value = appointment.title;
+                document.getElementById('appointment_description').value = appointment.description || '';
+                document.getElementById('appointment_type').value = appointment.type;
+                document.getElementById('appointment_priority').value = appointment.priority;
+                document.getElementById('appointment_start_date').value = appointment.start_date;
+                document.getElementById('appointment_start_time').value = appointment.start_time || '';
+                document.getElementById('appointment_end_date').value = appointment.end_date || '';
+                document.getElementById('appointment_end_time').value = appointment.end_time || '';
+                document.getElementById('appointment_all_day').checked = appointment.all_day;
+                document.getElementById('appointment_assigned_to').value = appointment.assigned_to;
+                document.getElementById('appointment_customer_id').value = appointment.customer_id || '';
+                document.getElementById('appointment_location').value = appointment.location || '';
+                document.getElementById('appointment_address').value = appointment.address || '';
+                document.getElementById('appointment_reminder_minutes').value = appointment.reminder_minutes || 15;
+
+            } catch (error) {
+                console.error('Randevu verileri yüklenemedi:', error);
+                alert('Randevu verileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function editAppointment(appointmentId) {
+            openAppointmentModal(appointmentId);
+        }
+
+        async function viewAppointment(appointmentId) {
+            try {
+                const response = await apiCall(`/api/appointments/${appointmentId}`);
+                const appointment = response.appointment;
+
+                const typeTexts = {
+                    'appointment': 'Randevu',
+                    'task': 'Görev',
+                    'visit': 'Ziyaret',
+                    'call': 'Arama',
+                    'meeting': 'Toplantı'
+                };
+
+                const priorityTexts = {
+                    'low': 'Düşük',
+                    'medium': 'Orta',
+                    'high': 'Yüksek',
+                    'urgent': 'Acil'
+                };
+
+                const statusTexts = {
+                    'pending': 'Bekleyen',
+                    'in_progress': 'Devam Eden',
+                    'completed': 'Tamamlanan',
+                    'cancelled': 'İptal',
+                    'postponed': 'Ertelenen'
+                };
+
+                let details = `Randevu Detayları:\n\n`;
+                details += `Başlık: ${appointment.title}\n`;
+                details += `Tür: ${typeTexts[appointment.type] || appointment.type}\n`;
+                details += `Öncelik: ${priorityTexts[appointment.priority] || appointment.priority}\n`;
+                details += `Durum: ${statusTexts[appointment.status] || appointment.status}\n`;
+                details += `Tarih: ${new Date(appointment.start_date).toLocaleDateString('tr-TR')}\n`;
+                if (appointment.start_time) details += `Saat: ${appointment.start_time.substring(0, 5)}\n`;
+                details += `Atanan: ${appointment.assigned_to_name || 'Bilinmiyor'}\n`;
+                if (appointment.customer_name) details += `Müşteri: ${appointment.customer_name}\n`;
+                if (appointment.location) details += `Konum: ${appointment.location}\n`;
+                if (appointment.description) details += `\nAçıklama: ${appointment.description}\n`;
+
+                details += `\nDetay sayfası yakında eklenecek!`;
+
+                alert(details);
+
+            } catch (error) {
+                alert('Randevu detayları yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function completeAppointment(appointmentId) {
+            const notes = prompt('Randevu tamamlandı. Tamamlama notları (opsiyonel):');
+            if (notes === null) return; // İptal edildi
+
+            try {
+                await apiCall(`/api/appointments/${appointmentId}/complete`, {
+                    method: 'POST',
+                    body: JSON.stringify({ completion_notes: notes })
+                });
+
+                alert('Randevu başarıyla tamamlandı!');
+                await loadAppointments(); // Listeyi yenile
+            } catch (error) {
+                alert('Randevu tamamlanamadı: ' + error.message);
             }
         }
 
@@ -1893,6 +3749,28 @@
             // Form'u temizle
             if (modalId === 'transactionModal') {
                 document.getElementById('transactionForm').reset();
+            } else if (modalId === 'roleModal') {
+                document.getElementById('roleForm').reset();
+                document.getElementById('role_active').checked = true;
+                document.getElementById('role_id').value = '';
+            } else if (modalId === 'departmentModal') {
+                document.getElementById('departmentForm').reset();
+                document.getElementById('dept_active').checked = true;
+                document.getElementById('dept_id').value = '';
+            } else if (modalId === 'targetModal') {
+                document.getElementById('targetForm').reset();
+                document.getElementById('target_user_id').disabled = false;
+                document.getElementById('target_id').value = '';
+            } else if (modalId === 'deliveryNoteModal') {
+                document.getElementById('deliveryNoteForm').reset();
+                document.getElementById('delivery_note_id').value = '';
+            } else if (modalId === 'signatureModal') {
+                document.getElementById('signatureContent').innerHTML = '';
+            } else if (modalId === 'appointmentModal') {
+                document.getElementById('appointmentForm').reset();
+                document.getElementById('appointment_id').value = '';
+                document.getElementById('appointment_priority').value = 'medium';
+                document.getElementById('appointment_reminder_minutes').value = '15';
             }
         }
 

@@ -164,6 +164,26 @@
         <button class="setup-btn" onclick="createComprehensiveData()" id="comprehensiveBtn" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); margin-left: 10px;">
             Kapsamlı Örnek Veri
         </button>
+
+        <button class="setup-btn" onclick="runRoleMigration()" id="roleMigrationBtn" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); margin-left: 10px;">
+            Rol Sistemi Güncelle
+        </button>
+
+        <button class="setup-btn" onclick="runDepartmentMigration()" id="deptMigrationBtn" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); margin-left: 10px;">
+            Departman Sistemi Güncelle
+        </button>
+
+        <button class="setup-btn" onclick="runTargetMigration()" id="targetMigrationBtn" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); margin-left: 10px;">
+            Hedef Sistemi Oluştur
+        </button>
+
+        <button class="setup-btn" onclick="runDeliveryMigration()" id="deliveryMigrationBtn" style="background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); margin-left: 10px;">
+            İrsaliye Sistemi Güncelle
+        </button>
+
+        <button class="setup-btn" onclick="runAppointmentMigration()" id="appointmentMigrationBtn" style="background: linear-gradient(135deg, #673ab7 0%, #512da8 100%); margin-left: 10px;">
+            Randevu Sistemi Oluştur
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -466,6 +486,259 @@
             } finally {
                 comprehensiveBtn.disabled = false;
                 comprehensiveBtn.textContent = 'Kapsamlı Örnek Veri';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function runRoleMigration() {
+            const roleMigrationBtn = document.getElementById('roleMigrationBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Rol sistemi güncellenecek:\n- Rol tablosuna yeni kolonlar eklenecek\n- Mevcut roller güncellenecek\n- Temel roller oluşturulacak\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            roleMigrationBtn.disabled = true;
+            roleMigrationBtn.textContent = 'Güncelleniyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Güncellenen özellikler:</strong><br>
+                            • Rol tablosuna level ve is_active kolonları eklendi<br>
+                            • Mevcut roller güncellendi<br>
+                            • Temel roller (Admin, Manager, Employee, Viewer) oluşturuldu<br>
+                            <br>
+                            <strong>Artık gelişmiş rol yönetimi kullanabilirsiniz!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                roleMigrationBtn.disabled = false;
+                roleMigrationBtn.textContent = 'Rol Sistemi Güncelle';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function runDepartmentMigration() {
+            const deptMigrationBtn = document.getElementById('deptMigrationBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Departman sistemi güncellenecek:\n- Departman tablosuna yeni kolonlar eklenecek\n- Mevcut departmanlar güncellenecek\n- Departman kodları oluşturulacak\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            deptMigrationBtn.disabled = true;
+            deptMigrationBtn.textContent = 'Güncelleniyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-departments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Güncellenen özellikler:</strong><br>
+                            • Departman tablosuna code, manager_id ve is_active kolonları eklendi<br>
+                            • Mevcut departmanlar güncellendi<br>
+                            • Departman kodları otomatik oluşturuldu<br>
+                            <br>
+                            <strong>Artık gelişmiş departman yönetimi kullanabilirsiniz!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                deptMigrationBtn.disabled = false;
+                deptMigrationBtn.textContent = 'Departman Sistemi Güncelle';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function runTargetMigration() {
+            const targetMigrationBtn = document.getElementById('targetMigrationBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Hedef sistemi oluşturulacak:\n- user_targets tablosu oluşturulacak\n- Tüm kullanıcılar için örnek hedefler oluşturulacak\n- Bu ay ve gelecek ay hedefleri belirlenecek\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            targetMigrationBtn.disabled = true;
+            targetMigrationBtn.textContent = 'Oluşturuluyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-targets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Oluşturulan özellikler:</strong><br>
+                            • user_targets tablosu oluşturuldu<br>
+                            • Tüm kullanıcılar için bu ay ve gelecek ay hedefleri belirlendi<br>
+                            • Satış, ziyaret, üretim, ciro ve tahsilat hedefleri eklendi<br>
+                            • Role göre farklı hedef tutarları belirlendi<br>
+                            <br>
+                            <strong>Artık kullanıcı hedef sistemi kullanabilirsiniz!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                targetMigrationBtn.disabled = false;
+                targetMigrationBtn.textContent = 'Hedef Sistemi Oluştur';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function runDeliveryMigration() {
+            const deliveryMigrationBtn = document.getElementById('deliveryMigrationBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('İrsaliye sistemi güncellenecek:\n- delivery_notes tablosu dijital imza özelliği ile güncellenecek\n- delivery_note_items detay tablosu oluşturulacak\n- Örnek irsaliyeler oluşturulacak\n\nMevcut irsaliye verileri silinecek!\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            deliveryMigrationBtn.disabled = true;
+            deliveryMigrationBtn.textContent = 'Güncelleniyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-delivery-notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Güncellenen özellikler:</strong><br>
+                            • delivery_notes tablosu dijital imza özelliği ile güncellendi<br>
+                            • delivery_note_items detay tablosu oluşturuldu<br>
+                            • İmza bilgileri (customer_signature, signature_date vb.) eklendi<br>
+                            • Teslimat durumu takibi (pending, in_transit, delivered, cancelled)<br>
+                            • Örnek irsaliyeler ve imzalı irsaliyeler oluşturuldu<br>
+                            <br>
+                            <strong>Artık dijital imzalı irsaliye sistemi kullanabilirsiniz!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                deliveryMigrationBtn.disabled = false;
+                deliveryMigrationBtn.textContent = 'İrsaliye Sistemi Güncelle';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function runAppointmentMigration() {
+            const appointmentMigrationBtn = document.getElementById('appointmentMigrationBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Randevu sistemi oluşturulacak:\n- appointments tablosu oluşturulacak\n- appointment_participants tablosu oluşturulacak\n- Örnek randevular, görevler ve ziyaretler oluşturulacak\n- Farklı türde randevular (randevu, görev, ziyaret, arama, toplantı)\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            appointmentMigrationBtn.disabled = true;
+            appointmentMigrationBtn.textContent = 'Oluşturuluyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/migrate-appointments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Oluşturulan özellikler:</strong><br>
+                            • appointments tablosu oluşturuldu<br>
+                            • appointment_participants tablosu oluşturuldu<br>
+                            • 5 farklı randevu türü (randevu, görev, ziyaret, arama, toplantı)<br>
+                            • 4 öncelik seviyesi (düşük, orta, yüksek, acil)<br>
+                            • Durum takibi (bekleyen, devam eden, tamamlanan)<br>
+                            • Hatırlatma sistemi<br>
+                            • Konum ve GPS koordinat desteği<br>
+                            • Örnek randevular ve görevler oluşturuldu<br>
+                            <br>
+                            <strong>Artık randevu ve görev sistemi kullanabilirsiniz!</strong>
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                appointmentMigrationBtn.disabled = false;
+                appointmentMigrationBtn.textContent = 'Randevu Sistemi Oluştur';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }
