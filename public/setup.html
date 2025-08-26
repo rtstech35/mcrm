@@ -3,812 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saha CRM - Database Setup</title>
+    <title>Database Setup - Saha CRM</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .container {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-        }
-        
-        .logo {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 1rem;
-        }
-        
-        .subtitle {
-            color: #666;
-            margin-bottom: 2rem;
-        }
-        
-        .setup-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-            margin-bottom: 1rem;
-        }
-        
-        .setup-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .setup-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .status {
-            margin-top: 1rem;
-            padding: 1rem;
-            border-radius: 10px;
-            display: none;
-        }
-        
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .loading {
-            display: none;
-            margin: 1rem 0;
-        }
-        
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .credentials {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 10px;
-            margin-top: 1rem;
-            display: none;
-        }
-        
-        .credentials h3 {
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-        
-        .cred-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 0.5rem 0;
-            padding: 0.5rem;
-            background: white;
-            border-radius: 5px;
-        }
-        
-        .cred-label {
-            font-weight: bold;
-            color: #666;
-        }
-        
-        .cred-value {
-            color: #333;
-            font-family: monospace;
-        }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 10px; }
+        .btn:hover { background: #0056b3; }
+        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin: 10px 0; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; margin: 10px 0; }
+        .loading { color: #666; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">🚀 Saha CRM</div>
-        <div class="subtitle">Database Setup</div>
-        
-        <button class="setup-btn" onclick="setupDatabase()" id="setupBtn">
-            Database'i Kur
-        </button>
-        
-        <button class="setup-btn" onclick="resetDatabase()" id="resetBtn" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); margin-left: 10px;">
-            Database'i Sıfırla
-        </button>
-
-        <button class="setup-btn" onclick="fixRolesDepartments()" id="fixBtn" style="background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%); margin-left: 10px;">
-            Rol/Departman Düzelt
-        </button>
-
-        <button class="setup-btn" onclick="addMissingRolesDepartments()" id="addBtn" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); margin-left: 10px;">
-            Güvenli Ekle
-        </button>
-
-        <button class="setup-btn" onclick="migrateProductsVat()" id="migrateBtn" style="background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%); margin-left: 10px;">
-            Ürün KDV Düzelt
-        </button>
-
-        <button class="setup-btn" onclick="createComprehensiveData()" id="comprehensiveBtn" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); margin-left: 10px;">
-            Kapsamlı Örnek Veri
-        </button>
-
-        <button class="setup-btn" onclick="runRoleMigration()" id="roleMigrationBtn" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); margin-left: 10px;">
-            Rol Sistemi Güncelle
-        </button>
-
-        <button class="setup-btn" onclick="runDepartmentMigration()" id="deptMigrationBtn" style="background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%); margin-left: 10px;">
-            Departman Sistemi Güncelle
-        </button>
-
-        <button class="setup-btn" onclick="runTargetMigration()" id="targetMigrationBtn" style="background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%); margin-left: 10px;">
-            Hedef Sistemi Oluştur
-        </button>
-
-        <button class="setup-btn" onclick="runDeliveryMigration()" id="deliveryMigrationBtn" style="background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%); margin-left: 10px;">
-            İrsaliye Sistemi Güncelle
-        </button>
-
-        <button class="setup-btn" onclick="runAppointmentMigration()" id="appointmentMigrationBtn" style="background: linear-gradient(135deg, #673ab7 0%, #512da8 100%); margin-left: 10px;">
-            Randevu Sistemi Oluştur
-        </button>
-
-        <button class="setup-btn" onclick="testDatabase()" id="testDatabaseBtn" style="background: linear-gradient(135deg, #607d8b 0%, #455a64 100%); margin-left: 10px;">
-            🧪 Database Test
-        </button>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>Database kuruluyor...</p>
-        </div>
-        
-        <div class="status" id="status"></div>
-        
-        <div class="credentials" id="credentials">
-            <h3>📧 Admin Giriş Bilgileri</h3>
-            <div class="cred-item">
-                <span class="cred-label">Kullanıcı Adı:</span>
-                <span class="cred-value">admin</span>
-            </div>
-            <div class="cred-item">
-                <span class="cred-label">Şifre:</span>
-                <span class="cred-value">admin123</span>
-            </div>
-            <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
-                Bu bilgilerle <a href="/admin" style="color: #667eea;">admin paneline</a> giriş yapabilirsiniz.
-            </p>
-        </div>
-    </div>
+    <h1>🔧 Saha CRM Database Setup</h1>
+    
+    <div id="status"></div>
+    
+    <button class="btn" onclick="setupDatabase()">📋 Database Kur</button>
+    <button class="btn" onclick="checkHealth()">🏥 Sistem Kontrolü</button>
+    <button class="btn" onclick="resetDatabase()">🗑️ Database Sıfırla</button>
+    
+    <hr>
+    <p><a href="/admin.html">← Admin Paneline Dön</a></p>
 
     <script>
         async function setupDatabase() {
-            const setupBtn = document.getElementById('setupBtn');
-            const loading = document.getElementById('loading');
             const status = document.getElementById('status');
-            const credentials = document.getElementById('credentials');
-            
-            // UI'yi güncelle
-            setupBtn.disabled = true;
-            setupBtn.textContent = 'Kuruluyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-            credentials.style.display = 'none';
+            status.innerHTML = '<div class="loading">⏳ Database kuruluyor...</div>';
             
             try {
-                const response = await fetch('/api/setup-database', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
+                const response = await fetch('/api/setup-database', { method: 'POST' });
                 const result = await response.json();
                 
                 if (result.success) {
-                    status.className = 'status success';
                     status.innerHTML = `
-                        <h3>✅ Başarılı!</h3>
-                        <p>${result.message}</p>
+                        <div class="success">
+                            ✅ ${result.message}<br>
+                            👤 Admin: ${result.admin.username} / ${result.admin.password}
+                        </div>
                     `;
-                    credentials.style.display = 'block';
                 } else {
-                    throw new Error(result.message || 'Bilinmeyen hata');
+                    status.innerHTML = `<div class="error">❌ ${result.error}</div>`;
                 }
-                
             } catch (error) {
-                status.className = 'status error';
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        async function checkHealth() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<div class="loading">⏳ Sistem kontrol ediliyor...</div>';
+            
+            try {
+                const response = await fetch('/api/health');
+                const result = await response.json();
+                
                 status.innerHTML = `
-                    <h3>❌ Hata!</h3>
-                    <p>${error.message}</p>
-                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
-                        Lütfen environment variables'ları kontrol edin.
-                    </p>
+                    <div class="success">
+                        ✅ Sistem Durumu: Çalışıyor<br>
+                        📋 Tablo Sayısı: ${result.tables.length}<br>
+                        📊 Tablolar: ${result.tables.join(', ')}<br>
+                        🕒 Database Zamanı: ${new Date(result.database_time).toLocaleString('tr-TR')}
+                    </div>
                 `;
-            } finally {
-                // UI'yi geri yükle
-                setupBtn.disabled = false;
-                setupBtn.textContent = 'Database\'i Kur';
-                loading.style.display = 'none';
-                status.style.display = 'block';
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
             }
         }
         
         async function resetDatabase() {
-            const resetBtn = document.getElementById('resetBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-            const credentials = document.getElementById('credentials');
+            if (!confirm('Tüm veriler silinecek! Emin misiniz?')) return;
             
-            // UI'yi güncelle
-            resetBtn.disabled = true;
-            resetBtn.textContent = 'Sıfırlanıyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-            credentials.style.display = 'none';
+            const status = document.getElementById('status');
+            status.innerHTML = '<div class="loading">⏳ Database sıfırlanıyor...</div>';
             
             try {
-                const response = await fetch('/api/reset-database', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
+                const response = await fetch('/api/reset-database', { method: 'POST' });
                 const result = await response.json();
                 
                 if (result.success) {
-                    status.className = 'status success';
                     status.innerHTML = `
-                        <h3>✅ Başarılı!</h3>
-                        <p>${result.message}</p>
-                    `;
-                    credentials.style.display = 'block';
-                } else {
-                    throw new Error(result.message || 'Bilinmeyen hata');
-                }
-                
-            } catch (error) {
-                status.className = 'status error';
-                status.innerHTML = `
-                    <h3>❌ Hata!</h3>
-                    <p>${error.message}</p>
-                    <p style="font-size: 0.9rem; margin-top: 0.5rem;">
-                        Lütfen environment variables'ları kontrol edin.
-                    </p>
-                `;
-            } finally {
-                // UI'yi geri yükle
-                resetBtn.disabled = false;
-                resetBtn.textContent = 'Database\'i Sıfırla';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function fixRolesDepartments() {
-            const fixBtn = document.getElementById('fixBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Rol ve Departman verileri düzeltilecek. Devam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            fixBtn.disabled = true;
-            fixBtn.textContent = 'Düzeltiliyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/fix-roles-departments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Yeni Roller:</strong> Admin, Manager, Employee, Viewer<br>
-                            <strong>Yeni Departmanlar:</strong> Satış, Üretim, Sevkiyat, Muhasebe, IT, İK, Kalite Kontrol
+                        <div class="success">
+                            ✅ ${result.message}<br>
+                            👤 Admin: ${result.admin.username} / ${result.admin.password}
                         </div>
                     `;
                 } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                    status.innerHTML = `<div class="error">❌ ${result.error}</div>`;
                 }
             } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                fixBtn.disabled = false;
-                fixBtn.textContent = 'Rol/Departman Düzelt';
-                loading.style.display = 'none';
-                status.style.display = 'block';
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
             }
         }
-
-        async function addMissingRolesDepartments() {
-            const addBtn = document.getElementById('addBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            addBtn.disabled = true;
-            addBtn.textContent = 'Ekleniyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/add-missing-roles-departments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Bu işlem mevcut verileri korur ve sadece eksik olanları ekler.</strong><br>
-                            Roller: Admin, Manager, Employee, Viewer<br>
-                            Departmanlar: Satış, Üretim, Sevkiyat, Muhasebe, IT, İK, Kalite Kontrol
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                addBtn.disabled = false;
-                addBtn.textContent = 'Güvenli Ekle';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function migrateProductsVat() {
-            const migrateBtn = document.getElementById('migrateBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            migrateBtn.disabled = true;
-            migrateBtn.textContent = 'Düzeltiliyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-products-vat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Eklenen kolonlar:</strong> vat_rate (KDV oranı), price_with_vat (KDV dahil fiyat)<br>
-                            <strong>Artık ürün ekleme çalışmalı!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                migrateBtn.disabled = false;
-                migrateBtn.textContent = 'Ürün KDV Düzelt';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function createComprehensiveData() {
-            const comprehensiveBtn = document.getElementById('comprehensiveBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Kapsamlı örnek veri oluşturulacak:\n- Her departman/rol için kullanıcılar\n- 5 adet müşteri\n- 5 adet ürün\n- Her müşteri için borç/alacak kayıtları\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            comprehensiveBtn.disabled = true;
-            comprehensiveBtn.textContent = 'Oluşturuluyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/create-comprehensive-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Oluşturulan veriler:</strong><br>
-                            • ${result.stats.users} kullanıcı<br>
-                            • ${result.stats.customers} müşteri<br>
-                            • ${result.stats.products} ürün<br>
-                            • ${result.stats.transactions} cari hesap işlemi<br>
-                            <br>
-                            <strong>Artık sistem tam örneklerle dolu!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                comprehensiveBtn.disabled = false;
-                comprehensiveBtn.textContent = 'Kapsamlı Örnek Veri';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function runRoleMigration() {
-            const roleMigrationBtn = document.getElementById('roleMigrationBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Rol sistemi güncellenecek:\n- Rol tablosuna yeni kolonlar eklenecek\n- Mevcut roller güncellenecek\n- Temel roller oluşturulacak\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            roleMigrationBtn.disabled = true;
-            roleMigrationBtn.textContent = 'Güncelleniyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-roles', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Güncellenen özellikler:</strong><br>
-                            • Rol tablosuna level ve is_active kolonları eklendi<br>
-                            • Mevcut roller güncellendi<br>
-                            • Temel roller (Admin, Manager, Employee, Viewer) oluşturuldu<br>
-                            <br>
-                            <strong>Artık gelişmiş rol yönetimi kullanabilirsiniz!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                roleMigrationBtn.disabled = false;
-                roleMigrationBtn.textContent = 'Rol Sistemi Güncelle';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function runDepartmentMigration() {
-            const deptMigrationBtn = document.getElementById('deptMigrationBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Departman sistemi güncellenecek:\n- Departman tablosuna yeni kolonlar eklenecek\n- Mevcut departmanlar güncellenecek\n- Departman kodları oluşturulacak\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            deptMigrationBtn.disabled = true;
-            deptMigrationBtn.textContent = 'Güncelleniyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-departments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Güncellenen özellikler:</strong><br>
-                            • Departman tablosuna code, manager_id ve is_active kolonları eklendi<br>
-                            • Mevcut departmanlar güncellendi<br>
-                            • Departman kodları otomatik oluşturuldu<br>
-                            <br>
-                            <strong>Artık gelişmiş departman yönetimi kullanabilirsiniz!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                deptMigrationBtn.disabled = false;
-                deptMigrationBtn.textContent = 'Departman Sistemi Güncelle';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function runTargetMigration() {
-            const targetMigrationBtn = document.getElementById('targetMigrationBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Hedef sistemi oluşturulacak:\n- user_targets tablosu oluşturulacak\n- Tüm kullanıcılar için örnek hedefler oluşturulacak\n- Bu ay ve gelecek ay hedefleri belirlenecek\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            targetMigrationBtn.disabled = true;
-            targetMigrationBtn.textContent = 'Oluşturuluyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-targets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Oluşturulan özellikler:</strong><br>
-                            • user_targets tablosu oluşturuldu<br>
-                            • Tüm kullanıcılar için bu ay ve gelecek ay hedefleri belirlendi<br>
-                            • Satış, ziyaret, üretim, ciro ve tahsilat hedefleri eklendi<br>
-                            • Role göre farklı hedef tutarları belirlendi<br>
-                            <br>
-                            <strong>Artık kullanıcı hedef sistemi kullanabilirsiniz!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                targetMigrationBtn.disabled = false;
-                targetMigrationBtn.textContent = 'Hedef Sistemi Oluştur';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function runDeliveryMigration() {
-            const deliveryMigrationBtn = document.getElementById('deliveryMigrationBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('İrsaliye sistemi güncellenecek:\n- delivery_notes tablosu dijital imza özelliği ile güncellenecek\n- delivery_note_items detay tablosu oluşturulacak\n- Örnek irsaliyeler oluşturulacak\n\nMevcut irsaliye verileri silinecek!\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            deliveryMigrationBtn.disabled = true;
-            deliveryMigrationBtn.textContent = 'Güncelleniyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-delivery-notes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Güncellenen özellikler:</strong><br>
-                            • delivery_notes tablosu dijital imza özelliği ile güncellendi<br>
-                            • delivery_note_items detay tablosu oluşturuldu<br>
-                            • İmza bilgileri (customer_signature, signature_date vb.) eklendi<br>
-                            • Teslimat durumu takibi (pending, in_transit, delivered, cancelled)<br>
-                            • Örnek irsaliyeler ve imzalı irsaliyeler oluşturuldu<br>
-                            <br>
-                            <strong>Artık dijital imzalı irsaliye sistemi kullanabilirsiniz!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                deliveryMigrationBtn.disabled = false;
-                deliveryMigrationBtn.textContent = 'İrsaliye Sistemi Güncelle';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function runAppointmentMigration() {
-            const appointmentMigrationBtn = document.getElementById('appointmentMigrationBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            if (!confirm('Randevu sistemi oluşturulacak:\n- appointments tablosu oluşturulacak\n- appointment_participants tablosu oluşturulacak\n- Örnek randevular, görevler ve ziyaretler oluşturulacak\n- Farklı türde randevular (randevu, görev, ziyaret, arama, toplantı)\n\nDevam etmek istiyor musunuz?')) {
-                return;
-            }
-
-            appointmentMigrationBtn.disabled = true;
-            appointmentMigrationBtn.textContent = 'Oluşturuluyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/migrate-appointments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ ${result.message}
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Oluşturulan özellikler:</strong><br>
-                            • appointments tablosu oluşturuldu<br>
-                            • appointment_participants tablosu oluşturuldu<br>
-                            • 5 farklı randevu türü (randevu, görev, ziyaret, arama, toplantı)<br>
-                            • 4 öncelik seviyesi (düşük, orta, yüksek, acil)<br>
-                            • Durum takibi (bekleyen, devam eden, tamamlanan)<br>
-                            • Hatırlatma sistemi<br>
-                            • Konum ve GPS koordinat desteği<br>
-                            • Örnek randevular ve görevler oluşturuldu<br>
-                            <br>
-                            <strong>Artık randevu ve görev sistemi kullanabilirsiniz!</strong>
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
-            } finally {
-                appointmentMigrationBtn.disabled = false;
-                appointmentMigrationBtn.textContent = 'Randevu Sistemi Oluştur';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        async function testDatabase() {
-            const testDatabaseBtn = document.getElementById('testDatabaseBtn');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
-
-            testDatabaseBtn.disabled = true;
-            testDatabaseBtn.textContent = 'Test Ediliyor...';
-            loading.style.display = 'block';
-            status.style.display = 'none';
-
-            try {
-                const response = await fetch('/api/health');
-                const result = await response.json();
-
-                if (result.success) {
-                    status.innerHTML = `
-                        <div style="color: #48bb78; font-weight: 600;">
-                            ✅ Database Bağlantısı Başarılı!
-                        </div>
-                        <div style="margin-top: 1rem; color: #666;">
-                            <strong>Database Bilgileri:</strong><br>
-                            • Bağlantı: Çalışıyor<br>
-                            • Zaman: ${new Date(result.database_time).toLocaleString('tr-TR')}<br>
-                            • Tablo Sayısı: ${result.tables.length}<br>
-                            • Tablolar: ${result.tables.join(', ')}<br>
-                            <br>
-                            <strong>Tablo Kayıt Sayıları:</strong><br>
-                            ${Object.entries(result.table_counts || {}).map(([table, count]) =>
-                                `• ${table}: ${count}`
-                            ).join('<br>')}
-                        </div>
-                    `;
-                } else {
-                    status.innerHTML = `<div style="color: #f56565;">❌ Database Hatası: ${result.error}</div>`;
-                }
-            } catch (error) {
-                status.innerHTML = `
-                    <div style="color: #f56565;">❌ Database Bağlantı Hatası!</div>
-                    <div style="margin-top: 1rem; color: #666;">
-                        <strong>Hata:</strong> ${error.message}<br><br>
-                        <strong>Muhtemel Çözümler:</strong><br>
-                        • Database URL'ini kontrol edin<br>
-                        • Render'da database servisinin çalıştığından emin olun<br>
-                        • Environment variables'ları kontrol edin
-                    </div>
-                `;
-            } finally {
-                testDatabaseBtn.disabled = false;
-                testDatabaseBtn.textContent = '🧪 Database Test';
-                loading.style.display = 'none';
-                status.style.display = 'block';
-            }
-        }
-
-        // Sayfa yüklendiğinde otomatik setup kontrolü
-        window.onload = function() {
-            // 3 saniye sonra otomatik setup dene
-            setTimeout(() => {
-                setupDatabase();
-            }, 3000);
-        };
+        
+        // Sayfa yüklendiğinde sistem kontrolü yap
+        window.onload = checkHealth;
     </script>
 </body>
 </html>

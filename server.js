@@ -69,14 +69,17 @@ if (pool && pool.connect) {
       console.log("✅ PostgreSQL bağlantısı başarılı");
 
       // Production'da otomatik database setup
-      if (process.env.NODE_ENV === 'production' && setupDatabase) {
-        try {
-          console.log("🔄 Production ortamında database setup kontrol ediliyor...");
+      try {
+        console.log("🔄 Database setup kontrol ediliyor...");
+        if (setupDatabase) {
           await setupDatabase();
           console.log("✅ Database setup tamamlandı");
-        } catch (error) {
-          console.log("⚠️ Database setup hatası (muhtemelen zaten kurulu):", error.message);
+        } else {
+          console.log("⚠️ setupDatabase fonksiyonu bulunamadı, manuel kurulum gerekli");
         }
+      } catch (error) {
+        console.log("⚠️ Database setup hatası:", error.message);
+        console.log("💡 Setup sayfasından manuel kurulum yapın: /setup.html");
       }
     })
     .catch(err => {
@@ -421,7 +424,25 @@ app.get("/api/dashboard-stats", async (req, res) => {
 app.post("/api/setup-database", async (req, res) => {
   try {
     console.log('🔧 Database setup başlatılıyor...');
-    await setupDatabase();
+    
+    // Basit schema kurulumu
+    const fs = require("fs");
+    const path = require("path");
+    const bcrypt = require("bcryptjs");
+    
+    const schemaPath = path.join(__dirname, "database", "schema.sql");
+    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
+    
+    await pool.query(schemaSQL);
+    
+    // Admin kullanıcısı
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
+      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
+      ON CONFLICT (username) DO NOTHING
+    `, [hashedPassword]);
+    
     res.json({ 
       success: true,
       message: 'Database başarıyla kuruldu',
@@ -439,27 +460,44 @@ app.post("/api/setup-database", async (req, res) => {
   }
 });
 
-app.post("/api/reset-database", async (req, res) => {
+app.get("/api/setup-database", async (req, res) => {
   try {
-    console.log('🗑️ Database reset başlatılıyor...');
-    const resetDatabase = require("./reset-database");
-    await resetDatabase();
+    console.log('🔧 GET Database setup başlatılıyor...');
+    
+    const fs = require("fs");
+    const path = require("path");
+    const bcrypt = require("bcryptjs");
+    
+    const schemaPath = path.join(__dirname, "database", "schema.sql");
+    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
+    
+    await pool.query(schemaSQL);
+    
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
+      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
+      ON CONFLICT (username) DO NOTHING
+    `, [hashedPassword]);
+    
     res.json({ 
       success: true,
-      message: 'Database başarıyla sıfırlandı ve yeniden kuruldu',
+      message: 'Database başarıyla kuruldu',
       admin: {
         username: 'admin',
         password: 'admin123'
       }
     });
   } catch (error) {
-    console.error('🗑️ Database reset hatası:', error);
+    console.error('🔧 Database setup hatası:', error);
     res.status(500).json({ 
       error: error.message,
-      message: 'Database reset başarısız'
+      message: 'Database setup başarısız'
     });
   }
 });
+
+
 
 // Database durumu kontrolü
 app.get("/api/database-status", async (req, res) => {
