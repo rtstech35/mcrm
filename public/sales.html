@@ -336,7 +336,8 @@
 
         async function showVisit() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 document.getElementById('content').innerHTML = `
                     <div class="card">
@@ -363,7 +364,8 @@
 
         async function showCustomers() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 let html = `
                     <div class="card">
@@ -461,7 +463,8 @@
 
         async function openVisitModal() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 const customerSelect = document.getElementById('customer_id');
                 customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
@@ -481,8 +484,9 @@
 
         async function openOrderModal() {
             try {
-                const customers = await apiCall('/api/customers');
-                
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+
                 const customerSelect = document.getElementById('order_customer_id');
                 customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
                 customers.forEach(customer => {

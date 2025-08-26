@@ -1093,7 +1093,9 @@ app.get("/api/customers", async (req, res) => {
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
       ORDER BY c.created_at DESC
     `);
-    
+
+    console.log('Customers API - Bulunan müşteri sayısı:', result.rows.length);
+
     res.json({
       success: true,
       customers: result.rows

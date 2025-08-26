@@ -152,7 +152,8 @@
 
         async function loadCustomers() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 displayCustomerList(customers);
                 displayCustomersOnMap(customers);
             } catch (error) {
@@ -283,9 +284,10 @@
 
         async function showNearbyCustomers() {
             if (!userLocation) return;
-            
+
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 const nearbyCustomers = customers.filter(customer => {
                     if (!customer.latitude || !customer.longitude) return false;
                     

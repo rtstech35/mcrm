@@ -304,8 +304,9 @@
             try {
                 document.getElementById('content').innerHTML = '<div class="loading">Müşteriler yükleniyor...</div>';
                 
-                const customers = await apiCall('/api/customers');
-                
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+
                 let html = `
                     <div class="card">
                         <h2>🏢 Müşteri Yönetimi</h2>
@@ -323,8 +324,8 @@
                             </thead>
                             <tbody>
                 `;
-                
-                customers.customers.forEach(customer => {
+
+                customers.forEach(customer => {
                     html += `
                         <tr>
                             <td>${customer.id}</td>
