@@ -3797,15 +3797,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Sunucu hatası oluştu' });
 });
 
-// ---------------- 404 HANDLER ---------------- //
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint bulunamadı' });
-});
-
-// ---------------- SUNUCU ---------------- //
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔐 JWT Secret: ${process.env.JWT_SECRET ? '✅ Tanımlı' : '❌ Tanımsız'}`);
-});
+// Duplicate server listen kısmı silindi
