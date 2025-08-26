@@ -670,16 +670,22 @@
             };
             
             try {
-                await apiCall('/api/products', {
+                const result = await apiCall('/api/products', {
                     method: 'POST',
                     body: JSON.stringify(formData)
                 });
-                
+
+                console.log('Ürün ekleme sonucu:', result);
                 alert('Ürün başarıyla oluşturuldu!');
                 document.getElementById('productForm').reset();
                 closeModal('productModal');
-                showProducts();
+
+                // Kısa bir gecikme sonrası listeyi yenile
+                setTimeout(() => {
+                    showProducts();
+                }, 500);
             } catch (error) {
+                console.error('Ürün ekleme hatası:', error);
                 alert('Hata: ' + error.message);
             }
         });
@@ -1148,8 +1154,10 @@
         async function showProducts() {
             try {
                 const productsResponse = await apiCall('/api/products');
+                console.log('Products API response:', productsResponse);
                 const products = productsResponse.products || [];
-                
+                console.log('Products array:', products);
+
                 let html = `
                     <div class="card">
                         <h2>Ürün Yönetimi</h2>
@@ -1170,25 +1178,35 @@
                             </thead>
                             <tbody>
                 `;
-                
-                products.forEach(product => {
+
+                if (products.length === 0) {
                     html += `
                         <tr>
-                            <td>${product.id}</td>
-                            <td>${product.name}</td>
-                            <td>${product.description || '-'}</td>
-                            <td>${product.unit_price} TL</td>
-                            <td>${product.vat_rate ? '%' + product.vat_rate : '-'}</td>
-                            <td>${product.price_with_vat ? product.price_with_vat + ' TL' : '-'}</td>
-                            <td>${product.unit}</td>
-                            <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
-                            <td>
-                                <button class="btn" onclick="editProduct(${product.id})">Düzenle</button>
+                            <td colspan="9" style="text-align: center; padding: 2rem; color: #666;">
+                                Henüz ürün eklenmemiş. "Yeni Ürün" butonunu kullanarak ürün ekleyebilirsiniz.
                             </td>
                         </tr>
                     `;
-                });
-                
+                } else {
+                    products.forEach(product => {
+                        html += `
+                            <tr>
+                                <td>${product.id}</td>
+                                <td>${product.name}</td>
+                                <td>${product.description || '-'}</td>
+                                <td>${product.unit_price} TL</td>
+                                <td>${product.vat_rate ? '%' + product.vat_rate : '-'}</td>
+                                <td>${product.price_with_vat ? product.price_with_vat + ' TL' : '-'}</td>
+                                <td>${product.unit}</td>
+                                <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
+                                <td>
+                                    <button class="btn" onclick="editProduct(${product.id})">Düzenle</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
                 html += '</tbody></table></div>';
                 document.getElementById('content').innerHTML = html;
                 

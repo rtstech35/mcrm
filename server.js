@@ -212,15 +212,6 @@ app.get("/api/profile", authenticateToken, async (req, res) => {
 });
 
 // ---------------- ÜRÜNLER ---------------- //
-app.get("/api/products", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM products ORDER BY id DESC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Ürünler alınamadı:", err);
-    res.status(500).json({ error: "Ürünler alınamadı" });
-  }
-});
 
 
 
@@ -1241,11 +1232,13 @@ app.delete("/api/customers/:id", async (req, res) => {
 app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT * FROM products 
+      SELECT * FROM products
       WHERE is_active = true
       ORDER BY created_at DESC
     `);
-    
+
+    console.log('Products API - Bulunan ürün sayısı:', result.rows.length);
+
     res.json({
       success: true,
       products: result.rows
