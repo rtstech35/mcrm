@@ -107,7 +107,28 @@
 
     <script>
         async function testAPI(endpoint) {
-            const resultDiv = document.getElementById(endpoint.replace(/\//g, '-').substring(1) + '-result');
+            // ID'yi doğru şekilde oluştur
+            let id = endpoint.replace(/\//g, '-').substring(1);
+            if (id === 'api-stats') id = 'dashboard-result';
+            if (id === 'api-dashboard-monthly-sales') id = 'dashboard-result';
+            if (id === 'api-dashboard-customer-status') id = 'dashboard-result';
+            if (id === 'api-users') id = 'users-result';
+            if (id === 'api-roles') id = 'users-result';
+            if (id === 'api-departments') id = 'users-result';
+            if (id === 'api-customers') id = 'customers-result';
+            if (id === 'api-products') id = 'products-result';
+            if (id === 'api-orders') id = 'orders-result';
+            if (id === 'api-targets') id = 'targets-result';
+            if (id === 'api-account-transactions') id = 'account-result';
+            if (id === 'api-test-connection') id = 'connection-result';
+            if (id === '') id = 'connection-result';
+            
+            const resultDiv = document.getElementById(id);
+            if (!resultDiv) {
+                console.error('Result div bulunamadı:', id);
+                return;
+            }
+            
             resultDiv.innerHTML = '🔄 Test ediliyor...';
             resultDiv.className = 'result';
             
