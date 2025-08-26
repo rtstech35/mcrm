@@ -674,47 +674,19 @@
 
         async function showDashboard() {
             try {
-                // Temel verileri çek
-                const usersResponse = await apiCall('/api/users');
-                const users = usersResponse.users || [];
+                // Dashboard istatistiklerini çek
+                const statsResponse = await apiCall('/api/dashboard/stats');
+                const stats = statsResponse.stats || {};
 
-                const customersResponse = await apiCall('/api/customers');
-                const customers = customersResponse.customers || [];
+                // Yüzdeleri hesapla
+                const salesPercentage = stats.monthlySalesTarget > 0 ?
+                    Math.round((stats.currentMonthlySales / stats.monthlySalesTarget) * 100) : 0;
 
-                const ordersResponse = await apiCall('/api/orders');
-                const orders = ordersResponse.orders || [];
+                const visitPercentage = stats.monthlyVisitTarget > 0 ?
+                    Math.round((stats.currentMonthlyVisits / stats.monthlyVisitTarget) * 100) : 0;
 
-                const transactionsResponse = await apiCall('/api/account-transactions');
-                const transactions = transactionsResponse.transactions || [];
-
-                // Sipariş durumları
-                const pendingOrders = orders.filter(o => o.status === 'pending').length;
-                const productionOrders = orders.filter(o => o.status === 'production').length;
-                const completedOrders = orders.filter(o => o.status === 'completed').length;
-                const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-
-                // Bu ay verileri
-                const currentMonth = new Date().getMonth();
-                const currentYear = new Date().getFullYear();
-
-                // Aylık satış hedefi
-                const monthlySalesTarget = 100000;
-                const currentMonthlySales = orders
-                    .filter(o => new Date(o.created_at).getMonth() === currentMonth)
-                    .reduce((sum, o) => sum + (o.total_amount || 0), 0);
-                const salesPercentage = Math.round((currentMonthlySales / monthlySalesTarget) * 100);
-
-                // Aylık ziyaret hedefi (örnek - gerçek veri visits tablosundan gelecek)
-                const monthlyVisitTarget = 50;
-                const currentMonthlyVisits = 35;
-                const visitPercentage = Math.round((currentMonthlyVisits / monthlyVisitTarget) * 100);
-
-                // Aylık tahsilat
-                const monthlyCollectionTarget = 80000;
-                const currentMonthlyCollection = transactions
-                    .filter(t => t.transaction_type === 'credit' && new Date(t.transaction_date).getMonth() === currentMonth)
-                    .reduce((sum, t) => sum + (t.amount || 0), 0);
-                const collectionPercentage = Math.round((currentMonthlyCollection / monthlyCollectionTarget) * 100);
+                const collectionPercentage = stats.monthlyCollectionTarget > 0 ?
+                    Math.round((stats.currentMonthlyCollection / stats.monthlyCollectionTarget) * 100) : 0;
                 
                 document.getElementById('content').innerHTML = `
                     <div class="grid grid-2" style="gap: 2rem;">
@@ -724,10 +696,10 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
                                 <div>
                                     <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${currentMonthlySales.toLocaleString('tr-TR')} ₺
+                                        ${(stats.currentMonthlySales || 0).toLocaleString('tr-TR')} ₺
                                     </div>
                                     <div style="color: var(--text-secondary);">
-                                        Hedef: ${monthlySalesTarget.toLocaleString('tr-TR')} ₺
+                                        Hedef: ${(stats.monthlySalesTarget || 0).toLocaleString('tr-TR')} ₺
                                     </div>
                                 </div>
                                 <div style="font-size: 1.5rem; font-weight: bold; color: ${salesPercentage >= 100 ? 'var(--success-solid)' : salesPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
@@ -745,10 +717,10 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
                                 <div>
                                     <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${currentMonthlyVisits}
+                                        ${stats.currentMonthlyVisits || 0}
                                     </div>
                                     <div style="color: var(--text-secondary);">
-                                        Hedef: ${monthlyVisitTarget} ziyaret
+                                        Hedef: ${stats.monthlyVisitTarget || 0} ziyaret
                                     </div>
                                 </div>
                                 <div style="font-size: 1.5rem; font-weight: bold; color: ${visitPercentage >= 100 ? 'var(--success-solid)' : visitPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
@@ -766,10 +738,10 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
                                 <div>
                                     <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${currentMonthlyCollection.toLocaleString('tr-TR')} ₺
+                                        ${(stats.currentMonthlyCollection || 0).toLocaleString('tr-TR')} ₺
                                     </div>
                                     <div style="color: var(--text-secondary);">
-                                        Hedef: ${monthlyCollectionTarget.toLocaleString('tr-TR')} ₺
+                                        Hedef: ${(stats.monthlyCollectionTarget || 0).toLocaleString('tr-TR')} ₺
                                     </div>
                                 </div>
                                 <div style="font-size: 1.5rem; font-weight: bold; color: ${collectionPercentage >= 100 ? 'var(--success-solid)' : collectionPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
@@ -786,20 +758,43 @@
                             <h2>📦 Sipariş Durumu</h2>
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem;">
                                 <div style="text-align: center; padding: 1rem; background: var(--warning); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${pendingOrders}</div>
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.pendingOrders || 0}</div>
                                     <div style="font-size: 0.875rem; opacity: 0.9;">Bekleyen</div>
                                 </div>
                                 <div style="text-align: center; padding: 1rem; background: var(--primary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${productionOrders}</div>
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.productionOrders || 0}</div>
                                     <div style="font-size: 0.875rem; opacity: 0.9;">Üretimde</div>
                                 </div>
                                 <div style="text-align: center; padding: 1rem; background: var(--secondary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${completedOrders}</div>
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.completedOrders || 0}</div>
                                     <div style="font-size: 0.875rem; opacity: 0.9;">Tamamlanan</div>
                                 </div>
                                 <div style="text-align: center; padding: 1rem; background: var(--success); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${deliveredOrders}</div>
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.deliveredOrders || 0}</div>
                                     <div style="font-size: 0.875rem; opacity: 0.9;">Teslim Edilen</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sistem Özeti -->
+                        <div class="card">
+                            <h2>📊 Sistem Özeti</h2>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem;">
+                                <div style="text-align: center; padding: 1rem; background: var(--info); color: white; border-radius: 12px;">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.userCount || 0}</div>
+                                    <div style="font-size: 0.875rem; opacity: 0.9;">Kullanıcı</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem; background: var(--success); color: white; border-radius: 12px;">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.customerCount || 0}</div>
+                                    <div style="font-size: 0.875rem; opacity: 0.9;">Müşteri</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem; background: var(--primary); color: white; border-radius: 12px;">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.orderCount || 0}</div>
+                                    <div style="font-size: 0.875rem; opacity: 0.9;">Sipariş</div>
+                                </div>
+                                <div style="text-align: center; padding: 1rem; background: var(--secondary); color: white; border-radius: 12px;">
+                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.productCount || 0}</div>
+                                    <div style="font-size: 0.875rem; opacity: 0.9;">Ürün</div>
                                 </div>
                             </div>
                         </div>
@@ -810,9 +805,21 @@
                 console.error('Dashboard yüklenemedi:', error);
                 document.getElementById('content').innerHTML = `
                     <div class="card">
-                        <h2>Dashboard</h2>
+                        <h2>📊 Dashboard</h2>
                         <p>Hoş geldiniz, ${currentUser.full_name}</p>
-                        <p style="color: red;">Dashboard verileri yüklenemedi: ${error.message}</p>
+                        <div style="background: var(--danger-light); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                            <p style="color: var(--danger-solid); margin: 0;">
+                                ⚠️ Dashboard verileri yüklenemedi: ${error.message}
+                            </p>
+                            <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 0.875rem;">
+                                Lütfen setup sayfasından database migration'ları çalıştırın.
+                            </p>
+                        </div>
+                        <div style="text-align: center; margin: 2rem 0;">
+                            <a href="/setup" class="btn" style="text-decoration: none;">
+                                🔧 Setup Sayfasına Git
+                            </a>
+                        </div>
                     </div>
                 `;
             }
