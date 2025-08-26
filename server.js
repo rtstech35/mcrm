@@ -720,6 +720,228 @@ app.get("/api/dashboard/customer-status", async (req, res) => {
   }
 });
 
+// Kullanıcılar API
+app.get("/api/users", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.*, r.name as role_name, d.name as department_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      ORDER BY u.created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('Users API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/users", async (req, res) => {
+  try {
+    const { username, email, password, full_name, role_id, department_id } = req.body;
+    
+    // Şifreyi hash'le
+    const bcrypt = require("bcryptjs");
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const result = await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, true)
+      RETURNING *
+    `, [username, email, hashedPassword, full_name, role_id, department_id]);
+    
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('User create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Müşteriler API
+app.get("/api/customers", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT c.*, u.full_name as sales_rep_name
+      FROM customers c
+      LEFT JOIN users u ON c.assigned_sales_rep = u.id
+      ORDER BY c.created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      customers: result.rows
+    });
+  } catch (error) {
+    console.error('Customers API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/customers", async (req, res) => {
+  try {
+    const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'potential')
+      RETURNING *
+    `, [company_name, contact_person, phone, email, address, assigned_sales_rep]);
+    
+    res.json({
+      success: true,
+      customer: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Customer create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ürünler API
+app.get("/api/products", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT * FROM products 
+      WHERE is_active = true
+      ORDER BY created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      products: result.rows
+    });
+  } catch (error) {
+    console.error('Products API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/products", async (req, res) => {
+  try {
+    const { name, description, unit_price, unit } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO products (name, description, unit_price, unit, is_active)
+      VALUES ($1, $2, $3, $4, true)
+      RETURNING *
+    `, [name, description, unit_price, unit]);
+    
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Product create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Siparişler API
+app.get("/api/orders", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT o.*, c.company_name, u.full_name as sales_rep_name
+      FROM orders o
+      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users u ON o.sales_rep_id = u.id
+      ORDER BY o.created_at DESC
+    `);
+    
+    res.json({
+      success: true,
+      orders: result.rows
+    });
+  } catch (error) {
+    console.error('Orders API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/orders", async (req, res) => {
+  try {
+    const { order_number, customer_id, sales_rep_id, order_date, total_amount, notes } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, total_amount, notes, status)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      RETURNING *
+    `, [order_number, customer_id, sales_rep_id, order_date, total_amount, notes]);
+    
+    res.json({
+      success: true,
+      order: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Order create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Roller ve Departmanlar API
+app.get("/api/roles", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM roles ORDER BY name");
+    res.json({
+      success: true,
+      roles: result.rows
+    });
+  } catch (error) {
+    console.error('Roles API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get("/api/departments", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM departments ORDER BY name");
+    res.json({
+      success: true,
+      departments: result.rows
+    });
+  } catch (error) {
+    console.error('Departments API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
 app.post("/api/create-admin", async (req, res) => {
   try {
