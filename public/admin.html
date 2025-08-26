@@ -25,6 +25,7 @@
                 <li><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
                 <li><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
                 <li><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
+                <li><a href="#" onclick="showRoles()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔐 Roller</a></li>
                 <li><a href="#" onclick="showTargets()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Hedefler</a></li>
                 <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
                 <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
@@ -1374,6 +1375,49 @@
                 
             } catch (error) {
                 console.error('Departmanlar yüklenemedi:', error);
+            }
+        }
+
+        // Rol yönetimi fonksiyonları
+        async function showRoles() {
+            try {
+                const rolesResponse = await apiCall('/api/roles');
+                const roles = rolesResponse.roles || [];
+
+                let html = `
+                    <div class="card">
+                        <h2>Rol Yönetimi</h2>
+                        <p style="margin-bottom: 1rem; color: #666;">
+                            <strong>Roller:</strong> Kullanıcıların sistem yetkilerini belirler.<br>
+                            <strong>Admin:</strong> Tüm yetkiler | <strong>Manager:</strong> Departman yönetimi |
+                            <strong>Employee:</strong> Temel işlemler | <strong>Viewer:</strong> Sadece görüntüleme
+                        </p>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Rol Adı</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                roles.forEach(role => {
+                    html += `
+                        <tr>
+                            <td>${role.id}</td>
+                            <td><strong>${role.name}</strong></td>
+                            <td>${role.description || '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+
+            } catch (error) {
+                console.error('Roller yüklenemedi:', error);
             }
         }
 

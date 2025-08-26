@@ -78,7 +78,7 @@ app.post("/api/register", async (req, res) => {
     // Yeni kullanıcı ekle
     await pool.query(
       "INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [username, hashedPassword, full_name || username, email, role_id || 1, department_id || 1, true]
+      [username, hashedPassword, full_name || username, email, role_id || 1, department_id || 5, true]
     );
 
     console.log("Yeni kullanıcı eklendi:", username);
@@ -459,25 +459,26 @@ app.post("/api/add-sample-data", async (req, res) => {
   try {
     console.log('📝 Örnek veriler ekleniyor...');
     
-    // Roller
+    // Roller (Yetkiler)
     await pool.query(`
-      INSERT INTO roles (id, name, description) VALUES 
-      (1, 'Admin', 'Sistem yöneticisi'),
-      (2, 'Sales', 'Satış temsilcisi'),
-      (3, 'Production', 'Üretim sorumlusu'),
-      (4, 'Shipping', 'Sevkiyat sorumlusu'),
-      (5, 'Accounting', 'Muhasebe sorumlusu')
+      INSERT INTO roles (id, name, description) VALUES
+      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
+      (2, 'Manager', 'Yönetici - Departman yönetimi'),
+      (3, 'Employee', 'Çalışan - Temel işlemler'),
+      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
       ON CONFLICT (id) DO NOTHING
     `);
 
-    // Departmanlar
+    // Departmanlar (Bölümler)
     await pool.query(`
-      INSERT INTO departments (id, name, description) VALUES 
-      (1, 'IT', 'Bilgi Teknolojileri'),
-      (2, 'Sales', 'Satış Departmanı'),
-      (3, 'Production', 'Üretim Departmanı'),
-      (4, 'Shipping', 'Sevkiyat Departmanı'),
-      (5, 'Accounting', 'Muhasebe Departmanı')
+      INSERT INTO departments (id, name, description) VALUES
+      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
+      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
+      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
+      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
+      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
+      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
+      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
       ON CONFLICT (id) DO NOTHING
     `);
 
@@ -517,10 +518,10 @@ app.post("/api/add-sample-data", async (req, res) => {
 app.post("/api/clear-all-data", async (req, res) => {
   try {
     console.log('🗑️ Tüm veriler siliniyor...');
-    
+
     const tables = [
       'customer_visits',
-      'order_items', 
+      'order_items',
       'orders',
       'products',
       'customers',
@@ -528,18 +529,61 @@ app.post("/api/clear-all-data", async (req, res) => {
       'departments',
       'roles'
     ];
-    
+
     for (const table of tables) {
       await pool.query(`DELETE FROM ${table}`);
       console.log(`✅ ${table} tablosundaki veriler silindi`);
     }
-    
+
     res.json({
       success: true,
       message: 'Tüm veriler başarıyla silindi'
     });
   } catch (error) {
     console.error('Veri silme hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Rol ve Departman verilerini düzelt
+app.post("/api/fix-roles-departments", async (req, res) => {
+  try {
+    console.log('🔧 Rol ve Departman verileri düzeltiliyor...');
+
+    // Önce mevcut verileri sil
+    await pool.query('DELETE FROM roles');
+    await pool.query('DELETE FROM departments');
+
+    // Yeni rol verilerini ekle
+    await pool.query(`
+      INSERT INTO roles (id, name, description) VALUES
+      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
+      (2, 'Manager', 'Yönetici - Departman yönetimi'),
+      (3, 'Employee', 'Çalışan - Temel işlemler'),
+      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
+    `);
+
+    // Yeni departman verilerini ekle
+    await pool.query(`
+      INSERT INTO departments (id, name, description) VALUES
+      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
+      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
+      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
+      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
+      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
+      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
+      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
+    `);
+
+    res.json({
+      success: true,
+      message: 'Rol ve Departman verileri başarıyla düzeltildi'
+    });
+  } catch (error) {
+    console.error('Rol/Departman düzeltme hatası:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -1049,14 +1093,14 @@ app.post("/api/create-admin", async (req, res) => {
     
     // Roles ve departments oluştur
     await pool.query("INSERT INTO roles (id, name) VALUES (1, 'Admin') ON CONFLICT (id) DO NOTHING");
-    await pool.query("INSERT INTO departments (id, name) VALUES (1, 'IT') ON CONFLICT (id) DO NOTHING");
+    await pool.query("INSERT INTO departments (id, name) VALUES (5, 'IT Departmanı') ON CONFLICT (id) DO NOTHING");
     
     // Sonra ekle
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active) 
        VALUES ($1, $2, $3, $4, $5, $6, $7) 
        RETURNING id, username`,
-      ['admin1', hashedPassword, 'Admin User', 'admin@test.com', 1, 1, true]
+      ['admin1', hashedPassword, 'Admin User', 'admin@test.com', 1, 5, true]
     );
     
     console.log('🔧 Yeni admin eklendi:', result.rows[0]);

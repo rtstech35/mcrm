@@ -148,6 +148,10 @@
         <button class="setup-btn" onclick="resetDatabase()" id="resetBtn" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); margin-left: 10px;">
             Database'i Sıfırla
         </button>
+
+        <button class="setup-btn" onclick="fixRolesDepartments()" id="fixBtn" style="background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%); margin-left: 10px;">
+            Rol/Departman Düzelt
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -276,7 +280,52 @@
                 status.style.display = 'block';
             }
         }
-        
+
+        async function fixRolesDepartments() {
+            const fixBtn = document.getElementById('fixBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            if (!confirm('Rol ve Departman verileri düzeltilecek. Devam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            fixBtn.disabled = true;
+            fixBtn.textContent = 'Düzeltiliyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/fix-roles-departments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ ${result.message}
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Yeni Roller:</strong> Admin, Manager, Employee, Viewer<br>
+                            <strong>Yeni Departmanlar:</strong> Satış, Üretim, Sevkiyat, Muhasebe, IT, İK, Kalite Kontrol
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Hata: ${result.message}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div style="color: #f56565;">❌ Bağlantı hatası: ${error.message}</div>`;
+            } finally {
+                fixBtn.disabled = false;
+                fixBtn.textContent = 'Rol/Departman Düzelt';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
         // Sayfa yüklendiğinde otomatik setup kontrolü
         window.onload = function() {
             // 3 saniye sonra otomatik setup dene
