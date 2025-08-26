@@ -134,10 +134,22 @@
             
             try {
                 const response = await fetch(endpoint);
-                const data = await response.json();
                 
-                resultDiv.innerHTML = `✅ Başarılı!\n\n${JSON.stringify(data, null, 2)}`;
-                resultDiv.className = 'result success';
+                // Ana sayfa için özel kontrol
+                if (endpoint === '/') {
+                    const text = await response.text();
+                    if (text.includes('Saha CRM Sistemi')) {
+                        resultDiv.innerHTML = `✅ Ana sayfa çalışıyor!\n\nSayfa başarıyla yüklendi.`;
+                        resultDiv.className = 'result success';
+                    } else {
+                        resultDiv.innerHTML = `⚠️ Ana sayfa yüklendi ama beklenen içerik yok.\n\n${text.substring(0, 200)}...`;
+                        resultDiv.className = 'result error';
+                    }
+                } else {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `✅ Başarılı!\n\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                }
             } catch (error) {
                 resultDiv.innerHTML = `❌ Hata!\n\n${error.message}`;
                 resultDiv.className = 'result error';
