@@ -2587,6 +2587,43 @@ app.get("/api/dashboard/customer-status", async (req, res) => {
   }
 });
 
+// Test API'si - Database bağlantısını kontrol et
+app.get("/api/test", async (req, res) => {
+  try {
+    console.log("🧪 Test API çağrıldı");
+
+    // Database bağlantısını test et
+    const result = await pool.query('SELECT NOW() as current_time');
+    console.log("✅ Database bağlantısı çalışıyor:", result.rows[0]);
+
+    // Tabloları kontrol et
+    const tables = await pool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+
+    console.log("📋 Mevcut tablolar:", tables.rows.map(t => t.table_name));
+
+    res.json({
+      success: true,
+      message: "API çalışıyor",
+      database_time: result.rows[0].current_time,
+      tables: tables.rows.map(t => t.table_name),
+      environment: process.env.NODE_ENV || 'development'
+    });
+
+  } catch (error) {
+    console.error("❌ Test API hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Dashboard API'leri
 app.get("/api/dashboard/stats", async (req, res) => {
   try {
@@ -2767,23 +2804,48 @@ app.get("/api/dashboard/stats", async (req, res) => {
 // Kullanıcılar API
 app.get("/api/users", async (req, res) => {
   try {
+    console.log('👥 Users API çağrıldı');
+
+    // Önce users tablosunun var olup olmadığını kontrol et
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('⚠️ Users tablosu bulunamadı');
+      return res.json({
+        success: true,
+        users: [],
+        message: 'Users tablosu henüz oluşturulmamış'
+      });
+    }
+
     const result = await pool.query(`
-      SELECT u.*, r.name as role_name, d.name as department_name
+      SELECT u.*,
+             COALESCE(r.name, 'Rol Yok') as role_name,
+             COALESCE(d.name, 'Departman Yok') as department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN departments d ON u.department_id = d.id
       ORDER BY u.created_at DESC
     `);
-    
+
+    console.log('✅ Users API - Bulunan kullanıcı sayısı:', result.rows.length);
+
     res.json({
       success: true,
       users: result.rows
     });
   } catch (error) {
-    console.error('Users API hatası:', error);
+    console.error('❌ Users API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Users tablosu veya ilişkili tablolar bulunamadı'
     });
   }
 });
@@ -2929,24 +2991,46 @@ app.delete("/api/users/:id", async (req, res) => {
 // Müşteriler API
 app.get("/api/customers", async (req, res) => {
   try {
+    console.log('🏢 Customers API çağrıldı');
+
+    // Önce customers tablosunun var olup olmadığını kontrol et
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'customers'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('⚠️ Customers tablosu bulunamadı');
+      return res.json({
+        success: true,
+        customers: [],
+        message: 'Customers tablosu henüz oluşturulmamış'
+      });
+    }
+
     const result = await pool.query(`
-      SELECT c.*, u.full_name as sales_rep_name
+      SELECT c.*,
+             COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
       FROM customers c
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
       ORDER BY c.created_at DESC
     `);
 
-    console.log('Customers API - Bulunan müşteri sayısı:', result.rows.length);
+    console.log('✅ Customers API - Bulunan müşteri sayısı:', result.rows.length);
 
     res.json({
       success: true,
       customers: result.rows
     });
   } catch (error) {
-    console.error('Customers API hatası:', error);
+    console.error('❌ Customers API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Customers tablosu veya ilişkili tablolar bulunamadı'
     });
   }
 });
@@ -3075,23 +3159,44 @@ app.delete("/api/customers/:id", async (req, res) => {
 // Ürünler API
 app.get("/api/products", async (req, res) => {
   try {
+    console.log('📋 Products API çağrıldı');
+
+    // Önce products tablosunun var olup olmadığını kontrol et
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'products'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('⚠️ Products tablosu bulunamadı');
+      return res.json({
+        success: true,
+        products: [],
+        message: 'Products tablosu henüz oluşturulmamış'
+      });
+    }
+
     const result = await pool.query(`
       SELECT * FROM products
       WHERE is_active = true
       ORDER BY created_at DESC
     `);
 
-    console.log('Products API - Bulunan ürün sayısı:', result.rows.length);
+    console.log('✅ Products API - Bulunan ürün sayısı:', result.rows.length);
 
     res.json({
       success: true,
       products: result.rows
     });
   } catch (error) {
-    console.error('Products API hatası:', error);
+    console.error('❌ Products API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Products tablosu bulunamadı'
     });
   }
 });
@@ -3183,9 +3288,31 @@ app.get("/api/visits", async (req, res) => {
 // Siparişler API
 app.get("/api/orders", async (req, res) => {
   try {
+    console.log('📦 Orders API çağrıldı');
+
+    // Önce orders tablosunun var olup olmadığını kontrol et
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'orders'
+      );
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      console.log('⚠️ Orders tablosu bulunamadı');
+      return res.json({
+        success: true,
+        orders: [],
+        message: 'Orders tablosu henüz oluşturulmamış'
+      });
+    }
+
     const { customer_id } = req.query;
     let query = `
-      SELECT o.*, c.company_name, u.full_name as sales_rep_name
+      SELECT o.*,
+             COALESCE(c.company_name, 'Müşteri Yok') as company_name,
+             COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN users u ON o.sales_rep_id = u.id
@@ -3195,7 +3322,9 @@ app.get("/api/orders", async (req, res) => {
 
     if (customer_id) {
       query = `
-        SELECT o.*, c.company_name, u.full_name as sales_rep_name
+        SELECT o.*,
+               COALESCE(c.company_name, 'Müşteri Yok') as company_name,
+               COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
         FROM orders o
         LEFT JOIN customers c ON o.customer_id = c.id
         LEFT JOIN users u ON o.sales_rep_id = u.id
@@ -3207,15 +3336,18 @@ app.get("/api/orders", async (req, res) => {
 
     const result = await pool.query(query, params);
 
+    console.log('✅ Orders API - Bulunan sipariş sayısı:', result.rows.length);
+
     res.json({
       success: true,
       orders: result.rows
     });
   } catch (error) {
-    console.error('Orders API hatası:', error);
+    console.error('❌ Orders API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Orders tablosu veya ilişkili tablolar bulunamadı'
     });
   }
 });

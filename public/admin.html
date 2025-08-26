@@ -31,6 +31,7 @@
                 <li><a href="#" onclick="showAppointments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📅 Randevular</a></li>
                 <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
                 <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
+                <li><a href="#" onclick="testAPI()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🧪 API Test</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
             </ul>
             
@@ -656,20 +657,50 @@
         }
 
         async function apiCall(url, options = {}) {
-            const response = await fetch(url, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
+            try {
+                console.log('🔄 API çağrısı:', url);
+
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                console.log('📡 API yanıt:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    let errorMessage = `API hatası: ${response.status} ${response.statusText}`;
+                    try {
+                        const error = await response.json();
+                        errorMessage = error.message || errorMessage;
+                    } catch (e) {
+                        const errorText = await response.text();
+                        errorMessage = errorText || errorMessage;
+                    }
+                    console.error('❌ API hatası:', errorMessage);
+                    throw new Error(errorMessage);
                 }
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'API hatası');
+
+                const data = await response.json();
+                console.log('✅ API başarılı:', data);
+                return data;
+
+            } catch (error) {
+                console.error('🚨 API çağrısı başarısız:', error);
+                throw error;
             }
-            
-            return response.json();
+        }
+
+        // Test API'sini çağır
+        async function testAPI() {
+            try {
+                const result = await apiCall('/api/test');
+                alert('✅ API Test Başarılı!\n\n' + JSON.stringify(result, null, 2));
+            } catch (error) {
+                alert('❌ API Test Başarısız!\n\n' + error.message);
+            }
         }
 
         async function showDashboard() {
