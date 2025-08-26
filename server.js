@@ -421,81 +421,7 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
 
 // ---------------- SETUP ENDPOINTS ---------------- //
-app.post("/api/setup-database", async (req, res) => {
-  try {
-    console.log('🔧 Database setup başlatılıyor...');
-    
-    // Basit schema kurulumu
-    const fs = require("fs");
-    const path = require("path");
-    const bcrypt = require("bcryptjs");
-    
-    const schemaPath = path.join(__dirname, "database", "schema.sql");
-    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
-    
-    await pool.query(schemaSQL);
-    
-    // Admin kullanıcısı
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
-      ON CONFLICT (username) DO NOTHING
-    `, [hashedPassword]);
-    
-    res.json({ 
-      success: true,
-      message: 'Database başarıyla kuruldu',
-      admin: {
-        username: 'admin',
-        password: 'admin123'
-      }
-    });
-  } catch (error) {
-    console.error('🔧 Database setup hatası:', error);
-    res.status(500).json({ 
-      error: error.message,
-      message: 'Database setup başarısız'
-    });
-  }
-});
 
-app.get("/api/setup-database", async (req, res) => {
-  try {
-    console.log('🔧 GET Database setup başlatılıyor...');
-    
-    const fs = require("fs");
-    const path = require("path");
-    const bcrypt = require("bcryptjs");
-    
-    const schemaPath = path.join(__dirname, "database", "schema.sql");
-    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
-    
-    await pool.query(schemaSQL);
-    
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
-      ON CONFLICT (username) DO NOTHING
-    `, [hashedPassword]);
-    
-    res.json({ 
-      success: true,
-      message: 'Database başarıyla kuruldu',
-      admin: {
-        username: 'admin',
-        password: 'admin123'
-      }
-    });
-  } catch (error) {
-    console.error('🔧 Database setup hatası:', error);
-    res.status(500).json({ 
-      error: error.message,
-      message: 'Database setup başarısız'
-    });
-  }
-});
 
 
 
@@ -2776,6 +2702,40 @@ app.get("/api/test", async (req, res) => {
       error: error.message,
       stack: error.stack
     });
+  }
+});
+
+// Setup endpoint
+app.get("/api/setup", async (req, res) => {
+  try {
+    console.log('🔧 Setup başlatılıyor...');
+    
+    const fs = require("fs");
+    const path = require("path");
+    const bcrypt = require("bcryptjs");
+    
+    // Schema dosyasını oku ve çalıştır
+    const schemaPath = path.join(__dirname, "database", "schema.sql");
+    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
+    await pool.query(schemaSQL);
+    
+    // Admin kullanıcısı ekle
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
+      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
+      ON CONFLICT (username) DO NOTHING
+    `, [hashedPassword]);
+    
+    res.json({ 
+      success: true,
+      message: 'Database başarıyla kuruldu!',
+      admin: { username: 'admin', password: 'admin123' }
+    });
+    
+  } catch (error) {
+    console.error('Setup hatası:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
