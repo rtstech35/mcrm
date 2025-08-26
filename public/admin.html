@@ -181,6 +181,33 @@
         </div>
     </div>
 
+    <!-- Hedef Modal -->
+    <div id="targetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('targetModal')">&times;</span>
+            <h3 id="targetModalTitle">Hedef Düzenle</h3>
+            <form id="targetEditForm">
+                <div class="form-group">
+                    <label>Kullanıcı:</label>
+                    <input type="text" id="target_user_name" readonly style="background: #f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Aylık Satış Hedefi (TL):</label>
+                    <input type="number" id="target_monthly_sales" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Aylık Üretim Hedefi:</label>
+                    <input type="number" id="target_monthly_production" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Aylık Gelir Hedefi (TL):</label>
+                    <input type="number" id="target_monthly_revenue" step="0.01" required>
+                </div>
+                <button type="submit" class="btn">Güncelle</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -520,6 +547,9 @@
             } else if (modalId === 'productModal') {
                 document.getElementById('productForm').reset();
                 document.getElementById('price_with_vat').value = '';
+            } else if (modalId === 'targetModal') {
+                document.getElementById('targetEditForm').reset();
+                document.getElementById('targetEditForm').removeAttribute('data-target-id');
             }
         }
 
@@ -705,6 +735,33 @@
                 document.getElementById('customerForm').reset();
                 closeModal('customerModal');
                 showCustomers();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        document.getElementById('targetEditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const form = e.target;
+            const targetId = form.getAttribute('data-target-id');
+
+            const formData = {
+                monthly_sales_target: document.getElementById('target_monthly_sales').value,
+                monthly_production_target: document.getElementById('target_monthly_production').value,
+                monthly_revenue_target: document.getElementById('target_monthly_revenue').value
+            };
+
+            try {
+                await apiCall(`/api/targets/${targetId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(formData)
+                });
+
+                alert('Hedef başarıyla güncellendi!');
+                document.getElementById('targetEditForm').reset();
+                closeModal('targetModal');
+                showTargets();
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
@@ -1684,6 +1741,32 @@
                 
             } catch (error) {
                 console.error('Hedefler yüklenemedi:', error);
+            }
+        }
+
+        async function editTarget(targetId) {
+            try {
+                // Hedef bilgilerini getir
+                const targetResponse = await apiCall(`/api/targets/${targetId}`);
+                const target = targetResponse.target || targetResponse;
+
+                console.log('Düzenlenecek hedef:', target);
+
+                // Form'u doldur
+                document.getElementById('target_user_name').value = target.full_name || target.username || 'Bilinmeyen Kullanıcı';
+                document.getElementById('target_monthly_sales').value = target.monthly_sales_target || 0;
+                document.getElementById('target_monthly_production').value = target.monthly_production_target || 0;
+                document.getElementById('target_monthly_revenue').value = target.monthly_revenue_target || 0;
+
+                // Form'a target ID'sini ekle (güncelleme için)
+                document.getElementById('targetEditForm').setAttribute('data-target-id', targetId);
+
+                // Modal'ı aç
+                document.getElementById('targetModal').style.display = 'block';
+
+            } catch (error) {
+                console.error('Hedef düzenleme hatası:', error);
+                alert('Hedef bilgileri yüklenirken hata oluştu: ' + error.message);
             }
         }
 

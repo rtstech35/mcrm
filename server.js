@@ -1220,6 +1220,71 @@ app.post("/api/targets", async (req, res) => {
   }
 });
 
+// Tek hedef getir
+app.get("/api/targets/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT u.id, u.full_name, u.username, u.monthly_sales_target, u.monthly_production_target, u.monthly_revenue_target
+      FROM users u
+      WHERE u.id = $1 AND u.is_active = true
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Hedef bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      target: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Target get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Hedef güncelle
+app.put("/api/targets/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { monthly_sales_target, monthly_production_target, monthly_revenue_target } = req.body;
+
+    const result = await pool.query(`
+      UPDATE users
+      SET monthly_sales_target = $1,
+          monthly_production_target = $2,
+          monthly_revenue_target = $3
+      WHERE id = $4 AND is_active = true
+      RETURNING id, full_name, monthly_sales_target, monthly_production_target, monthly_revenue_target
+    `, [monthly_sales_target, monthly_production_target, monthly_revenue_target, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Kullanıcı bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      target: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Target update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ---------------- STATS API ---------------- //
 app.get("/api/stats", async (req, res) => {
   try {
