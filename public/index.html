@@ -110,20 +110,127 @@
             }
         }
 
-        function showUsers() {
-            document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Yakında...</p>';
+        async function showUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h2>Kullanıcı Yönetimi</h2>';
+                    html += '<table class="data-table">';
+                    html += '<tr><th>ID</th><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Email</th><th>Rol</th><th>Departman</th><th>Durum</th></tr>';
+
+                    data.users.forEach(user => {
+                        html += `<tr>
+                            <td>${user.id}</td>
+                            <td>${user.username}</td>
+                            <td>${user.full_name || '-'}</td>
+                            <td>${user.email || '-'}</td>
+                            <td>${user.role_name || '-'}</td>
+                            <td>${user.department_name || '-'}</td>
+                            <td>${user.is_active ? 'Aktif' : 'Pasif'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Hata: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
+            }
         }
 
-        function showCustomers() {
-            document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Yakında...</p>';
+        async function showCustomers() {
+            try {
+                const response = await fetch('/api/customers');
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h2>Müşteri Yönetimi</h2>';
+                    html += '<table class="data-table">';
+                    html += '<tr><th>ID</th><th>Şirket</th><th>İletişim</th><th>Telefon</th><th>Email</th><th>Satış Temsilcisi</th><th>Durum</th></tr>';
+
+                    data.customers.forEach(customer => {
+                        html += `<tr>
+                            <td>${customer.id}</td>
+                            <td>${customer.company_name}</td>
+                            <td>${customer.contact_person || '-'}</td>
+                            <td>${customer.phone || '-'}</td>
+                            <td>${customer.email || '-'}</td>
+                            <td>${customer.sales_rep_name || '-'}</td>
+                            <td>${customer.status || 'Aktif'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Hata: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
+            }
         }
 
-        function showProducts() {
-            document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Yakında...</p>';
+        async function showProducts() {
+            try {
+                const response = await fetch('/api/products');
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h2>Ürün Yönetimi</h2>';
+                    html += '<table class="data-table">';
+                    html += '<tr><th>ID</th><th>Ürün Adı</th><th>Fiyat</th><th>Kategori</th><th>Açıklama</th><th>Durum</th></tr>';
+
+                    data.products.forEach(product => {
+                        html += `<tr>
+                            <td>${product.id}</td>
+                            <td>${product.name}</td>
+                            <td>${product.price ? product.price.toFixed(2) + ' ₺' : '-'}</td>
+                            <td>${product.category || '-'}</td>
+                            <td>${product.description || '-'}</td>
+                            <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Hata: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
+            }
         }
 
-        function showOrders() {
-            document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Yakında...</p>';
+        async function showOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                const data = await response.json();
+
+                if (data.success) {
+                    let html = '<h2>Sipariş Yönetimi</h2>';
+                    html += '<table class="data-table">';
+                    html += '<tr><th>ID</th><th>Müşteri</th><th>Toplam</th><th>Durum</th><th>Satış Temsilcisi</th><th>Tarih</th></tr>';
+
+                    data.orders.forEach(order => {
+                        const orderDate = new Date(order.created_at).toLocaleDateString('tr-TR');
+                        html += `<tr>
+                            <td>${order.id}</td>
+                            <td>${order.company_name || '-'}</td>
+                            <td>${order.total_amount ? order.total_amount.toFixed(2) + ' ₺' : '-'}</td>
+                            <td>${order.status || 'Beklemede'}</td>
+                            <td>${order.sales_rep_name || '-'}</td>
+                            <td>${orderDate}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('content').innerHTML = html;
+                } else {
+                    document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Hata: ' + data.error + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
+            }
         }
 
         function logout() {

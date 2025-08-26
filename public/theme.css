@@ -242,29 +242,35 @@ body {
 }
 
 /* Table Styles */
-.table {
+.table,
+.data-table {
     width: 100%;
     border-collapse: collapse;
     background: white;
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: var(--shadow);
+    margin-top: 1rem;
 }
 
 .table th,
-.table td {
+.table td,
+.data-table th,
+.data-table td {
     padding: 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border);
 }
 
-.table th {
+.table th,
+.data-table th {
     background: var(--secondary);
     font-weight: 600;
     color: var(--dark);
 }
 
-.table tr:hover {
+.table tr:hover,
+.data-table tr:hover {
     background: rgba(99, 102, 241, 0.05);
 }
 
