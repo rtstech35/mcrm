@@ -1357,9 +1357,9 @@
             const adminInfo = document.getElementById('adminInfo');
             if (adminInfo) {
                 adminInfo.innerHTML = `
-                    <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;">Admin Dashboard</div>
-                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Hoş geldiniz, ${currentUser.full_name}</div>
-                    <div style="font-size: 0.75rem; opacity: 0.8;">
+                    <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 0.2rem;">Admin Dashboard</div>
+                    <div style="font-size: 0.7rem; opacity: 0.9; margin-bottom: 0.3rem;">Hoş geldiniz, ${currentUser.full_name}</div>
+                    <div style="font-size: 0.65rem; opacity: 0.8;">
                         ${new Date().toLocaleDateString('tr-TR')} - ${new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}
                     </div>
                 `;
@@ -1574,7 +1574,7 @@
         // Her dakika kullanıcı bilgilerini güncelle
         setInterval(updateUserInfo, 60000);
     </script>
-    <div id="adminInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(0, 123, 255, 0.9); padding: 1rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 200px;">
+    <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">
         <!-- JavaScript ile doldurulacak -->
     </div>
 </body>
