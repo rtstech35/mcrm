@@ -17,6 +17,10 @@ app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
+app.get("/admin-simple", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-simple.html"));
+});
+
 app.get("/setup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "setup.html"));
 });
@@ -992,6 +996,46 @@ app.post("/api/targets", async (req, res) => {
     });
   } catch (error) {
     console.error('Target update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// ---------------- STATS API ---------------- //
+app.get("/api/stats", async (req, res) => {
+  try {
+    // Toplam sipariş sayısı
+    const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
+    const totalOrders = parseInt(ordersResult.rows[0].total);
+    
+    // Toplam müşteri sayısı
+    const customersResult = await pool.query("SELECT COUNT(*) as total FROM customers");
+    const totalCustomers = parseInt(customersResult.rows[0].total);
+    
+    // Toplam ürün sayısı
+    const productsResult = await pool.query("SELECT COUNT(*) as total FROM products");
+    const totalProducts = parseInt(productsResult.rows[0].total);
+    
+    // Bu ay sipariş sayısı
+    const monthlyOrdersResult = await pool.query(`
+      SELECT COUNT(*) as total 
+      FROM orders 
+      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+    `);
+    const monthlyOrders = parseInt(monthlyOrdersResult.rows[0].total);
+    
+    res.json({
+      success: true,
+      totalOrders,
+      totalCustomers,
+      totalProducts,
+      monthlyOrders
+    });
+  } catch (error) {
+    console.error('Stats API hatası:', error);
     res.status(500).json({
       success: false,
       error: error.message
