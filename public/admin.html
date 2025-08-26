@@ -138,7 +138,6 @@
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
                     ...options.headers
                 }
             });
@@ -279,9 +278,13 @@
 
         async function showUsers() {
             try {
-                const users = await apiCall('/api/users');
-                const roles = await apiCall('/api/roles');
-                const departments = await apiCall('/api/departments');
+                const usersResponse = await apiCall('/api/users');
+                const rolesResponse = await apiCall('/api/roles');
+                const departmentsResponse = await apiCall('/api/departments');
+                
+                const users = usersResponse.users || [];
+                const roles = rolesResponse.roles || [];
+                const departments = departmentsResponse.departments || [];
                 
                 let html = `
                     <div class="card">
@@ -335,7 +338,8 @@
 
         async function showCustomers() {
             try {
-                const customers = await apiCall('/api/customers');
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
                 
                 let html = `
                     <div class="card">
@@ -818,7 +822,8 @@
         
         async function showProducts() {
             try {
-                const products = await apiCall('/api/products');
+                const productsResponse = await apiCall('/api/products');
+                const products = productsResponse.products || [];
                 
                 let html = `
                     <div class="card">
@@ -869,7 +874,8 @@
 
         async function showOrders() {
             try {
-                const orders = await apiCall('/api/orders');
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
                 
                 let html = `
                     <div class="card">
@@ -909,8 +915,11 @@
         
         async function showTargets() {
             try {
-                const users = await apiCall('/api/users');
-                const targets = await apiCall('/api/targets');
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                
+                // Targets API'si henüz yok, varsayılan değerler kullan
+                const targets = [];
                 
                 document.getElementById('content').innerHTML = `
                     <div class="card">
