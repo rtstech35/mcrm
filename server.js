@@ -237,71 +237,11 @@ app.post("/api/products", authenticateToken, async (req, res) => {
   }
 });
 
-// ---------------- SİPARİŞLER ---------------- //
-app.get("/api/orders", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT o.*, p.name as product_name, c.name as customer_name
-       FROM orders o 
-       LEFT JOIN products p ON o.product_id = p.id 
-       LEFT JOIN customers c ON o.customer_id = c.id
-       ORDER BY o.created_at DESC`
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Siparişler alınamadı:", err);
-    res.status(500).json({ error: "Siparişler alınamadı" });
-  }
-});
+// ---------------- SİPARİŞLER (ESKİ - KALDIRILDI) ---------------- //
+// Bu endpoint'ler yeni API'lerle değiştirildi
 
-app.post("/api/orders", authenticateToken, async (req, res) => {
-  try {
-    const { customer_id, product_id, quantity, notes } = req.body;
-    if (!customer_id || !product_id || !quantity) {
-      return res.status(400).json({ error: "Müşteri, ürün ve miktar zorunlu" });
-    }
-    
-    await pool.query(
-      "INSERT INTO orders (customer_id, product_id, quantity, notes, status, created_by) VALUES ($1, $2, $3, $4, $5, $6)",
-      [customer_id, product_id, parseInt(quantity), notes || '', 'pending', req.user.userId]
-    );
-    
-    res.json({ success: true, message: "Sipariş başarıyla eklendi" });
-  } catch (err) {
-    console.error("Sipariş eklenemedi:", err);
-    res.status(500).json({ error: "Sipariş eklenemedi" });
-  }
-});
-
-// ---------------- MÜŞTERİLER ---------------- //
-app.get("/api/customers", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM customers ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Müşteriler alınamadı:", err);
-    res.status(500).json({ error: "Müşteriler alınamadı" });
-  }
-});
-
-app.post("/api/customers", authenticateToken, async (req, res) => {
-  try {
-    const { name, phone, email, address, company } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: "Müşteri adı zorunlu" });
-    }
-    
-    await pool.query(
-      "INSERT INTO customers (name, phone, email, address, company) VALUES ($1, $2, $3, $4, $5)",
-      [name, phone || '', email || '', address || '', company || '']
-    );
-    
-    res.json({ success: true, message: "Müşteri başarıyla eklendi" });
-  } catch (err) {
-    console.error("Müşteri eklenemedi:", err);
-    res.status(500).json({ error: "Müşteri eklenemedi" });
-  }
-});
+// ---------------- MÜŞTERİLER (ESKİ - KALDIRILDI) ---------------- //
+// Bu endpoint'ler yeni API'lerle değiştirildi
 
 // ---------------- DASHBOARD STATS ---------------- //
 app.get("/api/stats", async (req, res) => {
