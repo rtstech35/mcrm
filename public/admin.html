@@ -24,6 +24,7 @@
                 <li><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
                 <li><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
                 <li><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
+                <li><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
                 <li><a href="#" onclick="showTargets()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Hedefler</a></li>
                 <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
                 <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
@@ -344,7 +345,7 @@
                 let html = `
                     <div class="card">
                         <h2>Müşteri Yönetimi</h2>
-                        <button class="btn" onclick="alert('Müşteri ekleme yakında!')">Yeni Müşteri</button>
+                        <button class="btn" onclick="openCustomerModal()">Yeni Müşteri</button>
                         <table class="table">
                             <thead>
                                 <tr>
@@ -1273,6 +1274,158 @@
             }
         }
         
+        // Departman yönetimi fonksiyonları
+        async function showDepartments() {
+            try {
+                const departmentsResponse = await apiCall('/api/departments');
+                const departments = departmentsResponse.departments || [];
+                
+                let html = `
+                    <div class="card">
+                        <h2>Departman Yönetimi</h2>
+                        <button class="btn" onclick="openDepartmentModal()">Yeni Departman</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Departman Adı</th>
+                                    <th>Açıklama</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                departments.forEach(dept => {
+                    html += `
+                        <tr>
+                            <td>${dept.id}</td>
+                            <td>${dept.name}</td>
+                            <td>${dept.description || '-'}</td>
+                            <td>
+                                <button class="btn" onclick="editDepartment(${dept.id})">Düzenle</button>
+                                <button class="btn btn-danger" onclick="deleteDepartment(${dept.id})">Sil</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Departmanlar yüklenemedi:', error);
+            }
+        }
+
+        // Cari hesap yönetimi
+        async function showCariHesap() {
+            try {
+                const transactionsResponse = await apiCall('/api/account-transactions');
+                const transactions = transactionsResponse.transactions || [];
+                
+                let html = `
+                    <div class="card">
+                        <h2>Cari Hesap Yönetimi</h2>
+                        <button class="btn" onclick="openTransactionModal()">Yeni İşlem</button>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Müşteri</th>
+                                    <th>İşlem Tipi</th>
+                                    <th>Tutar</th>
+                                    <th>Açıklama</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                transactions.forEach(transaction => {
+                    html += `
+                        <tr>
+                            <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
+                            <td>${transaction.customer_name || '-'}</td>
+                            <td>${transaction.transaction_type}</td>
+                            <td>${transaction.amount} TL</td>
+                            <td>${transaction.description || '-'}</td>
+                            <td>
+                                <button class="btn" onclick="editTransaction(${transaction.id})">Düzenle</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Cari hesap verileri yüklenemedi:', error);
+            }
+        }
+
+        // Hedef yönetimi
+        async function showTargets() {
+            try {
+                const targetsResponse = await apiCall('/api/targets');
+                const targets = targetsResponse.targets || [];
+                
+                let html = `
+                    <div class="card">
+                        <h2>Hedef Yönetimi</h2>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Kullanıcı</th>
+                                    <th>Aylık Satış Hedefi</th>
+                                    <th>Üretim Hedefi</th>
+                                    <th>Gelir Hedefi</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                targets.forEach(target => {
+                    html += `
+                        <tr>
+                            <td>${target.full_name}</td>
+                            <td>${target.monthly_sales_target || 0} TL</td>
+                            <td>${target.monthly_production_target || 0}</td>
+                            <td>${target.monthly_revenue_target || 0} TL</td>
+                            <td>
+                                <button class="btn" onclick="editTarget(${target.id})">Düzenle</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Hedefler yüklenemedi:', error);
+            }
+        }
+
+        // Modal fonksiyonları
+        function openDepartmentModal() {
+            document.getElementById('departmentModal').style.display = 'block';
+        }
+
+        function openCustomerModal() {
+            document.getElementById('customerModal').style.display = 'block';
+        }
+
+        function openTransactionModal() {
+            document.getElementById('transactionModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
         // Sayfa yüklendiğinde dashboard'u göster
         showDashboard();
         

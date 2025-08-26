@@ -882,6 +882,123 @@ app.get("/api/departments", async (req, res) => {
   }
 });
 
+app.post("/api/departments", async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO departments (name, description)
+      VALUES ($1, $2)
+      RETURNING *
+    `, [name, description]);
+    
+    res.json({
+      success: true,
+      department: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Department create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Cari Hesap API
+app.get("/api/account-transactions", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT at.*, c.company_name as customer_name, u.full_name as created_by_name
+      FROM account_transactions at
+      LEFT JOIN customers c ON at.customer_id = c.id
+      LEFT JOIN users u ON at.created_by = u.id
+      ORDER BY at.transaction_date DESC
+    `);
+    
+    res.json({
+      success: true,
+      transactions: result.rows
+    });
+  } catch (error) {
+    console.error('Account transactions API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/account-transactions", async (req, res) => {
+  try {
+    const { customer_id, transaction_type, amount, transaction_date, description, reference_number } = req.body;
+    
+    const result = await pool.query(`
+      INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, 1)
+      RETURNING *
+    `, [customer_id, transaction_type, amount, transaction_date, description, reference_number]);
+    
+    res.json({
+      success: true,
+      transaction: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Transaction create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Hedefler API
+app.get("/api/targets", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT u.id, u.full_name, u.monthly_sales_target, u.monthly_production_target, u.monthly_revenue_target
+      FROM users u
+      WHERE u.is_active = true
+      ORDER BY u.full_name
+    `);
+    
+    res.json({
+      success: true,
+      targets: result.rows
+    });
+  } catch (error) {
+    console.error('Targets API hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post("/api/targets", async (req, res) => {
+  try {
+    const { user_id, monthly_sales_target, monthly_production_target, monthly_revenue_target } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE users 
+      SET monthly_sales_target = $2, monthly_production_target = $3, monthly_revenue_target = $4
+      WHERE id = $1
+      RETURNING *
+    `, [user_id, monthly_sales_target, monthly_production_target, monthly_revenue_target]);
+    
+    res.json({
+      success: true,
+      target: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Target update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
 app.post("/api/create-admin", async (req, res) => {
   try {
