@@ -747,112 +747,131 @@
                     Math.round((stats.currentMonthlyCollection / stats.monthlyCollectionTarget) * 100) : 0;
                 
                 document.getElementById('content').innerHTML = `
-                    <div class="grid grid-2" style="gap: 2rem;">
-                        <!-- Aylık Satış Durumu -->
-                        <div class="card">
-                            <h2>📈 Aylık Satış Durumu</h2>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                    <!-- Üst 3 Blok -->
+                    <div class="grid grid-3" style="margin-bottom: 2rem;">
+                        <div class="stat-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${(stats.currentMonthlySales || 0).toLocaleString('tr-TR')} ₺
-                                    </div>
-                                    <div style="color: var(--text-secondary);">
-                                        Hedef: ${(stats.monthlySalesTarget || 0).toLocaleString('tr-TR')} ₺
-                                    </div>
+                                    <div class="stat-number">${(stats.currentMonthlySales || 0).toLocaleString('tr-TR')} ₺</div>
+                                    <div class="stat-label">Aylık Satış</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${(stats.monthlySalesTarget || 0).toLocaleString('tr-TR')} ₺</div>
                                 </div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: ${salesPercentage >= 100 ? 'var(--success-solid)' : salesPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
-                                    %${salesPercentage}
+                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--primary), var(--accent)); border-radius: 8px; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${salesPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
                                 </div>
-                            </div>
-                            <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="background: ${salesPercentage >= 100 ? 'var(--success)' : salesPercentage >= 70 ? 'var(--warning)' : 'var(--danger)'}; height: 100%; width: ${Math.min(salesPercentage, 100)}%; transition: width 0.5s ease;"></div>
                             </div>
                         </div>
-
-                        <!-- Aylık Ziyaret Durumu -->
-                        <div class="card">
-                            <h2>🎯 Aylık Saha Ziyaret Durumu</h2>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                        
+                        <div class="stat-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${stats.currentMonthlyVisits || 0}
-                                    </div>
-                                    <div style="color: var(--text-secondary);">
-                                        Hedef: ${stats.monthlyVisitTarget || 0} ziyaret
-                                    </div>
+                                    <div class="stat-number">${stats.currentMonthlyVisits || 0}</div>
+                                    <div class="stat-label">Aylık Ziyaret</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${stats.monthlyVisitTarget || 0}</div>
                                 </div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: ${visitPercentage >= 100 ? 'var(--success-solid)' : visitPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
-                                    %${visitPercentage}
+                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--success), var(--warning)); border-radius: 8px; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${visitPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
                                 </div>
-                            </div>
-                            <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="background: ${visitPercentage >= 100 ? 'var(--success)' : visitPercentage >= 70 ? 'var(--warning)' : 'var(--danger)'}; height: 100%; width: ${Math.min(visitPercentage, 100)}%; transition: width 0.5s ease;"></div>
                             </div>
                         </div>
-
-                        <!-- Aylık Tahsilat Durumu -->
-                        <div class="card">
-                            <h2>💰 Aylık Tahsilat Durumu</h2>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
+                        
+                        <div class="stat-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <div style="font-size: 2rem; font-weight: bold; color: var(--primary-solid);">
-                                        ${(stats.currentMonthlyCollection || 0).toLocaleString('tr-TR')} ₺
-                                    </div>
-                                    <div style="color: var(--text-secondary);">
-                                        Hedef: ${(stats.monthlyCollectionTarget || 0).toLocaleString('tr-TR')} ₺
-                                    </div>
+                                    <div class="stat-number">${(stats.currentMonthlyCollection || 0).toLocaleString('tr-TR')} ₺</div>
+                                    <div class="stat-label">Aylık Tahsilat</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-light);">Hedef: ${(stats.monthlyCollectionTarget || 0).toLocaleString('tr-TR')} ₺</div>
                                 </div>
-                                <div style="font-size: 1.5rem; font-weight: bold; color: ${collectionPercentage >= 100 ? 'var(--success-solid)' : collectionPercentage >= 70 ? 'var(--warning-solid)' : 'var(--danger-solid)'};">
-                                    %${collectionPercentage}
-                                </div>
-                            </div>
-                            <div style="background: var(--gray-200); height: 8px; border-radius: 4px; overflow: hidden;">
-                                <div style="background: ${collectionPercentage >= 100 ? 'var(--success)' : collectionPercentage >= 70 ? 'var(--warning)' : 'var(--danger)'}; height: 100%; width: ${Math.min(collectionPercentage, 100)}%; transition: width 0.5s ease;"></div>
-                            </div>
-                        </div>
-
-                        <!-- Sipariş Durumu -->
-                        <div class="card">
-                            <h2>📦 Sipariş Durumu</h2>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem;">
-                                <div style="text-align: center; padding: 1rem; background: var(--warning); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.pendingOrders || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Bekleyen</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--primary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.productionOrders || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Üretimde</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--secondary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.completedOrders || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Tamamlanan</div>
-                                </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--success); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.deliveredOrders || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Teslim Edilen</div>
+                                <div style="width: 60px; height: 40px; background: linear-gradient(45deg, var(--warning), var(--danger)); border-radius: 8px; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${collectionPercentage}%; background: rgba(255,255,255,0.3); transition: height 0.5s ease;"></div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Sistem Özeti -->
-                        <div class="card">
-                            <h2>📊 Sistem Özeti</h2>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem;">
-                                <div style="text-align: center; padding: 1rem; background: var(--info); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.userCount || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Kullanıcı</div>
+
+
+                    <!-- Sipariş Durumu 4 Kutu -->
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <h2>📦 Sipariş Durumu</h2>
+                        <div class="grid grid-4" style="margin-top: 1rem;">
+                            <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white;">
+                                <div class="stat-number" style="color: white;">${stats.pendingOrders || 0}</div>
+                                <div class="stat-label" style="color: rgba(255,255,255,0.9);">Bekleyen</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;">
+                                <div class="stat-number" style="color: white;">${stats.productionOrders || 0}</div>
+                                <div class="stat-label" style="color: rgba(255,255,255,0.9);">Üretimde</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #06b6d4, #0891b2); color: white;">
+                                <div class="stat-number" style="color: white;">${stats.completedOrders || 0}</div>
+                                <div class="stat-label" style="color: rgba(255,255,255,0.9);">Tamamlanan</div>
+                            </div>
+                            <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                <div class="stat-number" style="color: white;">${stats.deliveredOrders || 0}</div>
+                                <div class="stat-label" style="color: rgba(255,255,255,0.9);">Teslim Edilen</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Randevu Takibi -->
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <h2>📅 Bugünkü Randevular</h2>
+                        <div style="margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px; margin-bottom: 0.5rem;">
+                                <div>
+                                    <div style="font-weight: 600;">09:00 - ABC Teknoloji</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-light);">Satış görüşmesi</div>
                                 </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--success); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.customerCount || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Müşteri</div>
+                                <span class="status-badge warning">Bekleyen</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px; margin-bottom: 0.5rem;">
+                                <div>
+                                    <div style="font-weight: 600;">14:00 - XYZ İnşaat</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-light);">Proje sunumu</div>
                                 </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--primary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.orderCount || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Sipariş</div>
+                                <span class="status-badge success">Tamamlandı</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--light); border-radius: 8px;">
+                                <div>
+                                    <div style="font-weight: 600;">16:30 - DEF Lojistik</div>
+                                    <div style="font-size: 0.875rem; color: var(--text-light);">Teknik toplantı</div>
                                 </div>
-                                <div style="text-align: center; padding: 1rem; background: var(--secondary); color: white; border-radius: 12px;">
-                                    <div style="font-size: 1.5rem; font-weight: bold;">${stats.productCount || 0}</div>
-                                    <div style="font-size: 0.875rem; opacity: 0.9;">Ürün</div>
+                                <span class="status-badge info">Devam Eden</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Müşteri Haritası -->
+                    <div class="card">
+                        <h2>🗺️ Müşteri Haritası</h2>
+                        <div style="height: 400px; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 12px; position: relative; overflow: hidden; margin-top: 1rem;">
+                            <!-- Harita Arka Plan -->
+                            <div style="position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px; background: rgba(255,255,255,0.1); border-radius: 8px; border: 2px solid rgba(255,255,255,0.3);"></div>
+                            
+                            <!-- Müşteri Noktaları -->
+                            <div style="position: absolute; top: 80px; left: 120px; width: 12px; height: 12px; background: var(--success); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="ABC Teknoloji - Aktif"></div>
+                            <div style="position: absolute; top: 150px; left: 200px; width: 12px; height: 12px; background: var(--success); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="XYZ İnşaat - Aktif"></div>
+                            <div style="position: absolute; top: 120px; left: 300px; width: 12px; height: 12px; background: var(--warning); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="DEF Lojistik - Potansiyel"></div>
+                            <div style="position: absolute; top: 200px; left: 180px; width: 12px; height: 12px; background: var(--warning); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="GHI Market - Potansiyel"></div>
+                            <div style="position: absolute; top: 180px; left: 350px; width: 12px; height: 12px; background: var(--danger); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="JKL Restaurant - İlgilenmiyor"></div>
+                            
+                            <!-- Harita Başlığı -->
+                            <div style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,0.9); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.875rem;">İstanbul Bölgesi</div>
+                            
+                            <!-- Harita Lejantı -->
+                            <div style="position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 1rem; border-radius: 8px; font-size: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                    <div style="width: 8px; height: 8px; background: var(--success); border-radius: 50%;"></div>
+                                    <span>Aktif Müşteri</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                    <div style="width: 8px; height: 8px; background: var(--warning); border-radius: 50%;"></div>
+                                    <span>Potansiyel</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="width: 8px; height: 8px; background: var(--danger); border-radius: 50%;"></div>
+                                    <span>İlgilenmiyor</span>
                                 </div>
                             </div>
                         </div>
