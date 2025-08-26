@@ -16,8 +16,8 @@
     </div>
 
     <div class="container">
-        <div class="sidebar" style="background: #007bff; position: relative;">
-            <h3 style="color: white;">Menü</h3>
+        <div class="sidebar" style="background: #007bff; position: fixed; width: 280px; height: 100vh; overflow-y: auto;">
+            <h3 style="color: white; padding: 0 1.5rem; margin-bottom: 1rem;">Menü</h3>
             <ul style="list-style: none; padding: 0;">
                 <li><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
                 <li><a href="#" onclick="showUsers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">👥 Kullanıcılar</a></li>
@@ -37,7 +37,7 @@
             
         </div>
 
-        <div class="content" id="content">
+        <div class="content" id="content" style="margin-left: 280px; padding: 2rem; min-height: 100vh;">
             <div class="card">
                 <h2>Dashboard</h2>
                 <p>Admin paneline hoş geldiniz!</p>
@@ -748,7 +748,7 @@
                 
                 document.getElementById('content').innerHTML = `
                     <!-- Üst 3 Blok -->
-                    <div class="grid grid-3" style="margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                         <div class="stat-card">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -799,7 +799,7 @@
                                 <canvas id="ordersDonutChart" width="200" height="100"></canvas>
                             </div>
                         </div>
-                        <div class="grid grid-4" style="margin-top: 1rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
                             <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #f97316); color: white; position: relative; overflow: hidden;">
                                 <div class="stat-number" style="color: white;">${stats.pendingOrders || 0}</div>
                                 <div class="stat-label" style="color: rgba(255,255,255,0.9);">Bekleyen</div>
