@@ -40,8 +40,8 @@ pool.connect()
   .then(async () => {
     console.log("✅ PostgreSQL bağlantısı başarılı");
     
-    // Production'da otomatik database setup (geçici olarak devre dışı)
-    if (process.env.NODE_ENV === 'production' && process.env.AUTO_SETUP === 'true') {
+    // Production'da otomatik database setup
+    if (process.env.NODE_ENV === 'production') {
       try {
         console.log("🔄 Production ortamında database setup kontrol ediliyor...");
         await setupDatabase();
