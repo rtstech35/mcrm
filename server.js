@@ -1265,11 +1265,30 @@ app.post("/api/products", async (req, res) => {
 
     console.log('Ürün ekleme isteği:', req.body);
 
-    const result = await pool.query(`
-      INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6, true)
-      RETURNING *
-    `, [name, description, parseFloat(unit_price), parseFloat(vat_rate), parseFloat(price_with_vat), unit]);
+    // Önce vat_rate ve price_with_vat kolonları var mı kontrol et
+    const columnsResult = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'products' AND column_name IN ('vat_rate', 'price_with_vat')
+    `);
+
+    const hasVatColumns = columnsResult.rows.length === 2;
+    let result;
+
+    if (hasVatColumns) {
+      // KDV kolonları varsa tam insert
+      result = await pool.query(`
+        INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, true)
+        RETURNING *
+      `, [name, description, parseFloat(unit_price), parseFloat(vat_rate), parseFloat(price_with_vat), unit]);
+    } else {
+      // KDV kolonları yoksa basit insert
+      result = await pool.query(`
+        INSERT INTO products (name, description, unit_price, unit, is_active)
+        VALUES ($1, $2, $3, $4, true)
+        RETURNING *
+      `, [name, description, parseFloat(unit_price), unit]);
+    }
 
     res.json({
       success: true,

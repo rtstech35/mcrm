@@ -47,6 +47,9 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal('productModal')">&times;</span>
             <h3>Yeni Ürün</h3>
+            <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.875rem;">
+                <strong>💡 İpucu:</strong> KDV alanları görünmüyorsa, Setup sayfasından "Ürün KDV Düzelt" butonunu kullanın.
+            </div>
             <form id="productForm">
                 <div class="form-group">
                     <label>Ürün Adı:</label>
@@ -61,8 +64,8 @@
                     <input type="number" id="product_unit_price" step="0.01" required onchange="calculateVAT()">
                 </div>
                 <div class="form-group">
-                    <label>KDV Oranı (%):</label>
-                    <select id="vat_rate" onchange="calculateVAT()" required>
+                    <label>KDV Oranı (%) <small style="color: #666;">(opsiyonel)</small>:</label>
+                    <select id="vat_rate" onchange="calculateVAT()">
                         <option value="0">%0</option>
                         <option value="1">%1</option>
                         <option value="10">%10</option>
@@ -70,7 +73,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Birim Fiyat (KDV Dahil):</label>
+                    <label>Birim Fiyat (KDV Dahil) <small style="color: #666;">(otomatik hesaplanır)</small>:</label>
                     <input type="number" id="price_with_vat" step="0.01" readonly style="background: #f8f9fa;">
                 </div>
                 <div class="form-group">
@@ -1175,8 +1178,8 @@
                             <td>${product.name}</td>
                             <td>${product.description || '-'}</td>
                             <td>${product.unit_price} TL</td>
-                            <td>%${product.vat_rate || 20}</td>
-                            <td>${product.price_with_vat || (product.unit_price * 1.2).toFixed(2)} TL</td>
+                            <td>${product.vat_rate ? '%' + product.vat_rate : '-'}</td>
+                            <td>${product.price_with_vat ? product.price_with_vat + ' TL' : '-'}</td>
                             <td>${product.unit}</td>
                             <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
                             <td>
