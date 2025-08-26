@@ -208,6 +208,45 @@
         </div>
     </div>
 
+    <!-- Cari Hesap İşlem Modal -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('transactionModal')">&times;</span>
+            <h3>Yeni Cari Hesap İşlemi</h3>
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="transaction_customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>İşlem Tipi:</label>
+                    <select id="transaction_type" required>
+                        <option value="">Seçiniz</option>
+                        <option value="debit">Borç</option>
+                        <option value="credit">Alacak</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tutar (TL):</label>
+                    <input type="number" id="transaction_amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>İşlem Tarihi:</label>
+                    <input type="date" id="transaction_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="transaction_description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Referans No:</label>
+                    <input type="text" id="transaction_reference">
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -767,6 +806,33 @@
             }
         });
 
+        document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                customer_id: document.getElementById('transaction_customer_id').value,
+                transaction_type: document.getElementById('transaction_type').value,
+                amount: document.getElementById('transaction_amount').value,
+                transaction_date: document.getElementById('transaction_date').value,
+                description: document.getElementById('transaction_description').value,
+                reference_number: document.getElementById('transaction_reference').value
+            };
+
+            try {
+                await apiCall('/api/account-transactions', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                alert('Cari hesap işlemi başarıyla oluşturuldu!');
+                document.getElementById('transactionForm').reset();
+                closeModal('transactionModal');
+                showCariHesap();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
         function viewOrderDetail(orderId) {
             window.location.href = `/order-detail-admin.html?id=${orderId}`;
         }
@@ -774,82 +840,45 @@
         async function showCariHesap() {
             try {
                 console.log('Cari hesap verileri yüklenmeye başlanıyor...');
-                const deliveryNotes = await apiCall('/api/cari/delivery-notes');
-                const invoices = await apiCall('/api/cari/invoices');
-                console.log('İrsaliye sayısı:', deliveryNotes.length);
-                console.log('Fatura sayısı:', invoices.length);
+                const transactionsResponse = await apiCall('/api/account-transactions');
+                const transactions = transactionsResponse.transactions || [];
+                console.log('Cari hesap işlem sayısı:', transactions.length);
                 
                 document.getElementById('content').innerHTML = `
                     <div class="card">
                         <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                            <!-- İrsaliyeler -->
-                            <div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                    <h3 style="color: #2d3748;">İrsaliyeler (${deliveryNotes.length})</h3>
-                                    <div style="display: flex; gap: 0.5rem;">
-                                        <button class="btn" onclick="showCariHesap()" style="background: #6c757d;">Yenile</button>
-                                        <span style="color: #666; font-size: 0.875rem; font-style: italic;">* İrsaliyeler teslimatçı tarafından otomatik oluşturulur</span>
-                                    </div>
-                                </div>
-                                
-                                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-                                    ${deliveryNotes.map(dn => `
-                                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer;" onclick="viewDeliveryNote(${dn.id})">
-                                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                <div>
-                                                    <strong>${dn.delivery_note_number}</strong>
-                                                    <p style="color: #718096; font-size: 0.875rem;">${dn.customer_name}</p>
-                                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
-                                                    <p style="color: #718096; font-size: 0.75rem;">${dn.created_by_name || 'Bilinmiyor'}</p>
-                                                </div>
-                                                <div style="text-align: right;">
-                                                    <p style="font-weight: 600;">${dn.total_amount} TL</p>
-                                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
-                                                        <span style="background: ${dn.signature_data ? '#d1ecf1' : '#f8d7da'}; color: ${dn.signature_data ? '#0c5460' : '#721c24'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
-                                                            ${dn.signature_data ? '✓ İmzalı' : '✗ İmzasız'}
-                                                        </span>
-                                                        <span style="background: ${dn.is_invoiced ? '#d4edda' : '#fff3cd'}; color: ${dn.is_invoiced ? '#155724' : '#856404'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
-                                                            ${dn.invoice_status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <!-- Faturalar -->
-                            <div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                    <h3 style="color: #2d3748;">Faturalar (${invoices.length})</h3>
-                                    <button class="btn" onclick="createInvoiceFromDeliveryNotes()" style="background: #17a2b8;">İrsaliyelerden Fatura Oluştur</button>
-                                </div>
-                                
-                                <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-                                    ${invoices.map(inv => `
-                                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer;" onclick="viewInvoice(${inv.id})">
-                                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                <div>
-                                                    <strong>${inv.invoice_number}</strong>
-                                                    <p style="color: #718096; font-size: 0.875rem;">${inv.customer_name}</p>
-                                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(inv.invoice_date).toLocaleDateString('tr-TR')}</p>
-                                                </div>
-                                                <div style="text-align: right;">
-                                                    <p style="font-weight: 600;">${inv.total_amount} TL</p>
-                                                    <p style="color: #28a745; font-size: 0.875rem;">Ödenen: ${inv.paid_amount} TL</p>
-                                                    <span style="background: ${inv.status === 'paid' ? '#d4edda' : inv.status === 'partial' ? '#fff3cd' : '#f8d7da'}; color: ${inv.status === 'paid' ? '#155724' : inv.status === 'partial' ? '#856404' : '#721c24'}; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem;">
-                                                        ${inv.status === 'paid' ? 'Ödendi' : inv.status === 'partial' ? 'Kısmi' : 'Bekliyor'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
+                        <button class="btn" onclick="openTransactionModal()" style="margin-bottom: 1rem;">Yeni İşlem</button>
+
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Müşteri</th>
+                                    <th>İşlem Tipi</th>
+                                    <th>Tutar</th>
+                                    <th>Açıklama</th>
+                                    <th>Referans No</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${transactions.map(transaction => `
+                                    <tr>
+                                        <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
+                                        <td>${transaction.customer_name || '-'}</td>
+                                        <td>
+                                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;
+                                                  background: ${transaction.transaction_type === 'debit' ? '#f8d7da' : '#d4edda'};
+                                                  color: ${transaction.transaction_type === 'debit' ? '#721c24' : '#155724'};">
+                                                ${transaction.transaction_type === 'debit' ? 'Borç' : 'Alacak'}
+                                            </span>
+                                        </td>
+                                        <td>${transaction.amount.toFixed(2)} ₺</td>
+                                        <td>${transaction.description || '-'}</td>
+                                        <td>${transaction.reference_number || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 `;
                 
@@ -1795,12 +1824,35 @@
             }
         }
 
-        function openTransactionModal() {
-            document.getElementById('transactionModal').style.display = 'block';
+        async function openTransactionModal() {
+            try {
+                // Müşteri listesini yükle
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+
+                const customerSelect = document.getElementById('transaction_customer_id');
+                customerSelect.innerHTML = '<option value="">Seçiniz</option>';
+
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+
+                // Bugünün tarihini varsayılan olarak ayarla
+                document.getElementById('transaction_date').value = new Date().toISOString().split('T')[0];
+
+                document.getElementById('transactionModal').style.display = 'block';
+            } catch (error) {
+                console.error('İşlem modal açılırken hata:', error);
+                document.getElementById('transactionModal').style.display = 'block';
+            }
         }
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            // Form'u temizle
+            if (modalId === 'transactionModal') {
+                document.getElementById('transactionForm').reset();
+            }
         }
 
         // Sayfa yüklendiğinde dashboard'u göster
