@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS departments (
     name VARCHAR(100) NOT NULL,
     description TEXT,
     code VARCHAR(10) UNIQUE, -- Departman kısa kodu
-    manager_id INTEGER REFERENCES users(id), -- Departman yöneticisi
+    manager_id INTEGER, -- Departman yöneticisi (foreign key sonra eklenecek)
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
