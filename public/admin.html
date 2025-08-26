@@ -696,10 +696,37 @@
         // Test API'sini çağır
         async function testAPI() {
             try {
-                const result = await apiCall('/api/test');
-                alert('✅ API Test Başarılı!\n\n' + JSON.stringify(result, null, 2));
+                console.log('🧪 API Test başlatılıyor...');
+
+                // Önce health check API'sini dene
+                const healthResult = await apiCall('/api/health');
+                console.log('✅ Health check başarılı:', healthResult);
+
+                let message = '✅ API Test Başarılı!\n\n';
+                message += `Database Bağlantısı: ✅ Çalışıyor\n`;
+                message += `Tablolar: ${healthResult.tables.length} adet\n`;
+                message += `Tablolar: ${healthResult.tables.join(', ')}\n\n`;
+
+                if (healthResult.table_counts) {
+                    message += 'Tablo Kayıt Sayıları:\n';
+                    Object.entries(healthResult.table_counts).forEach(([table, count]) => {
+                        message += `• ${table}: ${count}\n`;
+                    });
+                }
+
+                alert(message);
+
             } catch (error) {
-                alert('❌ API Test Başarısız!\n\n' + error.message);
+                console.error('❌ API Test hatası:', error);
+
+                let errorMessage = '❌ API Test Başarısız!\n\n';
+                errorMessage += `Hata: ${error.message}\n\n`;
+                errorMessage += 'Muhtemel Çözümler:\n';
+                errorMessage += '1. Setup sayfasından database kurulumunu yapın\n';
+                errorMessage += '2. Migration\'ları çalıştırın\n';
+                errorMessage += '3. Database bağlantısını kontrol edin';
+
+                alert(errorMessage);
             }
         }
 

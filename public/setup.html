@@ -184,6 +184,10 @@
         <button class="setup-btn" onclick="runAppointmentMigration()" id="appointmentMigrationBtn" style="background: linear-gradient(135deg, #673ab7 0%, #512da8 100%); margin-left: 10px;">
             Randevu Sistemi Oluştur
         </button>
+
+        <button class="setup-btn" onclick="testDatabase()" id="testDatabaseBtn" style="background: linear-gradient(135deg, #607d8b 0%, #455a64 100%); margin-left: 10px;">
+            🧪 Database Test
+        </button>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -739,6 +743,60 @@
             } finally {
                 appointmentMigrationBtn.disabled = false;
                 appointmentMigrationBtn.textContent = 'Randevu Sistemi Oluştur';
+                loading.style.display = 'none';
+                status.style.display = 'block';
+            }
+        }
+
+        async function testDatabase() {
+            const testDatabaseBtn = document.getElementById('testDatabaseBtn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+
+            testDatabaseBtn.disabled = true;
+            testDatabaseBtn.textContent = 'Test Ediliyor...';
+            loading.style.display = 'block';
+            status.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/health');
+                const result = await response.json();
+
+                if (result.success) {
+                    status.innerHTML = `
+                        <div style="color: #48bb78; font-weight: 600;">
+                            ✅ Database Bağlantısı Başarılı!
+                        </div>
+                        <div style="margin-top: 1rem; color: #666;">
+                            <strong>Database Bilgileri:</strong><br>
+                            • Bağlantı: Çalışıyor<br>
+                            • Zaman: ${new Date(result.database_time).toLocaleString('tr-TR')}<br>
+                            • Tablo Sayısı: ${result.tables.length}<br>
+                            • Tablolar: ${result.tables.join(', ')}<br>
+                            <br>
+                            <strong>Tablo Kayıt Sayıları:</strong><br>
+                            ${Object.entries(result.table_counts || {}).map(([table, count]) =>
+                                `• ${table}: ${count}`
+                            ).join('<br>')}
+                        </div>
+                    `;
+                } else {
+                    status.innerHTML = `<div style="color: #f56565;">❌ Database Hatası: ${result.error}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `
+                    <div style="color: #f56565;">❌ Database Bağlantı Hatası!</div>
+                    <div style="margin-top: 1rem; color: #666;">
+                        <strong>Hata:</strong> ${error.message}<br><br>
+                        <strong>Muhtemel Çözümler:</strong><br>
+                        • Database URL'ini kontrol edin<br>
+                        • Render'da database servisinin çalıştığından emin olun<br>
+                        • Environment variables'ları kontrol edin
+                    </div>
+                `;
+            } finally {
+                testDatabaseBtn.disabled = false;
+                testDatabaseBtn.textContent = '🧪 Database Test';
                 loading.style.display = 'none';
                 status.style.display = 'block';
             }

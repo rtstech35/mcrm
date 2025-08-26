@@ -58,6 +58,56 @@ app.get("/", (req, res) => {
   res.send("Saha CRM Sistemi Çalışıyor 🚀 (Postgres)");
 });
 
+// Database durumu kontrol API'si
+app.get("/api/health", async (req, res) => {
+  try {
+    console.log("🏥 Health check API çağrıldı");
+
+    // Database bağlantısını test et
+    const timeResult = await pool.query('SELECT NOW() as current_time');
+    console.log("✅ Database bağlantısı çalışıyor");
+
+    // Tabloları kontrol et
+    const tablesResult = await pool.query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+
+    const tables = tablesResult.rows.map(row => row.table_name);
+    console.log("📋 Mevcut tablolar:", tables);
+
+    // Her tablo için kayıt sayısını kontrol et
+    const tableCounts = {};
+    for (const table of tables) {
+      try {
+        const countResult = await pool.query(`SELECT COUNT(*) as count FROM ${table}`);
+        tableCounts[table] = parseInt(countResult.rows[0].count);
+      } catch (error) {
+        tableCounts[table] = `Hata: ${error.message}`;
+      }
+    }
+
+    res.json({
+      success: true,
+      database_time: timeResult.rows[0].current_time,
+      tables: tables,
+      table_counts: tableCounts,
+      environment: process.env.NODE_ENV || 'development',
+      database_url_exists: !!process.env.DATABASE_URL
+    });
+
+  } catch (error) {
+    console.error("❌ Health check hatası:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 // ---------------- AUTH ---------------- //
 app.post("/api/register", async (req, res) => {
   try {
@@ -1076,10 +1126,24 @@ app.post("/api/migrate-roles", async (req, res) => {
 // Departman Yönetimi API'leri
 app.get("/api/departments", async (req, res) => {
   try {
+    console.log('🏢 Departments API çağrıldı');
+
+    // Önce departments tablosunun var olup olmadığını kontrol et
+    const tableExists = await checkTableExists('departments');
+
+    if (!tableExists) {
+      console.log('⚠️ Departments tablosu bulunamadı');
+      return res.json({
+        success: true,
+        departments: [],
+        message: 'Departments tablosu henüz oluşturulmamış'
+      });
+    }
+
     const result = await pool.query(`
       SELECT d.*,
-             COUNT(u.id) as user_count,
-             m.full_name as manager_name
+             COALESCE(COUNT(u.id), 0) as user_count,
+             COALESCE(m.full_name, 'Yönetici Yok') as manager_name
       FROM departments d
       LEFT JOIN users u ON d.id = u.department_id
       LEFT JOIN users m ON d.manager_id = m.id
@@ -1087,17 +1151,18 @@ app.get("/api/departments", async (req, res) => {
       ORDER BY d.id ASC
     `);
 
-    console.log('Departments API - Bulunan departman sayısı:', result.rows.length);
+    console.log('✅ Departments API - Bulunan departman sayısı:', result.rows.length);
 
     res.json({
       success: true,
       departments: result.rows
     });
   } catch (error) {
-    console.error('Departments API hatası:', error);
+    console.error('❌ Departments API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Departments tablosu veya ilişkili tablolar bulunamadı'
     });
   }
 });
@@ -2624,6 +2689,23 @@ app.get("/api/test", async (req, res) => {
   }
 });
 
+// Güvenli tablo kontrolü yardımcı fonksiyonu
+async function checkTableExists(tableName) {
+  try {
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = $1
+      );
+    `, [tableName]);
+    return result.rows[0].exists;
+  } catch (error) {
+    console.error(`Tablo kontrolü hatası (${tableName}):`, error);
+    return false;
+  }
+}
+
 // Dashboard API'leri
 app.get("/api/dashboard/stats", async (req, res) => {
   try {
@@ -3392,44 +3474,7 @@ app.get("/api/roles", async (req, res) => {
   }
 });
 
-app.get("/api/departments", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM departments ORDER BY name");
-    res.json({
-      success: true,
-      departments: result.rows
-    });
-  } catch (error) {
-    console.error('Departments API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-app.post("/api/departments", async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    
-    const result = await pool.query(`
-      INSERT INTO departments (name, description)
-      VALUES ($1, $2)
-      RETURNING *
-    `, [name, description]);
-    
-    res.json({
-      success: true,
-      department: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Department create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+// Duplicate departman API'leri silindi
 
 // Cari Hesap API
 app.get("/api/account-transactions", async (req, res) => {
