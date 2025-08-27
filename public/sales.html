@@ -2523,9 +2523,7 @@
     <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(40, 167, 69, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.875rem;">
         <!-- JavaScript ile doldurulacak -->
     </div>
-</body>
-</html>
-        
+    <script>
         async function saveAppointment() {
             const date = document.getElementById('appointmentDate').value;
             const time = document.getElementById('appointmentTime').value;
@@ -2539,7 +2537,6 @@
             
             try {
                 if (window.isRescheduleMode && window.rescheduleAppointmentId) {
-                    // Yeniden planlama
                     const response = await apiCall(`/api/appointments/${window.rescheduleAppointmentId}`);
                     const apt = response.appointment;
                     
@@ -2557,7 +2554,6 @@
                     window.isRescheduleMode = false;
                     window.rescheduleAppointmentId = null;
                 } else if (window.isFollowUpMode && window.followUpCustomerId) {
-                    // Takip randevusu
                     await apiCall('/api/appointments', {
                         method: 'POST',
                         body: JSON.stringify({
@@ -2578,7 +2574,6 @@
                     window.followUpCustomerId = null;
                     window.followUpCustomerName = null;
                 } else {
-                    // Normal randevu
                     await apiCall('/api/appointments', {
                         method: 'POST',
                         body: JSON.stringify({
@@ -2601,3 +2596,6 @@
                 alert('Hata: ' + error.message);
             }
         }
+    </script>
+</body>
+</html>
