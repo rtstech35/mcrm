@@ -12,6 +12,7 @@
         <header>
             <h1>İrsaliye Yönetimi</h1>
             <div class="header-actions">
+                <button onclick="openNewDeliveryModal()" class="btn btn-success">Yeni İrsaliye</button>
                 <button onclick="loadDeliveryNotes()" class="btn btn-primary">Yenile</button>
                 <button onclick="window.location.href='admin.html'" class="btn btn-secondary">Geri</button>
             </div>
@@ -28,6 +29,56 @@
 
         <div class="delivery-notes-grid" id="deliveryNotesGrid">
             <!-- İrsaliyeler buraya yüklenecek -->
+        </div>
+    </div>
+
+    <!-- Yeni İrsaliye Modal -->
+    <div id="newDeliveryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Yeni İrsaliye Oluştur</h2>
+                <span class="close" onclick="closeNewDeliveryModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="newDeliveryForm">
+                    <div class="form-group">
+                        <label for="deliveryNumber">İrsaliye Numarası:</label>
+                        <input type="text" id="deliveryNumber" readonly>
+                        <button type="button" onclick="generateDeliveryNumber()" class="btn btn-sm btn-secondary">Oluştur</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customerId">Müşteri:</label>
+                        <select id="customerId" required>
+                            <option value="">Müşteri Seçin</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="deliveryDate">Teslimat Tarihi:</label>
+                        <input type="date" id="deliveryDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="deliveryTime">Teslimat Saati:</label>
+                        <input type="time" id="deliveryTime">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="deliveryAddress">Teslimat Adresi:</label>
+                        <textarea id="deliveryAddress" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">Notlar:</label>
+                        <textarea id="notes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeNewDeliveryModal()" class="btn btn-secondary">İptal</button>
+                <button type="button" onclick="saveNewDelivery()" class="btn btn-primary">Kaydet</button>
+            </div>
         </div>
     </div>
 
@@ -162,10 +213,112 @@
             return new Date(dateString).toLocaleDateString('tr-TR');
         }
 
+        // Modal fonksiyonları
+        async function openNewDeliveryModal() {
+            try {
+                // Müşterileri yükle
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/customers', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const customerSelect = document.getElementById('customerId');
+                    customerSelect.innerHTML = '<option value="">Müşteri Seçin</option>';
+                    
+                    data.customers.forEach(customer => {
+                        customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                    });
+                }
+                
+                // Bugünün tarihini varsayılan olarak ayarla
+                document.getElementById('deliveryDate').value = new Date().toISOString().split('T')[0];
+                
+                // İrsaliye numarası oluştur
+                await generateDeliveryNumber();
+                
+                document.getElementById('newDeliveryModal').style.display = 'block';
+            } catch (error) {
+                console.error('Modal açılırken hata:', error);
+                alert('Modal açılamadı: ' + error.message);
+            }
+        }
+        
+        function closeNewDeliveryModal() {
+            document.getElementById('newDeliveryModal').style.display = 'none';
+            document.getElementById('newDeliveryForm').reset();
+        }
+        
+        async function generateDeliveryNumber() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/delivery-notes/generate-number', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API hatası: ${response.status} - ${JSON.stringify(errorData)}`);
+                }
+                
+                const data = await response.json();
+                document.getElementById('deliveryNumber').value = data.delivery_number;
+            } catch (error) {
+                console.error('İrsaliye numarası oluşturma hatası:', error);
+                alert('Modal açılamadı: API hatası: 500 - ' + JSON.stringify({success:false,error:error.message}));
+            }
+        }
+        
+        async function saveNewDelivery() {
+            try {
+                const token = localStorage.getItem('token');
+                const formData = {
+                    delivery_number: document.getElementById('deliveryNumber').value,
+                    customer_id: document.getElementById('customerId').value,
+                    delivery_date: document.getElementById('deliveryDate').value,
+                    delivery_time: document.getElementById('deliveryTime').value,
+                    delivery_address: document.getElementById('deliveryAddress').value,
+                    notes: document.getElementById('notes').value
+                };
+                
+                if (!formData.customer_id) {
+                    alert('Lütfen müşteri seçin');
+                    return;
+                }
+                
+                const response = await fetch('/api/delivery-notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) throw new Error('İrsaliye kaydedilemedi');
+                
+                alert('İrsaliye başarıyla oluşturuldu');
+                closeNewDeliveryModal();
+                loadDeliveryNotes();
+            } catch (error) {
+                console.error('İrsaliye kaydetme hatası:', error);
+                alert('İrsaliye kaydedilirken hata oluştu: ' + error.message);
+            }
+        }
+
         // Sayfa yüklendiğinde
         document.addEventListener('DOMContentLoaded', () => {
             loadDeliveryNotes();
         });
+        
+        // Modal dışına tıklandığında kapat
+        window.onclick = function(event) {
+            const modal = document.getElementById('newDeliveryModal');
+            if (event.target === modal) {
+                closeNewDeliveryModal();
+            }
+        }
     </script>
 
     <style>
@@ -247,6 +400,94 @@
             color: #666;
             font-style: italic;
             grid-column: 1 / -1;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input[readonly] {
+            background-color: #f5f5f5;
+            color: #666;
+        }
+        
+        .form-group button {
+            margin-left: 10px;
+            margin-top: 5px;
         }
     </style>
 </body>

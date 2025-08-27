@@ -1981,9 +1981,8 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
     const year = now.getFullYear().toString().substr(-2);
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const day = now.getDate().toString().padStart(2, '0');
-
-    const dailyCount = Math.floor(Math.random() * 999) + 1;
-    const sequenceNumber = dailyCount.toString().padStart(3, '0');
+    const randomNum = Math.floor(Math.random() * 999) + 1;
+    const sequenceNumber = randomNum.toString().padStart(3, '0');
 
     const deliveryNumber = `IRS${year}${month}${day}${sequenceNumber}`;
 
@@ -1992,6 +1991,7 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
       delivery_number: deliveryNumber
     });
   } catch (error) {
+    console.error('Delivery number generation error:', error);
     res.status(500).json({
       success: false,
       error: error.message
