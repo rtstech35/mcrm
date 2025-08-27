@@ -379,7 +379,10 @@
         <!-- Ana İçerik -->
         <div class="main-content">
             <header class="main-header">
-                <h1>Sevkiyat Dashboard</h1>
+                <div class="header-left">
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+                    <h1>Sevkiyat Dashboard</h1>
+                </div>
                 <div class="user-info">
                     <span id="userName">Sevkiyat Personeli</span>
                 </div>
@@ -936,6 +939,22 @@
             }, 300);
         }
 
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay') || createOverlay();
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function createOverlay() {
+            const overlay = document.createElement('div');
+            overlay.className = 'mobile-overlay';
+            overlay.onclick = toggleMobileMenu;
+            document.body.appendChild(overlay);
+            return overlay;
+        }
+
         function logout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 localStorage.removeItem('token');
@@ -1208,10 +1227,48 @@
             color: #666;
         }
 
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            margin-right: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
         @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
             .sidebar {
                 transform: translateX(-100%);
                 transition: transform 0.3s;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            
+            .mobile-overlay.active {
+                display: block;
             }
             
             .main-content {
