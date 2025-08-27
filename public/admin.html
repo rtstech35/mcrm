@@ -778,62 +778,9 @@
             try {
                 console.log('🎯 Test verileri oluşturuluyor...');
 
-                // Rolleri Türkçeye çevir
-                await apiCall('/api/setup/update-roles', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        roles: [
-                            { old_name: 'admin', new_name: 'Yönetici' },
-                            { old_name: 'sales_rep', new_name: 'Satış Temsilcisi' },
-                            { old_name: 'production', new_name: 'Üretim Personeli' },
-                            { old_name: 'shipping', new_name: 'Sevkiyat Personeli' },
-                            { old_name: 'accounting', new_name: 'Muhasebe Personeli' }
-                        ]
-                    })
-                });
-
-                // Test kullanıcılarını ekle
-                const testUsers = [
-                    {
-                        username: 'admin',
-                        password: '123456',
-                        full_name: 'Yönetici Kullanıcı',
-                        email: 'admin@test.com',
-                        role_name: 'Yönetici'
-                    },
-                    {
-                        username: 'satis',
-                        password: '123456',
-                        full_name: 'Satış Temsilcisi',
-                        email: 'satis@test.com',
-                        role_name: 'Satış Temsilcisi'
-                    },
-                    {
-                        username: 'uretim',
-                        password: '123456',
-                        full_name: 'Üretim Personeli',
-                        email: 'uretim@test.com',
-                        role_name: 'Üretim Personeli'
-                    },
-                    {
-                        username: 'sevkiyat',
-                        password: '123456',
-                        full_name: 'Sevkiyat Personeli',
-                        email: 'sevkiyat@test.com',
-                        role_name: 'Sevkiyat Personeli'
-                    },
-                    {
-                        username: 'muhasebe',
-                        password: '123456',
-                        full_name: 'Muhasebe Personeli',
-                        email: 'muhasebe@test.com',
-                        role_name: 'Muhasebe Personeli'
-                    }
-                ];
-
-                await apiCall('/api/setup/create-test-users', {
-                    method: 'POST',
-                    body: JSON.stringify({ users: testUsers })
+                // Rolleri Türkçeye çevir ve kullanıcıları oluştur
+                await apiCall('/api/setup/update-roles-and-create-users', {
+                    method: 'POST'
                 });
 
                 let message = '✅ Test verileri başarıyla oluşturuldu!\n\n';
@@ -1180,7 +1127,7 @@
                         departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
                     });
                 } else {
-                    // Fallback departmanlar
+                    // Fallback departmanlar - Türkçe
                     console.log('Departmanlar bulunamadı, fallback kullanılıyor');
                     departmentSelect.innerHTML += `
                         <option value="1">Satış Departmanı</option>
@@ -1200,13 +1147,14 @@
                         roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
                     });
                 } else {
-                    // Fallback roller
+                    // Fallback roller - Türkçe
                     console.log('Roller bulunamadı, fallback kullanılıyor');
                     roleSelect.innerHTML += `
-                        <option value="1">Admin</option>
-                        <option value="2">Manager</option>
-                        <option value="3">Employee</option>
-                        <option value="4">Viewer</option>
+                        <option value="1">Yönetici</option>
+                        <option value="2">Satış Temsilcisi</option>
+                        <option value="3">Üretim Personeli</option>
+                        <option value="4">Sevkiyat Personeli</option>
+                        <option value="5">Muhasebe Personeli</option>
                     `;
                 }
                 console.log('Rol select HTML:', roleSelect.innerHTML);
