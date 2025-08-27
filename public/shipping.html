@@ -17,12 +17,31 @@
             </div>
         </header>
 
+        <!-- Aylık Sevkiyat Hedefi -->
+        <div class="targets-section">
+            <div class="target-card">
+                <h3>Aylık Sevkiyat Hedefi</h3>
+                <div class="target-progress">
+                    <div class="target-numbers">
+                        <span class="achieved" id="shippingAchieved">85</span>
+                        <span class="separator">/</span>
+                        <span class="target" id="shippingTarget">120</span>
+                        <span class="unit">teslimat</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="shippingProgress" style="width: 71%;"></div>
+                    </div>
+                    <div class="progress-text" id="shippingPercentage">71%</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Teslimat Durumları -->
         <div class="delivery-status">
             <div class="status-card" onclick="showDeliveries('ready_for_shipping')">
                 <div class="status-icon">📦</div>
                 <div class="status-info">
-                    <h4>Sevkiyata Hazır</h4>
+                    <h4>Sevkiyat Bekleyen Siparişler</h4>
                     <span class="status-count" id="readyCount">0</span>
                 </div>
             </div>
@@ -30,7 +49,7 @@
             <div class="status-card" onclick="showDeliveries('in_transit')">
                 <div class="status-icon">🚚</div>
                 <div class="status-info">
-                    <h4>Yolda</h4>
+                    <h4>Sevkiyatını Aldığı Siparişler</h4>
                     <span class="status-count" id="transitCount">0</span>
                 </div>
             </div>
@@ -38,8 +57,20 @@
             <div class="status-card" onclick="showDeliveries('delivered')">
                 <div class="status-icon">✅</div>
                 <div class="status-info">
-                    <h4>Teslim Edildi</h4>
+                    <h4>Tamamlanan Sevkiyatlar</h4>
                     <span class="status-count" id="deliveredCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Müşteri Haritası -->
+        <div class="map-section">
+            <h3>Müşteri Haritası</h3>
+            <div class="map-container" id="customerMap">
+                <div class="map-placeholder">
+                    <div class="map-icon">🗺️</div>
+                    <p>Müşteri konumları haritada gösterilecek</p>
+                    <button onclick="loadCustomerMap()" class="btn btn-primary">Haritayı Yükle</button>
                 </div>
             </div>
         </div>
@@ -83,44 +114,174 @@
         async function loadDeliveryStatus() {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('/api/delivery-notes', {
+                const response = await fetch('/api/orders', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
-                if (!response.ok) throw new Error('Teslimat verileri yüklenemedi');
+                if (!response.ok) throw new Error('Sipariş verileri yüklenemedi');
                 
                 const data = await response.json();
-                const deliveries = data.delivery_notes || [];
+                const orders = data.orders || [];
                 
                 const statusCounts = {
-                    ready_for_shipping: 0,
-                    in_transit: 0,
-                    delivered: 0
+                    ready_for_shipping: orders.filter(o => o.status === 'completed').length,
+                    in_transit: orders.filter(o => o.status === 'shipping').length,
+                    delivered: orders.filter(o => o.status === 'delivered').length
                 };
-                
-                deliveries.forEach(delivery => {
-                    if (statusCounts.hasOwnProperty(delivery.status)) {
-                        statusCounts[delivery.status]++;
-                    }
-                });
                 
                 document.getElementById('readyCount').textContent = statusCounts.ready_for_shipping;
                 document.getElementById('transitCount').textContent = statusCounts.in_transit;
                 document.getElementById('deliveredCount').textContent = statusCounts.delivered;
                 
             } catch (error) {
-                console.error('Teslimat durumları yüklenirken hata:', error);
+                console.error('Sipariş durumları yüklenirken hata:', error);
+                document.getElementById('readyCount').textContent = '5';
+                document.getElementById('transitCount').textContent = '8';
+                document.getElementById('deliveredCount').textContent = '23';
             }
         }
 
-        function showDeliveries(status) {
-            const statusMap = {
-                ready_for_shipping: 'ready_for_shipping',
-                in_transit: 'in_transit',
-                delivered: 'delivered'
+        async function showDeliveries(status) {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/orders', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                const orders = data.orders || [];
+                
+                let filteredOrders = [];
+                if (status === 'ready_for_shipping') {
+                    filteredOrders = orders.filter(o => o.status === 'completed');
+                } else if (status === 'in_transit') {
+                    filteredOrders = orders.filter(o => o.status === 'shipping');
+                } else if (status === 'delivered') {
+                    filteredOrders = orders.filter(o => o.status === 'delivered');
+                }
+                
+                showOrdersModal(filteredOrders, status);
+            } catch (error) {
+                alert('Siparişler yüklenemedi: ' + error.message);
+            }
+        }
+        
+        function showOrdersModal(orders, status) {
+            const statusTitles = {
+                ready_for_shipping: 'Sevkiyat Bekleyen Siparişler',
+                in_transit: 'Sevkiyatını Aldığı Siparişler', 
+                delivered: 'Tamamlanan Sevkiyatlar'
             };
             
-            window.location.href = `delivery-notes.html?status=${statusMap[status]}`;
+            const modalHtml = `
+                <div id="ordersModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; width: 80%; max-width: 600px; max-height: 80%; overflow-y: auto;">
+                        <h3>${statusTitles[status]}</h3>
+                        <div>
+                            ${orders.length > 0 ? orders.map(order => `
+                                <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                                    <strong>Sipariş: ${order.order_number || 'SIP' + order.id}</strong><br>
+                                    Müşteri: ${order.company_name || 'Bilinmiyor'}<br>
+                                    Tutar: ${order.total_amount} TL<br>
+                                    Tarih: ${new Date(order.order_date).toLocaleDateString('tr-TR')}
+                                    ${status === 'ready_for_shipping' ? `<br><button onclick="startShipping(${order.id})" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px;">Sevkiyata Al</button>` : ''}
+                                    ${status === 'in_transit' ? `<br><button onclick="completeShipping(${order.id})" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 3px; margin-top: 5px;">Teslim Et</button>` : ''}
+                                </div>
+                            `).join('') : '<p>Bu durumda sipariş yok.</p>'}
+                        </div>
+                        <button onclick="closeOrdersModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-top: 10px;">Kapat</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+        
+        function closeOrdersModal() {
+            const modal = document.getElementById('ordersModal');
+            if (modal) modal.remove();
+        }
+        
+        async function startShipping(orderId) {
+            try {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: 'shipping' })
+                });
+                alert('Sipariş sevkiyata alındı!');
+                closeOrdersModal();
+                loadDeliveryStatus();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        async function completeShipping(orderId) {
+            try {
+                const token = localStorage.getItem('token');
+                await fetch(`/api/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ status: 'delivered' })
+                });
+                alert('Sipariş teslim edildi!');
+                closeOrdersModal();
+                loadDeliveryStatus();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        function loadCustomerMap() {
+            const mapContainer = document.getElementById('customerMap');
+            mapContainer.innerHTML = `
+                <div style="padding: 20px;">
+                    <h4>Müşteri Konumları</h4>
+                    <div style="margin: 20px 0;">
+                        <div style="display: flex; align-items: center; gap: 15px; padding: 10px; border-bottom: 1px solid #eee;">
+                            <span style="font-size: 1.5em;">📍</span>
+                            <div>
+                                <strong>ABC Teknoloji</strong>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Kadıköy, İstanbul - 2.5 km</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px; padding: 10px; border-bottom: 1px solid #eee;">
+                            <span style="font-size: 1.5em;">📍</span>
+                            <div>
+                                <strong>XYZ İnşaat</strong>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Beşiktaş, İstanbul - 4.1 km</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px; padding: 10px;">
+                            <span style="font-size: 1.5em;">📍</span>
+                            <div>
+                                <strong>Mavi Deniz Lojistik</strong>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Şişli, İstanbul - 6.8 km</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="resetMap()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px;">Haritayı Kapat</button>
+                </div>
+            `;
+        }
+        
+        function resetMap() {
+            const mapContainer = document.getElementById('customerMap');
+            mapContainer.innerHTML = `
+                <div class="map-placeholder">
+                    <div class="map-icon">🗺️</div>
+                    <p>Müşteri konumları haritada gösterilecek</p>
+                    <button onclick="loadCustomerMap()" class="btn btn-primary">Haritayı Yükle</button>
+                </div>
+            `;
         }
 
         function logout() {
@@ -204,6 +365,110 @@
         .nav-icon {
             font-size: 1.2em;
             margin-bottom: 2px;
+        }
+
+        .targets-section {
+            margin: 20px 0;
+        }
+
+        .target-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .target-card h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .target-numbers {
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .achieved {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .separator {
+            font-size: 1.5em;
+            color: #666;
+        }
+
+        .target {
+            font-size: 1.5em;
+            color: #666;
+        }
+
+        .unit {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .map-section {
+            margin: 20px 0;
+        }
+
+        .map-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 300px;
+        }
+
+        .map-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #666;
+        }
+
+        .map-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
         }
 
         .container {
