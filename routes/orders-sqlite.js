@@ -43,6 +43,18 @@ router.put('/:id/status', (req, res) => {
   );
 });
 
+// Üretimi tamamla ve sevkiyata hazır yap
+router.put('/:id/production-complete', (req, res) => {
+  db.run(
+    'UPDATE orders SET status = "production_ready", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [req.params.id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Üretim tamamlandı, sevkiyata hazır' });
+    }
+  );
+});
+
 
 
 // Yeni sipariş oluştur

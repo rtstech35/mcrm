@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teslimat - Sevkiyat</title>
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Teslimat Yönetimi</h1>
+            <div class="header-actions">
+                <button onclick="loadMyDeliveries()" class="btn btn-primary">Yenile</button>
+                <button onclick="window.location.href='shipping.html'" class="btn btn-secondary">Geri</button>
+            </div>
+        </header>
+
+        <div class="delivery-list" id="deliveryList">
+            <!-- Teslimatlar buraya yüklenecek -->
+        </div>
+    </div>
+
+    <!-- İmza Modal -->
+    <div id="signatureModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Teslimat İmzası</h3>
+                <button onclick="closeSignatureModal()" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="delivery-info" id="deliveryInfo"></div>
+                
+                <div class="signature-section">
+                    <label>Teslim Alan Kişi:</label>
+                    <input type="text" id="customerName" placeholder="Ad Soyad" required>
+                    
+                    <label>İmza:</label>
+                    <canvas id="signatureCanvas" width="400" height="200"></canvas>
+                    <div class="signature-controls">
+                        <button onclick="clearSignature()" class="btn btn-secondary">Temizle</button>
+                        <button onclick="completeDelivery()" class="btn btn-success">Teslimatı Tamamla</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let deliveries = [];
+        let currentDeliveryId = null;
+        let canvas, ctx;
+        let isDrawing = false;
+
+        async function loadMyDeliveries() {
+            try {
+                const token = localStorage.getItem('token');
+                const user = JSON.parse(localStorage.getItem('user'));
+                
+                const response = await fetch('/api/delivery-notes?status=in_transit', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Teslimatlar yüklenemedi');
+                
+                const allDeliveries = await response.json();
+                deliveries = allDeliveries.filter(d => d.delivered_by === user.id);
+                
+                renderDeliveries();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Teslimatlar yüklenirken hata oluştu');
+            }
+        }
+
+        function renderDeliveries() {
+            const list = document.getElementById('deliveryList');
+            
+            if (deliveries.length === 0) {
+                list.innerHTML = '<p class="no-data">Size atanmış teslimat bulunamadı</p>';
+                return;
+            }
+            
+            list.innerHTML = deliveries.map(delivery => `
+                <div class="delivery-card">
+                    <div class="card-header">
+                        <h3>${delivery.delivery_note_number}</h3>
+                        <span class="status status-${delivery.status}">Yolda</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Müşteri:</strong> ${delivery.customer_name}</p>
+                        <p><strong>Sipariş:</strong> ${delivery.order_number || 'N/A'}</p>
+                        <p><strong>Teslimat Tarihi:</strong> ${formatDate(delivery.delivery_date)}</p>
+                        <p><strong>Tutar:</strong> ₺${parseFloat(delivery.total_amount).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</p>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="viewDeliveryDetail(${delivery.id})" class="btn btn-primary">Detay</button>
+                        <button onclick="startDelivery(${delivery.id})" class="btn btn-success">Teslim Et</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewDeliveryDetail(id) {
+            window.location.href = `delivery-note-detail.html?id=${id}`;
+        }
+
+        async function startDelivery(deliveryId) {
+            try {
+                const token = localStorage.getItem('token');
+                
+                // İrsaliye detayını al
+                const response = await fetch(`/api/delivery-notes/${deliveryId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('İrsaliye detayı alınamadı');
+                
+                const delivery = await response.json();
+                
+                // İmza modalını aç
+                openSignatureModal(delivery);
+                
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Teslimat başlatılırken hata oluştu');
+            }
+        }
+
+        function openSignatureModal(delivery) {
+            currentDeliveryId = delivery.id;
+            
+            // Teslimat bilgilerini göster
+            document.getElementById('deliveryInfo').innerHTML = `
+                <div class="info-grid">
+                    <div><strong>İrsaliye No:</strong> ${delivery.delivery_note_number}</div>
+                    <div><strong>Müşteri:</strong> ${delivery.company_name}</div>
+                    <div><strong>Adres:</strong> ${delivery.address || 'Belirtilmemiş'}</div>
+                    <div><strong>Tutar:</strong> ₺${parseFloat(delivery.total_amount).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</div>
+                </div>
+            `;
+            
+            // Canvas'ı hazırla
+            canvas = document.getElementById('signatureCanvas');
+            ctx = canvas.getContext('2d');
+            setupCanvas();
+            
+            // Modalı göster
+            document.getElementById('signatureModal').style.display = 'block';
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signatureModal').style.display = 'none';
+            document.getElementById('customerName').value = '';
+            clearSignature();
+            currentDeliveryId = null;
+        }
+
+        function setupCanvas() {
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            // Canvas event listeners
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        async function completeDelivery() {
+            const customerName = document.getElementById('customerName').value.trim();
+            
+            if (!customerName) {
+                alert('Lütfen teslim alan kişinin adını giriniz');
+                return;
+            }
+            
+            // İmza kontrolü
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const hasSignature = imageData.data.some(channel => channel !== 0);
+            
+            if (!hasSignature) {
+                alert('Lütfen imza atınız');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                const signatureData = canvas.toDataURL();
+                
+                const response = await fetch(`/api/delivery-notes/${currentDeliveryId}/sign`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        signature: signatureData,
+                        customerName: customerName
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Teslimat tamamlanamadı');
+                
+                alert('Teslimat başarıyla tamamlandı!');
+                closeSignatureModal();
+                loadMyDeliveries();
+                
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Teslimat tamamlanırken hata oluştu');
+            }
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('tr-TR');
+        }
+
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMyDeliveries();
+        });
+    </script>
+
+    <style>
+        .delivery-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .delivery-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-in_transit { background: #d1ecf1; color: #0c5460; }
+
+        .card-body p {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .card-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .signature-section label {
+            display: block;
+            margin: 15px 0 5px 0;
+            font-weight: bold;
+        }
+
+        .signature-section input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        #signatureCanvas {
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: crosshair;
+            width: 100%;
+            height: 200px;
+        }
+
+        .signature-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            grid-column: 1 / -1;
+            padding: 40px;
+        }
+    </style>
+</body>
+</html>

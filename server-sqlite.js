@@ -97,6 +97,8 @@ app.use('/api/accounting', authenticateToken, require('./routes/accounting-sqlit
 app.use('/api/products', authenticateToken, require('./routes/products-sqlite'));
 app.use('/api/targets', authenticateToken, require('./routes/targets-sqlite'));
 app.use('/api/cari', authenticateToken, require('./routes/cari-sqlite'));
+app.use('/api/delivery-notes', authenticateToken, require('./routes/delivery-notes-sqlite'));
+app.use('/api/invoices', authenticateToken, require('./routes/invoices-sqlite'));
 
 // Roller ve departmanlar için basit endpoint'ler (korumalı)
 app.get('/api/roles', authenticateToken, (req, res) => {

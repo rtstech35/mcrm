@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatura Yönetimi - Muhasebe</title>
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Fatura Yönetimi</h1>
+            <div class="header-actions">
+                <button onclick="loadInvoices()" class="btn btn-primary">Yenile</button>
+                <button onclick="window.location.href='accounting.html'" class="btn btn-secondary">Geri</button>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('delivered-notes')">Teslim Edilen İrsaliyeler</button>
+            <button class="tab-btn" onclick="showTab('invoices')">Faturalar</button>
+        </div>
+
+        <!-- Teslim Edilen İrsaliyeler -->
+        <div id="delivered-notes" class="tab-content active">
+            <div class="section-header">
+                <h2>Faturaya Dönüştürülecek İrsaliyeler</h2>
+                <div class="actions">
+                    <button onclick="createBulkInvoice()" class="btn btn-success">Toplu Faturala</button>
+                </div>
+            </div>
+            
+            <div class="delivery-notes-grid" id="deliveryNotesGrid">
+                <!-- İrsaliyeler buraya yüklenecek -->
+            </div>
+        </div>
+
+        <!-- Faturalar -->
+        <div id="invoices" class="tab-content">
+            <div class="section-header">
+                <h2>Oluşturulan Faturalar</h2>
+                <div class="filters">
+                    <select id="invoiceStatusFilter" onchange="loadInvoices()">
+                        <option value="">Tüm Faturalar</option>
+                        <option value="draft">Taslak</option>
+                        <option value="sent">Gönderildi</option>
+                        <option value="paid">Ödendi</option>
+                        <option value="overdue">Vadesi Geçti</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="invoices-grid" id="invoicesGrid">
+                <!-- Faturalar buraya yüklenecek -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let deliveryNotes = [];
+        let invoices = [];
+
+        async function loadDeliveredNotes() {
+            try {
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch('/api/delivery-notes?status=delivered', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('İrsaliyeler yüklenemedi');
+                
+                const allNotes = await response.json();
+                deliveryNotes = allNotes.filter(dn => !dn.is_invoiced);
+                
+                renderDeliveryNotes();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('İrsaliyeler yüklenirken hata oluştu');
+            }
+        }
+
+        async function loadInvoices() {
+            try {
+                const token = localStorage.getItem('token');
+                const statusFilter = document.getElementById('invoiceStatusFilter')?.value || '';
+                
+                let url = '/api/invoices';
+                if (statusFilter) {
+                    url += `?status=${statusFilter}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Faturalar yüklenemedi');
+                
+                invoices = await response.json();
+                renderInvoices();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Faturalar yüklenirken hata oluştu');
+            }
+        }
+
+        function renderDeliveryNotes() {
+            const grid = document.getElementById('deliveryNotesGrid');
+            
+            if (deliveryNotes.length === 0) {
+                grid.innerHTML = '<p class="no-data">Faturaya dönüştürülecek irsaliye bulunamadı</p>';
+                return;
+            }
+            
+            // Müşterilere göre grupla
+            const customerGroups = {};
+            deliveryNotes.forEach(dn => {
+                if (!customerGroups[dn.customer_id]) {
+                    customerGroups[dn.customer_id] = {
+                        customer_name: dn.customer_name,
+                        notes: []
+                    };
+                }
+                customerGroups[dn.customer_id].notes.push(dn);
+            });
+            
+            grid.innerHTML = Object.keys(customerGroups).map(customerId => {
+                const group = customerGroups[customerId];
+                const totalAmount = group.notes.reduce((sum, dn) => sum + parseFloat(dn.total_amount), 0);
+                
+                return `
+                    <div class="customer-group">
+                        <div class="customer-header">
+                            <h3>${group.customer_name}</h3>
+                            <div class="customer-actions">
+                                <span class="total-amount">Toplam: ₺${totalAmount.toLocaleString('tr-TR', {minimumFractionDigits: 2})}</span>
+                                <button onclick="createCustomerInvoice(${customerId})" class="btn btn-primary">Faturala</button>
+                            </div>
+                        </div>
+                        <div class="delivery-notes-list">
+                            ${group.notes.map(dn => `
+                                <div class="delivery-note-item">
+                                    <div class="note-info">
+                                        <span class="note-number">${dn.delivery_note_number}</span>
+                                        <span class="note-date">${formatDate(dn.delivery_date)}</span>
+                                        <span class="note-amount">₺${parseFloat(dn.total_amount).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div class="note-actions">
+                                        <input type="checkbox" class="note-checkbox" data-note-id="${dn.id}" data-customer-id="${customerId}" checked>
+                                        <button onclick="viewDeliveryNote(${dn.id})" class="btn btn-sm btn-secondary">Görüntüle</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderInvoices() {
+            const grid = document.getElementById('invoicesGrid');
+            
+            if (invoices.length === 0) {
+                grid.innerHTML = '<p class="no-data">Fatura bulunamadı</p>';
+                return;
+            }
+            
+            grid.innerHTML = invoices.map(invoice => `
+                <div class="invoice-card">
+                    <div class="card-header">
+                        <h3>${invoice.invoice_number}</h3>
+                        <span class="status status-${invoice.status}">${getInvoiceStatusText(invoice.status)}</span>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Müşteri:</strong> ${invoice.customer_name}</p>
+                        <p><strong>Tarih:</strong> ${formatDate(invoice.invoice_date)}</p>
+                        <p><strong>Vade:</strong> ${formatDate(invoice.due_date)}</p>
+                        <p><strong>Tutar:</strong> ₺${parseFloat(invoice.total_amount).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</p>
+                        ${invoice.payment_date ? `<p><strong>Ödeme:</strong> ${formatDate(invoice.payment_date)}</p>` : ''}
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="viewInvoice(${invoice.id})" class="btn btn-sm btn-primary">Görüntüle</button>
+                        ${invoice.status === 'draft' ? `<button onclick="sendInvoice(${invoice.id})" class="btn btn-sm btn-success">Gönder</button>` : ''}
+                        ${invoice.status === 'sent' ? `<button onclick="markAsPaid(${invoice.id})" class="btn btn-sm btn-warning">Ödendi İşaretle</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function createCustomerInvoice(customerId) {
+            const selectedNotes = Array.from(document.querySelectorAll(`.note-checkbox[data-customer-id="${customerId}"]:checked`))
+                .map(cb => parseInt(cb.dataset.noteId));
+            
+            if (selectedNotes.length === 0) {
+                alert('Lütfen en az bir irsaliye seçin');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch('/api/invoices/from-delivery-notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        customer_id: parseInt(customerId),
+                        delivery_note_ids: selectedNotes
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Fatura oluşturulamadı');
+                
+                const result = await response.json();
+                alert(`Fatura oluşturuldu: ${result.invoice_number}`);
+                
+                loadDeliveredNotes();
+                loadInvoices();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Fatura oluşturulurken hata oluştu');
+            }
+        }
+
+        async function createBulkInvoice() {
+            const selectedNotes = Array.from(document.querySelectorAll('.note-checkbox:checked'));
+            
+            if (selectedNotes.length === 0) {
+                alert('Lütfen en az bir irsaliye seçin');
+                return;
+            }
+            
+            // Müşterilere göre grupla
+            const customerGroups = {};
+            selectedNotes.forEach(cb => {
+                const customerId = cb.dataset.customerId;
+                const noteId = cb.dataset.noteId;
+                
+                if (!customerGroups[customerId]) {
+                    customerGroups[customerId] = [];
+                }
+                customerGroups[customerId].push(parseInt(noteId));
+            });
+            
+            try {
+                const token = localStorage.getItem('token');
+                
+                // Her müşteri için ayrı fatura oluştur
+                for (const customerId in customerGroups) {
+                    const response = await fetch('/api/invoices/from-delivery-notes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            customer_id: parseInt(customerId),
+                            delivery_note_ids: customerGroups[customerId]
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Toplu fatura oluşturulamadı');
+                }
+                
+                alert('Toplu faturalar başarıyla oluşturuldu');
+                loadDeliveredNotes();
+                loadInvoices();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Toplu fatura oluşturulurken hata oluştu');
+            }
+        }
+
+        function showTab(tabName) {
+            // Tab butonlarını güncelle
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Tab içeriklerini güncelle
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            
+            // İlgili verileri yükle
+            if (tabName === 'delivered-notes') {
+                loadDeliveredNotes();
+            } else if (tabName === 'invoices') {
+                loadInvoices();
+            }
+        }
+
+        function getInvoiceStatusText(status) {
+            const statusMap = {
+                'draft': 'Taslak',
+                'sent': 'Gönderildi',
+                'paid': 'Ödendi',
+                'overdue': 'Vadesi Geçti'
+            };
+            return statusMap[status] || status;
+        }
+
+        function viewDeliveryNote(id) {
+            window.location.href = `delivery-note-detail.html?id=${id}`;
+        }
+
+        function viewInvoice(id) {
+            window.location.href = `invoice-detail.html?id=${id}`;
+        }
+
+        async function sendInvoice(invoiceId) {
+            try {
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch(`/api/invoices/${invoiceId}/send`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Fatura gönderilemedi');
+                
+                alert('Fatura müşteriye gönderildi');
+                loadInvoices();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Fatura gönderilirken hata oluştu');
+            }
+        }
+
+        async function markAsPaid(invoiceId) {
+            try {
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch(`/api/invoices/${invoiceId}/mark-paid`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Fatura ödendi olarak işaretlenemedi');
+                
+                alert('Fatura ödendi olarak işaretlendi');
+                loadInvoices();
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Fatura güncellenirken hata oluştu');
+            }
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('tr-TR');
+        }
+
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDeliveredNotes();
+        });
+    </script>
+
+    <style>
+        .tabs {
+            display: flex;
+            margin: 20px 0;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #007bff;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .customer-group {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .customer-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+        }
+
+        .customer-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .customer-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .total-amount {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .delivery-notes-list {
+            padding: 0;
+        }
+
+        .delivery-note-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .delivery-note-item:last-child {
+            border-bottom: none;
+        }
+
+        .note-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .note-number {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .note-date {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .note-amount {
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .note-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .invoices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .invoice-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-sent { background: #d1ecf1; color: #0c5460; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-overdue { background: #f8d7da; color: #721c24; }
+
+        .card-body p {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .card-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .filters select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+    </style>
+</body>
+</html>
