@@ -3555,11 +3555,26 @@ app.post("/api/customers", async (req, res) => {
   try {
     const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
     
+    // Geçerli bir sales_rep ID'si olup olmadığını kontrol et
+    let validSalesRepId = null;
+    if (assigned_sales_rep) {
+      const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [assigned_sales_rep]);
+      if (userCheck.rows.length > 0) {
+        validSalesRepId = assigned_sales_rep;
+      }
+    }
+    
+    // Eğer geçerli değilse, ilk kullanıcıyı ata
+    if (!validSalesRepId) {
+      const firstUser = await pool.query('SELECT id FROM users ORDER BY id LIMIT 1');
+      validSalesRepId = firstUser.rows.length > 0 ? firstUser.rows[0].id : null;
+    }
+    
     const result = await pool.query(`
       INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
       VALUES ($1, $2, $3, $4, $5, $6, 'potential')
       RETURNING *
-    `, [company_name, contact_person, phone, email, address, assigned_sales_rep]);
+    `, [company_name, contact_person, phone, email, address, validSalesRepId]);
     
     res.json({
       success: true,
