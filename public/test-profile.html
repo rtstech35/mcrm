@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Profile</title>
+</head>
+<body>
+    <!-- Profile Dropdown -->
+    <div id="profileBox" style="position: fixed; top: 20px; right: 20px; background: white; border: 1px solid #ccc; padding: 10px; border-radius: 5px; z-index: 9999;">
+        <div onclick="toggleMenu()" style="cursor: pointer;">
+            <div id="userName">Satış Temsilcisi</div>
+            <div id="dateTime">27.08.2025 - 23:12</div>
+        </div>
+        <div id="menu" style="display: none; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px;">
+            <div onclick="openProfile()" style="cursor: pointer; padding: 5px;">👤 Profil</div>
+            <div onclick="logout()" style="cursor: pointer; padding: 5px;">🚪 Çıkış</div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; width: 300px;">
+            <h3>Profil Bilgileri</h3>
+            <input type="text" id="fullName" placeholder="Ad Soyad" style="width: 100%; margin: 5px 0; padding: 5px;">
+            <input type="email" id="email" placeholder="E-posta" style="width: 100%; margin: 5px 0; padding: 5px;">
+            <input type="tel" id="phone" placeholder="Telefon" style="width: 100%; margin: 5px 0; padding: 5px;">
+            <input type="password" id="newPassword" placeholder="Yeni Şifre" style="width: 100%; margin: 5px 0; padding: 5px;">
+            <button onclick="saveProfile()" style="margin: 10px 5px;">Kaydet</button>
+            <button onclick="closeProfile()" style="margin: 10px 5px;">Kapat</button>
+        </div>
+    </div>
+
+    <h1>Test Sayfası</h1>
+    <p>Profil dropdown'u sağ üst köşede görünmeli.</p>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function openProfile() {
+            document.getElementById('profileModal').style.display = 'block';
+            toggleMenu();
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
+
+        function saveProfile() {
+            alert('Profil kaydedildi!');
+            closeProfile();
+        }
+
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                window.location.href = 'index.html';
+            }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('tr-TR');
+            const timeStr = now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            document.getElementById('dateTime').textContent = `${dateStr} - ${timeStr}`;
+        }
+
+        updateTime();
+        setInterval(updateTime, 60000);
+    </script>
+</body>
+</html>
