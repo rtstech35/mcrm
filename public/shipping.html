@@ -17,11 +17,81 @@
             color: #333;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .sidebar-header {
             padding: 20px;
-            padding-bottom: 80px;
+            background: #34495e;
+            border-bottom: 1px solid #3a5169;
+        }
+
+        .sidebar-header h3 {
+            margin: 0;
+            color: white;
+            font-size: 18px;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: #34495e;
+            color: white;
+            border-left-color: #3498db;
+        }
+
+        .nav-link .nav-icon {
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            background: #f5f5f5;
+        }
+
+        .main-header {
+            background: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .main-header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .container {
+            padding: 30px;
         }
 
         header {
@@ -207,42 +277,7 @@
             margin-bottom: 10px;
         }
 
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            border-top: 1px solid #ddd;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            z-index: 1000;
-            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-        }
 
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            color: #666;
-            font-size: 12px;
-            padding: 5px;
-            border-radius: 5px;
-            transition: background 0.2s;
-            min-width: 60px;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            background: #f0f0f0;
-            color: #007bff;
-        }
-
-        .nav-icon {
-            font-size: 20px;
-            margin-bottom: 2px;
-        }
 
         .modal-overlay {
             position: fixed;
@@ -311,14 +346,45 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Sevkiyat Paneli</h1>
-            <div class="user-info">
-                <span id="userName">Sevkiyat Personeli</span>
-                <button onclick="logout()" class="btn btn-secondary">🚪 Çıkış</button>
+    <div class="layout">
+        <!-- Sol Menü -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3>Sevkiyat Paneli</h3>
             </div>
-        </header>
+            <nav class="sidebar-nav">
+                <a href="shipping.html" class="nav-link active">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="delivery-notes.html" class="nav-link">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">İrsaliyeler</span>
+                </a>
+                <a href="orders.html" class="nav-link">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Siparişler</span>
+                </a>
+                <a href="customers.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Müşteriler</span>
+                </a>
+                <a href="#" onclick="logout()" class="nav-link">
+                    <span class="nav-icon">🚪</span>
+                    <span class="nav-text">Çıkış</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Ana İçerik -->
+        <div class="main-content">
+            <header class="main-header">
+                <h1>Sevkiyat Dashboard</h1>
+                <div class="user-info">
+                    <span id="userName">Sevkiyat Personeli</span>
+                </div>
+            </header>
+            <div class="container">
 
         <!-- Aylık Sevkiyat Hedefi -->
         <div class="targets-section">
@@ -381,21 +447,8 @@
             </div>
         </div>
 
-        <!-- Alt Menü -->
-        <nav class="bottom-nav">
-            <a href="shipping.html" class="nav-item active">
-                <span class="nav-icon">📊</span>
-                <span class="nav-text">Dashboard</span>
-            </a>
-            <a href="delivery-notes.html" class="nav-item">
-                <span class="nav-icon">📋</span>
-                <span class="nav-text">İrsaliyeler</span>
-            </a>
-            <a href="#" onclick="logout()" class="nav-item">
-                <span class="nav-icon">🚪</span>
-                <span class="nav-text">Çıkış</span>
-            </a>
-        </nav>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1071,23 +1124,21 @@
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding-left: 10px;
-                padding-right: 10px;
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
             }
             
-            header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .container {
+                padding: 20px;
             }
             
             .delivery-status {
                 grid-template-columns: 1fr;
-            }
-            
-            .targets-section {
-                margin: 15px 0;
             }
         }
 
