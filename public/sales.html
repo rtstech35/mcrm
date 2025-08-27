@@ -1580,25 +1580,29 @@
                     </div>
                     
                     <div style="display: grid; gap: 1rem;">
-                        ${nearbyBusinesses.map(business => `
-                            <div class="business-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;" 
-                                 onclick="selectBusiness(${business.id}, '${business.name}', '${business.type}', '${business.address}', ${business.lat}, ${business.lng})" 
-                                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.borderColor='#007bff'" 
-                                 onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e2e8f0'">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <h4 style="margin-bottom: 0.5rem; color: #2d3748;">${business.name}</h4>
-                                        <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">🏢 ${business.type}</p>
-                                        <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">📍 ${business.address}</p>
-                                        <p style="color: #007bff; font-size: 0.875rem; font-weight: 600;">🚶 ${business.distance}</p>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                        <button class="btn" style="background: #28a745; padding: 0.5rem 1rem; font-size: 0.875rem;">👥 Ziyaret Et</button>
-                                        <button class="btn" onclick="event.stopPropagation(); viewOnMap(${business.lat}, ${business.lng})" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">🗺️ Harita</button>
+                        ${nearbyBusinesses.map((business, index) => {
+                            const cleanName = String(business.name).replace(/'/g, '&#39;');
+                            const cleanAddress = String(business.address).replace(/'/g, '&#39;');
+                            const cleanType = String(business.type).replace(/'/g, '&#39;');
+                            
+                            return `
+                                <div class="business-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;" 
+                                     data-business-id="${business.id}" data-index="${index}">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <h4 style="margin-bottom: 0.5rem; color: #2d3748;">${cleanName}</h4>
+                                            <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">🏢 ${cleanType}</p>
+                                            <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">📍 ${cleanAddress}</p>
+                                            <p style="color: #007bff; font-size: 0.875rem; font-weight: 600;">🚶 ${business.distance}</p>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                            <button class="btn visit-btn" data-index="${index}" style="background: #28a745; padding: 0.5rem 1rem; font-size: 0.875rem;">👥 Ziyaret Et</button>
+                                            <button class="btn map-btn" data-lat="${business.lat}" data-lng="${business.lng}" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">🗺️ Harita</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                     
                     <div style="margin-top: 2rem; text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
@@ -1607,11 +1611,18 @@
                     </div>
                 </div>
             `;
+            
+            setTimeout(() => {
+                setupBusinessEventListeners();
+            }, 100);
         }
         
         function selectBusiness(id, name, type, address, lat, lng) {
-            document.getElementById('map_company_name').value = name;
-            document.getElementById('map_address').value = address;
+            const cleanName = String(name).replace(/'/g, '');
+            const cleanAddress = String(address).replace(/'/g, '');
+            
+            document.getElementById('map_company_name').value = cleanName;
+            document.getElementById('map_address').value = cleanAddress;
             document.getElementById('map_lat').value = lat;
             document.getElementById('map_lng').value = lng;
             document.getElementById('newCustomerFromMapModal').style.display = 'block';
@@ -1619,6 +1630,30 @@
         
         function viewOnMap(lat, lng) {
             window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+        }
+        
+        let currentBusinesses = [];
+        
+        function setupBusinessEventListeners() {
+            document.querySelectorAll('.visit-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const index = parseInt(this.dataset.index);
+                    const business = currentBusinesses[index];
+                    if (business) {
+                        selectBusiness(business.id, business.name, business.type, business.address, business.lat, business.lng);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.map-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const lat = parseFloat(this.dataset.lat);
+                    const lng = parseFloat(this.dataset.lng);
+                    viewOnMap(lat, lng);
+                });
+            });
         }
         
         function openManualBusinessEntry() {
