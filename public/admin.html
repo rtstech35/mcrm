@@ -1348,9 +1348,17 @@
                 role_id: document.getElementById('role_id').value
             };
 
-            // Şifre sadece dolu ise ekle (güncelleme sırasında boş bırakılabilir)
+            // Şifre kontrolü
             const password = document.getElementById('password').value;
-            if (password) {
+            
+            // Yeni kullanıcı için şifre zorunlu
+            if (!isEdit && (!password || password.trim() === '')) {
+                alert('Yeni kullanıcı için şifre gerekli!');
+                return;
+            }
+            
+            // Şifre varsa ekle
+            if (password && password.trim() !== '') {
                 formData.password = password;
             }
 

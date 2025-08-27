@@ -3223,9 +3223,17 @@ app.post("/api/users", async (req, res) => {
   try {
     const { username, email, password, full_name, role_id, department_id } = req.body;
     
+    // Şifre kontrolü
+    if (!password || password.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Şifre gerekli'
+      });
+    }
+    
     // Şifreyi hash'le
     const bcrypt = require("bcryptjs");
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
     
     const result = await pool.query(`
       INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active)
@@ -3298,7 +3306,7 @@ app.put("/api/users/:id", async (req, res) => {
     // Eğer şifre verilmişse, hash'leyip güncelle
     if (password && password.trim() !== '') {
       const bcrypt = require("bcryptjs");
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
       query += `, password_hash = $7 WHERE id = $8 RETURNING *`;
       params.push(hashedPassword, id);
     } else {
