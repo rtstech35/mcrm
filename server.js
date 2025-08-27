@@ -421,6 +421,136 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
 
 // ---------------- SETUP ENDPOINTS ---------------- //
+// Rolleri Türkçeye çevir ve her departman için kullanıcı oluştur
+app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
+  try {
+    console.log('🎯 Roller Türkçeye çevriliyor ve test kullanıcıları oluşturuluyor...');
+
+    const bcrypt = require("bcryptjs");
+    
+    // Önce rolleri Türkçeye çevir
+    const turkishRoles = [
+      { id: 1, name: 'Yönetici', description: 'Sistem yöneticisi - Tüm yetkiler' },
+      { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi' },
+      { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları' },
+      { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri' },
+      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe' }
+    ];
+
+    // Rolleri güncelle
+    for (const role of turkishRoles) {
+      await pool.query(`
+        INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description
+      `, [role.id, role.name, role.description]);
+    }
+
+    // Departmanları kontrol et ve eksikleri ekle
+    const departments = [
+      { id: 1, name: 'Satış Departmanı', description: 'Müşteri ilişkileri ve satış işlemleri' },
+      { id: 2, name: 'Üretim Departmanı', description: 'Üretim planlama ve operasyonları' },
+      { id: 3, name: 'Sevkiyat Departmanı', description: 'Lojistik ve teslimat işlemleri' },
+      { id: 4, name: 'Muhasebe Departmanı', description: 'Mali işler ve muhasebe' },
+      { id: 5, name: 'IT Departmanı', description: 'Bilgi teknolojileri ve sistem yönetimi' }
+    ];
+
+    for (const dept of departments) {
+      await pool.query(`
+        INSERT INTO departments (id, name, description) VALUES ($1, $2, $3)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description
+      `, [dept.id, dept.name, dept.description]);
+    }
+
+    // Her departman için test kullanıcısı oluştur
+    const testUsers = [
+      {
+        username: 'admin',
+        password: '123456',
+        full_name: 'Yönetici Kullanıcı',
+        email: 'admin@test.com',
+        role_id: 1,
+        department_id: 5
+      },
+      {
+        username: 'satis',
+        password: '123456',
+        full_name: 'Satış Temsilcisi',
+        email: 'satis@test.com',
+        role_id: 2,
+        department_id: 1
+      },
+      {
+        username: 'uretim',
+        password: '123456',
+        full_name: 'Üretim Personeli',
+        email: 'uretim@test.com',
+        role_id: 3,
+        department_id: 2
+      },
+      {
+        username: 'sevkiyat',
+        password: '123456',
+        full_name: 'Sevkiyat Personeli',
+        email: 'sevkiyat@test.com',
+        role_id: 4,
+        department_id: 3
+      },
+      {
+        username: 'muhasebe',
+        password: '123456',
+        full_name: 'Muhasebe Personeli',
+        email: 'muhasebe@test.com',
+        role_id: 5,
+        department_id: 4
+      }
+    ];
+
+    let createdUsers = [];
+    
+    for (const user of testUsers) {
+      try {
+        // Kullanıcı zaten var mı kontrol et
+        const existingUser = await pool.query('SELECT id FROM users WHERE username = $1', [user.username]);
+        
+        if (existingUser.rows.length === 0) {
+          const hashedPassword = await bcrypt.hash(user.password, 10);
+          
+          const result = await pool.query(`
+            INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6, true)
+            RETURNING id, username, full_name
+          `, [user.username, hashedPassword, user.full_name, user.email, user.role_id, user.department_id]);
+          
+          createdUsers.push(result.rows[0]);
+        } else {
+          console.log(`Kullanıcı zaten mevcut: ${user.username}`);
+        }
+      } catch (userError) {
+        console.error(`Kullanıcı oluşturma hatası (${user.username}):`, userError.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Roller Türkçeye çevrildi ve test kullanıcıları oluşturuldu',
+      created_users: createdUsers,
+      roles_updated: turkishRoles.length,
+      departments_updated: departments.length
+    });
+
+  } catch (error) {
+    console.error('Rol güncelleme ve kullanıcı oluşturma hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 const setupRoutes = require('./routes/setup');
 app.use('/api/setup', setupRoutes);
 
@@ -4061,136 +4191,4 @@ app.listen(PORT, () => {
 app.use((err, req, res, next) => {
   console.error('Sunucu hatası:', err);
   res.status(500).json({ error: 'Sunucu hatası oluştu' });
-});
-
-// Duplicate server listen kısmı silindi
-
-// Rolleri Türkçeye çevir ve her departman için kullanıcı oluştur
-app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
-  try {
-    console.log('🎯 Roller Türkçeye çevriliyor ve test kullanıcıları oluşturuluyor...');
-
-    const bcrypt = require("bcryptjs");
-    
-    // Önce rolleri Türkçeye çevir
-    const turkishRoles = [
-      { id: 1, name: 'Yönetici', description: 'Sistem yöneticisi - Tüm yetkiler' },
-      { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi' },
-      { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları' },
-      { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri' },
-      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe' }
-    ];
-
-    // Rolleri güncelle
-    for (const role of turkishRoles) {
-      await pool.query(`
-        INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          description = EXCLUDED.description
-      `, [role.id, role.name, role.description]);
-    }
-
-    // Departmanları kontrol et ve eksikleri ekle
-    const departments = [
-      { id: 1, name: 'Satış Departmanı', description: 'Müşteri ilişkileri ve satış işlemleri' },
-      { id: 2, name: 'Üretim Departmanı', description: 'Üretim planlama ve operasyonları' },
-      { id: 3, name: 'Sevkiyat Departmanı', description: 'Lojistik ve teslimat işlemleri' },
-      { id: 4, name: 'Muhasebe Departmanı', description: 'Mali işler ve muhasebe' },
-      { id: 5, name: 'IT Departmanı', description: 'Bilgi teknolojileri ve sistem yönetimi' }
-    ];
-
-    for (const dept of departments) {
-      await pool.query(`
-        INSERT INTO departments (id, name, description) VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          description = EXCLUDED.description
-      `, [dept.id, dept.name, dept.description]);
-    }
-
-    // Her departman için test kullanıcısı oluştur
-    const testUsers = [
-      {
-        username: 'admin',
-        password: '123456',
-        full_name: 'Yönetici Kullanıcı',
-        email: 'admin@test.com',
-        role_id: 1,
-        department_id: 5
-      },
-      {
-        username: 'satis',
-        password: '123456',
-        full_name: 'Satış Temsilcisi',
-        email: 'satis@test.com',
-        role_id: 2,
-        department_id: 1
-      },
-      {
-        username: 'uretim',
-        password: '123456',
-        full_name: 'Üretim Personeli',
-        email: 'uretim@test.com',
-        role_id: 3,
-        department_id: 2
-      },
-      {
-        username: 'sevkiyat',
-        password: '123456',
-        full_name: 'Sevkiyat Personeli',
-        email: 'sevkiyat@test.com',
-        role_id: 4,
-        department_id: 3
-      },
-      {
-        username: 'muhasebe',
-        password: '123456',
-        full_name: 'Muhasebe Personeli',
-        email: 'muhasebe@test.com',
-        role_id: 5,
-        department_id: 4
-      }
-    ];
-
-    let createdUsers = [];
-    
-    for (const user of testUsers) {
-      try {
-        // Kullanıcı zaten var mı kontrol et
-        const existingUser = await pool.query('SELECT id FROM users WHERE username = $1', [user.username]);
-        
-        if (existingUser.rows.length === 0) {
-          const hashedPassword = await bcrypt.hash(user.password, 10);
-          
-          const result = await pool.query(`
-            INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6, true)
-            RETURNING id, username, full_name
-          `, [user.username, hashedPassword, user.full_name, user.email, user.role_id, user.department_id]);
-          
-          createdUsers.push(result.rows[0]);
-        } else {
-          console.log(`Kullanıcı zaten mevcut: ${user.username}`);
-        }
-      } catch (userError) {
-        console.error(`Kullanıcı oluşturma hatası (${user.username}):`, userError.message);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Roller Türkçeye çevrildi ve test kullanıcıları oluşturuldu',
-      created_users: createdUsers,
-      roles_updated: turkishRoles.length,
-      departments_updated: departments.length
-    });
-
-  } catch (error) {
-    console.error('Rol güncelleme ve kullanıcı oluşturma hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
 });
