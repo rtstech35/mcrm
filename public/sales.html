@@ -39,10 +39,66 @@
         </div>
 
         <div class="content" id="content">
+            <!-- User Profile Dropdown -->
+            <div class="user-profile-dropdown" id="userProfileDropdown">
+                <div class="profile-header" onclick="toggleProfileDropdown()">
+                    <div class="profile-info">
+                        <div class="profile-name" id="profileName">Satış Temsilcisi</div>
+                        <div class="profile-date" id="profileDate">27.08.2025 - 23:12</div>
+                    </div>
+                    <div class="profile-arrow">▼</div>
+                </div>
+                <div class="profile-menu" id="profileMenu">
+                    <a href="#" onclick="openProfileModal()" class="profile-menu-item">
+                        <span class="menu-icon">👤</span>
+                        <span>Profil</span>
+                    </a>
+                    <a href="#" onclick="logout()" class="profile-menu-item">
+                        <span class="menu-icon">🚪</span>
+                        <span>Çıkış</span>
+                    </a>
+                </div>
+            </div>
+            
             <div class="card">
                 <h2>Satış Dashboard</h2>
                 <p>Satış paneline hoş geldiniz!</p>
             </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('profileModal')">&times;</span>
+            <h3>👤 Profil Bilgileri</h3>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label>Ad Soyad:</label>
+                    <input type="text" id="profile_full_name" required>
+                </div>
+                <div class="form-group">
+                    <label>E-posta:</label>
+                    <input type="email" id="profile_email" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="tel" id="profile_phone">
+                </div>
+                <div class="form-group">
+                    <label>Mevcut Şifre:</label>
+                    <input type="password" id="current_password">
+                </div>
+                <div class="form-group">
+                    <label>Yeni Şifre:</label>
+                    <input type="password" id="new_password">
+                </div>
+                <div class="form-group">
+                    <label>Yeni Şifre Tekrar:</label>
+                    <input type="password" id="confirm_password">
+                </div>
+                <button type="submit" class="btn">Güncelle</button>
+            </form>
         </div>
     </div>
 
@@ -400,6 +456,96 @@
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        
+        // Profile dropdown functions
+        function toggleProfileDropdown() {
+            const menu = document.getElementById('profileMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+        
+        function updateProfileInfo() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('tr-TR');
+            const timeStr = now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            
+            document.getElementById('profileName').textContent = currentUser.full_name || 'Kullanıcı';
+            document.getElementById('profileDate').textContent = `${dateStr} - ${timeStr}`;
+        }
+        
+        async function openProfileModal() {
+            try {
+                const response = await apiCall('/api/profile');
+                const profile = response;
+                
+                document.getElementById('profile_full_name').value = profile.full_name || '';
+                document.getElementById('profile_email').value = profile.email || '';
+                document.getElementById('profile_phone').value = profile.phone || '';
+                
+                document.getElementById('profileModal').style.display = 'block';
+                toggleProfileDropdown();
+            } catch (error) {
+                console.error('Profil yüklenemedi:', error);
+                // Fallback - mevcut kullanıcı bilgilerini kullan
+                document.getElementById('profile_full_name').value = currentUser.full_name || '';
+                document.getElementById('profile_email').value = currentUser.email || '';
+                document.getElementById('profile_phone').value = currentUser.phone || '';
+                
+                document.getElementById('profileModal').style.display = 'block';
+                toggleProfileDropdown();
+            }
+        }
+        
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newPassword = document.getElementById('new_password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            if (newPassword && newPassword !== confirmPassword) {
+                alert('Şifreler eşleşmiyor!');
+                return;
+            }
+            
+            const formData = {
+                full_name: document.getElementById('profile_full_name').value,
+                email: document.getElementById('profile_email').value,
+                phone: document.getElementById('profile_phone').value
+            };
+            
+            if (newPassword) {
+                formData.password = newPassword;
+            }
+            
+            try {
+                await apiCall(`/api/users/${currentUser.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(formData)
+                });
+                
+                // Local storage'daki kullanıcı bilgilerini güncelle
+                currentUser.full_name = formData.full_name;
+                currentUser.email = formData.email;
+                currentUser.phone = formData.phone;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                alert('Profil başarıyla güncellendi!');
+                document.getElementById('profileForm').reset();
+                closeModal('profileModal');
+                updateProfileInfo();
+            } catch (error) {
+                alert('Güncelleme hatası: ' + error.message);
+            }
+        });
+        
+        // Click outside to close dropdown
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userProfileDropdown');
+            const menu = document.getElementById('profileMenu');
+            
+            if (!dropdown.contains(event.target)) {
+                menu.style.display = 'none';
+            }
+        });
 
         console.log('🔑 Auth token:', authToken ? 'Mevcut' : 'Yok');
         console.log('👤 Current user:', currentUser);
@@ -2928,9 +3074,13 @@
         
         setTimeout(() => {
             updateUserInfo();
+            updateProfileInfo();
         }, 100);
         
-        setInterval(updateUserInfo, 60000);
+        setInterval(() => {
+            updateUserInfo();
+            updateProfileInfo();
+        }, 60000);
     </script>
     <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(40, 167, 69, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.875rem;">
         <!-- JavaScript ile doldurulacak -->
@@ -3009,5 +3159,96 @@
             }
         }
     </script>
+    
+    <style>
+        .user-profile-dropdown {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 200px;
+        }
+        
+        .profile-header {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        
+        .profile-header:hover {
+            background: #f8f9fa;
+        }
+        
+        .profile-info {
+            flex: 1;
+        }
+        
+        .profile-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9em;
+        }
+        
+        .profile-date {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .profile-arrow {
+            color: #666;
+            font-size: 0.8em;
+            transition: transform 0.2s;
+        }
+        
+        .profile-menu {
+            display: none;
+            border-top: 1px solid #e2e8f0;
+            padding: 8px 0;
+        }
+        
+        .profile-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            text-decoration: none;
+            color: #2d3748;
+            font-size: 0.875em;
+            transition: background 0.2s;
+        }
+        
+        .profile-menu-item:hover {
+            background: #f8f9fa;
+            color: #007bff;
+        }
+        
+        .menu-icon {
+            font-size: 1em;
+        }
+        
+        @media (max-width: 768px) {
+            .user-profile-dropdown {
+                top: 10px;
+                right: 10px;
+                min-width: 180px;
+            }
+            
+            .profile-name {
+                font-size: 0.8em;
+            }
+            
+            .profile-date {
+                font-size: 0.7em;
+            }
+        }
+    </style>
 </body>
 </html>
