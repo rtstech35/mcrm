@@ -324,6 +324,16 @@
         </div>
     </div>
 
+    <!-- Randevu/Görev Detay Modal -->
+    <div id="appointmentDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="closeModal('appointmentDetailModal')">&times;</span>
+            <div id="appointmentDetailContent">
+                <!-- JavaScript ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -802,8 +812,203 @@
             }
         }
         
-        async function editAppointment(id) {
-            await editActivity('appointment', id);
+        async function showAppointmentDetail(id) {
+            try {
+                const response = await apiCall(`/api/appointments/${id}`);
+                const apt = response.appointment;
+                
+                const typeNames = {
+                    'appointment': 'Randevu',
+                    'task': 'Görev', 
+                    'visit': 'Ziyaret',
+                    'call': 'Telefon',
+                    'meeting': 'Toplantı'
+                };
+                
+                const statusNames = {
+                    'pending': 'Bekliyor',
+                    'in_progress': 'Devam Ediyor',
+                    'completed': 'Tamamlandı',
+                    'cancelled': 'İptal Edildi'
+                };
+                
+                document.getElementById('appointmentDetailContent').innerHTML = `
+                    <h3>${typeNames[apt.type] || apt.type} Detayı</h3>
+                    
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div><strong>Başlık:</strong> ${apt.title}</div>
+                            <div><strong>Durum:</strong> <span style="color: ${apt.status === 'completed' ? '#28a745' : apt.status === 'pending' ? '#ffc107' : '#007bff'};">${statusNames[apt.status] || apt.status}</span></div>
+                            <div><strong>Tarih:</strong> ${new Date(apt.start_date).toLocaleDateString('tr-TR')}</div>
+                            <div><strong>Saat:</strong> ${apt.start_time || '09:00'}</div>
+                            <div><strong>Müşteri:</strong> ${apt.customer_name || 'Genel'}</div>
+                            <div><strong>Öncelik:</strong> ${apt.priority}</div>
+                        </div>
+                        ${apt.description ? `<div style="margin-top: 1rem;"><strong>Açıklama:</strong><br>${apt.description}</div>` : ''}
+                        ${apt.location ? `<div style="margin-top: 0.5rem;"><strong>Konum:</strong> ${apt.location}</div>` : ''}
+                        ${apt.completion_notes ? `<div style="margin-top: 0.5rem; padding: 0.5rem; background: #d4edda; border-radius: 4px;"><strong>Tamamlanma Notu:</strong><br>${apt.completion_notes}</div>` : ''}
+                    </div>
+                    
+                    <!-- Not Ekleme -->
+                    <div style="margin: 1rem 0;">
+                        <label><strong>Yeni Not Ekle:</strong></label>
+                        <textarea id="newNote" rows="3" placeholder="Not yazın..." style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; margin-top: 0.5rem;"></textarea>
+                    </div>
+                    
+                    <!-- İşlem Butonları -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin: 1.5rem 0;">
+                        ${apt.status === 'pending' ? `
+                            <button onclick="completeAppointmentWithNote(${apt.id})" class="btn" style="background: #28a745;">✓ Tamamla</button>
+                            <button onclick="rescheduleAppointment(${apt.id})" class="btn" style="background: #ffc107;">📅 Yeniden Planla</button>
+                        ` : ''}
+                        ${apt.customer_id ? `
+                            <button onclick="createOrderFromAppointment(${apt.customer_id}, '${apt.customer_name}')" class="btn" style="background: #007bff;">📋 Sipariş Oluştur</button>
+                            <button onclick="scheduleFollowUp(${apt.customer_id}, '${apt.customer_name}')" class="btn" style="background: #6f42c1;">🔄 Takip Randevusu</button>
+                        ` : ''}
+                        <button onclick="addNoteToAppointment(${apt.id})" class="btn" style="background: #17a2b8;">📝 Not Ekle</button>
+                        <button onclick="markAsNotInterested(${apt.id})" class="btn" style="background: #dc3545;">❌ İlgilenmiyor</button>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button onclick="closeModal('appointmentDetailModal')" class="btn" style="background: #6c757d;">Kapat</button>
+                    </div>
+                `;
+                
+                document.getElementById('appointmentDetailModal').style.display = 'block';
+            } catch (error) {
+                alert('Detay yüklenemedi: ' + error.message);
+            }
+        }
+        
+        async function completeAppointmentWithNote(id) {
+            const note = document.getElementById('newNote').value;
+            try {
+                await apiCall(`/api/appointments/${id}/complete`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        completion_notes: note || 'Tamamlandı'
+                    })
+                });
+                alert('Randevu tamamlandı!');
+                closeModal('appointmentDetailModal');
+                showAppointments();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        async function addNoteToAppointment(id) {
+            const note = document.getElementById('newNote').value;
+            if (!note.trim()) {
+                alert('Lütfen bir not yazın!');
+                return;
+            }
+            
+            try {
+                const response = await apiCall(`/api/appointments/${id}`);
+                const apt = response.appointment;
+                
+                const updatedDescription = apt.description ? 
+                    `${apt.description}\n\n[${new Date().toLocaleString('tr-TR')}] ${note}` : 
+                    `[${new Date().toLocaleString('tr-TR')}] ${note}`;
+                
+                await apiCall(`/api/appointments/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        ...apt,
+                        description: updatedDescription
+                    })
+                });
+                
+                alert('Not eklendi!');
+                document.getElementById('newNote').value = '';
+                showAppointmentDetail(id); // Detayı yenile
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+        
+        async function rescheduleAppointment(id) {
+            const newDate = prompt('Yeni tarih (YYYY-MM-DD):');
+            const newTime = prompt('Yeni saat (HH:MM):');
+            
+            if (newDate && newTime) {
+                try {
+                    const response = await apiCall(`/api/appointments/${id}`);
+                    const apt = response.appointment;
+                    
+                    await apiCall(`/api/appointments/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            ...apt,
+                            start_date: newDate,
+                            start_time: newTime
+                        })
+                    });
+                    
+                    alert('Randevu yeniden planlandı!');
+                    closeModal('appointmentDetailModal');
+                    showAppointments();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+        
+        function createOrderFromAppointment(customerId, customerName) {
+            document.getElementById('quick_customer_id').value = customerId;
+            document.getElementById('quick_customer_name').value = customerName;
+            closeModal('appointmentDetailModal');
+            document.getElementById('quickOrderModal').style.display = 'block';
+        }
+        
+        async function scheduleFollowUp(customerId, customerName) {
+            const date = prompt('Takip randevu tarihi (YYYY-MM-DD):');
+            const time = prompt('Takip randevu saati (HH:MM):');
+            
+            if (date && time) {
+                try {
+                    await apiCall('/api/appointments', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: `Takip Randevusu - ${customerName}`,
+                            description: 'Otomatik oluşturulan takip randevusu',
+                            type: 'appointment',
+                            priority: 'medium',
+                            start_date: date,
+                            start_time: time,
+                            assigned_to: currentUser.id,
+                            customer_id: customerId,
+                            location: customerName
+                        })
+                    });
+                    
+                    alert('Takip randevusu oluşturuldu!');
+                    closeModal('appointmentDetailModal');
+                    showAppointments();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+        
+        async function markAsNotInterested(id) {
+            if (confirm('Müşteri ilgilenmiyor olarak işaretlensin mi?')) {
+                try {
+                    await apiCall(`/api/appointments/${id}/complete`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            completion_notes: 'Müşteri ilgilenmiyor'
+                        })
+                    });
+                    
+                    alert('Müşteri ilgilenmiyor olarak işaretlendi.');
+                    closeModal('appointmentDetailModal');
+                    showAppointments();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
         }
         
         async function completeTask(id) {
@@ -1335,8 +1540,8 @@
                                                         <div style="font-size: 0.75rem; color: #999;">Durum: ${apt.status === 'pending' ? 'Bekliyor' : apt.status === 'completed' ? 'Tamamlandı' : apt.status}</div>
                                                     </div>
                                                     <div style="display: flex; gap: 0.5rem;">
+                                                        <button class="btn" onclick="showAppointmentDetail(${apt.id})" style="background: #007bff; padding: 0.25rem 0.5rem; font-size: 0.75rem;">👁️ Detay</button>
                                                         ${apt.status === 'pending' ? `<button class="btn" onclick="completeActivity('${apt.type}', ${apt.id})" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓ Tamamla</button>` : ''}
-                                                        <button class="btn" onclick="editActivity('${apt.type}', ${apt.id})" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
                                                     </div>
                                                 </div>
                                             `;
@@ -1363,7 +1568,7 @@
                                                         <div style="font-size: 0.875rem; color: #666;">${apt.customer_name || apt.title}</div>
                                                         <div style="font-size: 0.75rem; color: #999;">${apt.type} - ${apt.priority}</div>
                                                     </div>
-                                                    <button class="btn" onclick="editAppointment(${apt.id})" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
+                                                    <button class="btn" onclick="showAppointmentDetail(${apt.id})" style="background: #007bff; padding: 0.25rem 0.5rem; font-size: 0.75rem;">👁️ Detay</button>
                                                 </div>
                                             </div>
                                         `;
@@ -1391,6 +1596,7 @@
                                                         <div style="font-size: 0.875rem; color: #666;">${task.customer_name || 'Genel'} - <span style="color: ${color};">${task.priority}</span></div>
                                                         <div style="font-size: 0.75rem; color: #999;">${task.start_date}</div>
                                                     </div>
+                                                    <button class="btn" onclick="showAppointmentDetail(${task.id})" style="background: #007bff; padding: 0.25rem 0.5rem; font-size: 0.75rem;">👁️ Detay</button>
                                                     <button class="btn" onclick="completeTask(${task.id})" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓</button>
                                                 </div>
                                             </div>
