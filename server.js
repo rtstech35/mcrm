@@ -3668,7 +3668,26 @@ app.get("/api/products", async (req, res) => {
   try {
     console.log('📋 Products API çağrıldı');
 
-    // Basit ürün listesi döndür
+    try {
+      const result = await pool.query(`
+        SELECT * FROM products
+        WHERE is_active = true
+        ORDER BY name ASC
+      `);
+
+      console.log('✅ Products API - Bulunan ürün sayısı:', result.rows.length);
+
+      if (result.rows.length > 0) {
+        return res.json({
+          success: true,
+          products: result.rows
+        });
+      }
+    } catch (dbError) {
+      console.log('⚠️ Database hatası, sabit veri döndürülüyor:', dbError.message);
+    }
+
+    // Fallback: Sabit ürün listesi
     const products = [
       { id: 1, name: 'Ekmek', unit_price: 5.50, category: 'Fırın Ürünleri' },
       { id: 2, name: 'Süt', unit_price: 12.00, category: 'Süt Ürünleri' },
