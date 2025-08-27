@@ -932,7 +932,25 @@
                         completion_notes: note || 'Tamamlandı'
                     })
                 });
-                alert('Randevu tamamlandı!');
+                
+                // Müşteriyi potansiyel olarak kaydet
+                const response = await apiCall(`/api/appointments/${id}`);
+                const apt = response.appointment;
+                
+                if (apt.customer_id) {
+                    try {
+                        await apiCall(`/api/customers/${apt.customer_id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                                customer_status: 'potential'
+                            })
+                        });
+                    } catch (error) {
+                        console.log('Müşteri durumu güncellenemedi:', error.message);
+                    }
+                }
+                
+                alert('Randevu tamamlandı ve müşteri potansiyel olarak işaretlendi!');
                 closeModal('appointmentDetailModal');
                 showAppointments();
             } catch (error) {
@@ -972,67 +990,61 @@
         }
         
         async function rescheduleAppointment(id) {
-            const newDate = prompt('Yeni tarih (YYYY-MM-DD):');
-            const newTime = prompt('Yeni saat (HH:MM):');
+            // Takvim modalını aç
+            document.getElementById('appointmentDate').value = '';
+            document.getElementById('appointmentTime').value = '';
+            document.getElementById('appointmentType').value = 'appointment';
+            document.getElementById('appointmentNote').value = 'Yeniden planlanan randevu';
             
-            if (newDate && newTime) {
-                try {
-                    const response = await apiCall(`/api/appointments/${id}`);
-                    const apt = response.appointment;
-                    
-                    await apiCall(`/api/appointments/${id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            ...apt,
-                            start_date: newDate,
-                            start_time: newTime
-                        })
-                    });
-                    
-                    alert('Randevu yeniden planlandı!');
-                    closeModal('appointmentDetailModal');
-                    showAppointments();
-                } catch (error) {
-                    alert('Hata: ' + error.message);
-                }
-            }
+            // Global değişkenleri ayarla
+            window.rescheduleAppointmentId = id;
+            window.isRescheduleMode = true;
+            
+            closeModal('appointmentDetailModal');
+            document.getElementById('appointmentModal').style.display = 'block';
         }
         
-        function createOrderFromAppointment(customerId, customerName) {
-            document.getElementById('quick_customer_id').value = customerId;
-            document.getElementById('quick_customer_name').value = customerName;
-            closeModal('appointmentDetailModal');
-            document.getElementById('quickOrderModal').style.display = 'block';
+        async function createOrderFromAppointment(customerId, customerName) {
+            try {
+                // Müşteriyi kaydet
+                await apiCall('/api/customers', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        company_name: customerName,
+                        customer_status: 'potential',
+                        assigned_sales_rep: currentUser.id
+                    })
+                });
+                
+                // Sipariş modalını aç
+                document.getElementById('quick_customer_id').value = customerId;
+                document.getElementById('quick_customer_name').value = customerName;
+                closeModal('appointmentDetailModal');
+                document.getElementById('quickOrderModal').style.display = 'block';
+            } catch (error) {
+                console.log('Müşteri zaten mevcut veya hata:', error.message);
+                // Sipariş modalını aç
+                document.getElementById('quick_customer_id').value = customerId;
+                document.getElementById('quick_customer_name').value = customerName;
+                closeModal('appointmentDetailModal');
+                document.getElementById('quickOrderModal').style.display = 'block';
+            }
         }
         
         async function scheduleFollowUp(customerId, customerName) {
-            const date = prompt('Takip randevu tarihi (YYYY-MM-DD):');
-            const time = prompt('Takip randevu saati (HH:MM):');
+            // Takvim modalını aç
+            document.getElementById('appointmentDate').value = '';
+            document.getElementById('appointmentTime').value = '';
+            document.getElementById('appointmentType').value = 'visit';
+            document.getElementById('appointmentNote').value = `Takip randevusu - ${customerName}`;
             
-            if (date && time) {
-                try {
-                    await apiCall('/api/appointments', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            title: `Takip Randevusu - ${customerName}`,
-                            description: 'Otomatik oluşturulan takip randevusu',
-                            type: 'appointment',
-                            priority: 'medium',
-                            start_date: date,
-                            start_time: time,
-                            assigned_to: currentUser.id,
-                            customer_id: customerId,
-                            location: customerName
-                        })
-                    });
-                    
-                    alert('Takip randevusu oluşturuldu!');
-                    closeModal('appointmentDetailModal');
-                    showAppointments();
-                } catch (error) {
-                    alert('Hata: ' + error.message);
-                }
-            }
+            // Global değişkenleri ayarla
+            window.followUpCustomerId = customerId;
+            window.followUpCustomerName = customerName;
+            window.isFollowUpMode = true;
+            
+            closeModal('appointmentDetailModal');
+            document.getElementById('appointmentModal').style.display = 'block';
         }
         
         async function markAsNotInterested(id) {
@@ -2399,3 +2411,79 @@
     </div>
 </body>
 </html>
+        
+        async function saveAppointment() {
+            const date = document.getElementById('appointmentDate').value;
+            const time = document.getElementById('appointmentTime').value;
+            const type = document.getElementById('appointmentType').value;
+            const note = document.getElementById('appointmentNote').value;
+            
+            if (!date || !time) {
+                alert('Lütfen tarih ve saat seçin!');
+                return;
+            }
+            
+            try {
+                if (window.isRescheduleMode && window.rescheduleAppointmentId) {
+                    // Yeniden planlama
+                    const response = await apiCall(`/api/appointments/${window.rescheduleAppointmentId}`);
+                    const apt = response.appointment;
+                    
+                    await apiCall(`/api/appointments/${window.rescheduleAppointmentId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            ...apt,
+                            start_date: date,
+                            start_time: time,
+                            description: note
+                        })
+                    });
+                    
+                    alert('Randevu yeniden planlandı!');
+                    window.isRescheduleMode = false;
+                    window.rescheduleAppointmentId = null;
+                } else if (window.isFollowUpMode && window.followUpCustomerId) {
+                    // Takip randevusu
+                    await apiCall('/api/appointments', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: `Takip Randevusu - ${window.followUpCustomerName}`,
+                            description: note,
+                            type: type,
+                            priority: 'medium',
+                            start_date: date,
+                            start_time: time,
+                            assigned_to: currentUser.id,
+                            customer_id: window.followUpCustomerId,
+                            location: window.followUpCustomerName
+                        })
+                    });
+                    
+                    alert('Takip randevusu oluşturuldu!');
+                    window.isFollowUpMode = false;
+                    window.followUpCustomerId = null;
+                    window.followUpCustomerName = null;
+                } else {
+                    // Normal randevu
+                    await apiCall('/api/appointments', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: `${type} - ${note || 'Randevu'}`,
+                            description: note,
+                            type: type,
+                            priority: 'medium',
+                            start_date: date,
+                            start_time: time,
+                            assigned_to: currentUser.id
+                        })
+                    });
+                    
+                    alert('Randevu başarıyla kaydedildi!');
+                }
+                
+                closeModal('appointmentModal');
+                showAppointments();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
