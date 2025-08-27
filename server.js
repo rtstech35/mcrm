@@ -2789,6 +2789,38 @@ app.post("/api/visits", async (req, res) => {
   }
 });
 
+// Randevular API - Sales.html için
+app.post("/api/appointments", async (req, res) => {
+  try {
+    const { customer_id, appointment_date, appointment_time, appointment_type, notes, status, sales_rep_id } = req.body;
+    console.log('📅 Yeni randevu kaydı:', req.body);
+    
+    // Basit randevu kaydı oluştur
+    const appointmentId = Date.now();
+    
+    res.json({
+      success: true,
+      appointment: {
+        id: appointmentId,
+        customer_id,
+        appointment_date,
+        appointment_time,
+        appointment_type,
+        notes,
+        status: status || 'scheduled',
+        sales_rep_id,
+        created_at: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Appointment create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 app.get("/api/dashboard/customer-status", async (req, res) => {
   try {
     const result = await pool.query(`

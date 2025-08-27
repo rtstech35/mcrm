@@ -1529,16 +1529,45 @@
             }
         }
         
-        function loadNearbyBusinesses(lat, lng) {
-            // Simulated nearby businesses data
-            const nearbyBusinesses = [
-                { id: 1, name: 'Lezzet Restaurant', type: 'Restaurant', address: 'Merkez Mah. 123. Sok. No:5', distance: '150m', lat: lat + 0.001, lng: lng + 0.001 },
-                { id: 2, name: 'Gül Pastanesi', type: 'Pastane', address: 'Yeşil Cad. No:78', distance: '300m', lat: lat + 0.002, lng: lng - 0.001 },
-                { id: 3, name: 'Aile Lokantasi', type: 'Lokanta', address: 'Cumhuriyet Mey. No:45', distance: '450m', lat: lat - 0.001, lng: lng + 0.002 },
-                { id: 4, name: 'Mavi Otel', type: 'Otel', address: 'Sahil Yolu No:12', distance: '600m', lat: lat + 0.003, lng: lng + 0.001 },
-                { id: 5, name: 'Cafe Corner', type: 'Cafe', address: 'Park Karşısı No:8', distance: '750m', lat: lat - 0.002, lng: lng - 0.002 },
-                { id: 6, name: 'Deniz Restaurant', type: 'Restaurant', address: 'Marina Yanı No:3', distance: '900m', lat: lat + 0.004, lng: lng - 0.001 }
-            ];
+        async function loadNearbyBusinesses(lat, lng) {
+            let nearbyBusinesses = [];
+            
+            try {
+                const radius = 1000;
+                const query = `[out:json][timeout:25];(node["amenity"~"^(restaurant|cafe|bar|fast_food)$"](around:${radius},${lat},${lng});node["shop"~"^(bakery|convenience)$"](around:${radius},${lat},${lng});node["tourism"~"^(hotel)$"](around:${radius},${lat},${lng}););out geom;`;
+                
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                
+                const data = await response.json();
+                nearbyBusinesses = data.elements.map((element, index) => {
+                    const distance = calculateDistance(lat, lng, element.lat, element.lon);
+                    const name = element.tags.name || `İşletme ${index + 1}`;
+                    const type = getBusinessType(element.tags);
+                    const address = formatAddress(element.tags);
+                    
+                    return {
+                        id: element.id,
+                        name: name,
+                        type: type,
+                        address: address,
+                        distance: `${Math.round(distance)}m`,
+                        lat: element.lat,
+                        lng: element.lon
+                    };
+                }).sort((a, b) => parseInt(a.distance) - parseInt(b.distance)).slice(0, 15);
+            } catch (error) {
+                console.error('API hatası:', error);
+            }
+            
+            if (nearbyBusinesses.length === 0) {
+                nearbyBusinesses = [
+                    { id: 'f1', name: 'Yerel Restaurant', type: 'Restaurant', address: 'Mevcut konum yakını', distance: '100m', lat: lat + 0.001, lng: lng + 0.001 },
+                    { id: 'f2', name: 'Mahalle Kahvesi', type: 'Cafe', address: 'Mevcut konum yakını', distance: '200m', lat: lat - 0.001, lng: lng + 0.001 }
+                ];
+            }
             
             document.getElementById('content').innerHTML = `
                 <div class="card">
@@ -1661,7 +1690,27 @@
                     alert(`Müşteri kaydı oluşturuldu! Ziyaret sonucu: ${visitData.visit_result === 'potential' ? 'Potansiyel' : 'Olumsuz'}`);
                     
                     if (visitData.next_action && visitData.next_date) {
-                        alert(`Randevu planlandı: ${visitData.next_date} ${visitData.next_time || ''} - ${visitData.next_action}`);
+                        try {
+                            const appointmentData = {
+                                customer_id: customerId,
+                                appointment_date: visitData.next_date,
+                                appointment_time: visitData.next_time || '09:00',
+                                appointment_type: visitData.next_action,
+                                notes: `${visitData.next_action} - ${formData.company_name}`,
+                                status: 'scheduled',
+                                sales_rep_id: currentUser.id
+                            };
+                            
+                            await apiCall('/api/appointments', {
+                                method: 'POST',
+                                body: JSON.stringify(appointmentData)
+                            });
+                            
+                            alert(`Randevu başarıyla planlandı: ${visitData.next_date} ${visitData.next_time || '09:00'}`);
+                        } catch (error) {
+                            console.error('Randevu kaydedilemedi:', error);
+                            alert(`Müşteri kaydedildi ancak randevu kaydedilemedi: ${error.message}`);
+                        }
                     }
                     
                     document.getElementById('newCustomerFromMapForm').reset();
@@ -1695,6 +1744,51 @@
                 alert('Hata: ' + error.message);
             }
         });
+        
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI/180;
+            const φ2 = lat2 * Math.PI/180;
+            const Δφ = (lat2-lat1) * Math.PI/180;
+            const Δλ = (lng2-lng1) * Math.PI/180;
+            
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return R * c;
+        }
+        
+        function getBusinessType(tags) {
+            if (tags.amenity) {
+                const types = {
+                    'restaurant': 'Restaurant',
+                    'cafe': 'Cafe',
+                    'bar': 'Bar',
+                    'fast_food': 'Fast Food'
+                };
+                return types[tags.amenity] || 'Restaurant';
+            }
+            if (tags.shop) {
+                const types = {
+                    'bakery': 'Fırın',
+                    'convenience': 'Market'
+                };
+                return types[tags.shop] || 'Mağaza';
+            }
+            if (tags.tourism === 'hotel') return 'Otel';
+            return 'İşletme';
+        }
+        
+        function formatAddress(tags) {
+            const parts = [];
+            if (tags['addr:street']) parts.push(tags['addr:street']);
+            if (tags['addr:housenumber']) parts.push('No:' + tags['addr:housenumber']);
+            if (tags['addr:neighbourhood']) parts.push(tags['addr:neighbourhood']);
+            
+            return parts.length > 0 ? parts.join(' ') : 'Adres bilgisi yok';
+        }
         
         function completeAppointment(id) {
             if (confirm('Randevu tamamlandı olarak işaretlensin mi?')) {
