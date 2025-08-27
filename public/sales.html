@@ -189,7 +189,8 @@
         async function showDashboard() {
             try {
                 const stats = await apiCall('/api/dashboard/stats');
-                const targets = await apiCall(`/api/targets/user/${currentUser.id}`);
+                const targetsResponse = await apiCall(`/api/targets/user/${currentUser.id}`);
+                const targets = targetsResponse.targets || [];
                 const salesTarget = targets.find(t => t.target_type === 'sales');
                 const visitsTarget = targets.find(t => t.target_type === 'visits');
                 
