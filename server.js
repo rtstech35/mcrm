@@ -1975,7 +1975,6 @@ app.get("/api/delivery-notes/:id", async (req, res) => {
   }
 });
 
-// İrsaliye numarası oluştur
 app.get("/api/delivery-notes/generate-number", async (req, res) => {
   try {
     const now = new Date();
@@ -1983,17 +1982,7 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const day = now.getDate().toString().padStart(2, '0');
 
-    // Bugün oluşturulan irsaliye sayısını bul
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-
-    const countResult = await pool.query(
-      'SELECT COUNT(*) as count FROM delivery_notes WHERE created_at >= $1 AND created_at < $2',
-      [todayStart, todayEnd]
-    );
-
-    const dailyCount = parseInt(countResult.rows[0].count) + 1;
+    const dailyCount = Math.floor(Math.random() * 999) + 1;
     const sequenceNumber = dailyCount.toString().padStart(3, '0');
 
     const deliveryNumber = `IRS${year}${month}${day}${sequenceNumber}`;
@@ -2003,7 +1992,6 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
       delivery_number: deliveryNumber
     });
   } catch (error) {
-    console.error('Delivery number generation hatası:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -2011,7 +1999,6 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
   }
 });
 
-// Yeni irsaliye oluştur
 app.post("/api/delivery-notes", async (req, res) => {
   try {
     const {
@@ -3783,6 +3770,27 @@ app.post("/api/invoices/:id/payment", async (req, res) => {
     }
     
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Tek sipariş getir
+app.get("/api/orders/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT o.*, c.company_name
+      FROM orders o
+      LEFT JOIN customers c ON o.customer_id = c.id
+      WHERE o.id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
+    }
+
+    res.json({ success: true, order: result.rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
