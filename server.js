@@ -421,6 +421,8 @@ app.get("/api/dashboard-stats", async (req, res) => {
 
 
 // ---------------- SETUP ENDPOINTS ---------------- //
+const setupRoutes = require('./routes/setup');
+app.use('/api/setup', setupRoutes);
 
 
 

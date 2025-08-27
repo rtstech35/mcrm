@@ -35,6 +35,7 @@
                 <li><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
                 <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
                 <li><a href="#" onclick="testAPI()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🧪 API Test</a></li>
+                <li><a href="#" onclick="createTestData()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Test Verilerini Oluştur</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
             </ul>
             
@@ -765,6 +766,90 @@
                 errorMessage += '3. Database bağlantısını kontrol edin';
 
                 alert(errorMessage);
+            }
+        }
+
+        // Test verilerini oluştur
+        async function createTestData() {
+            if (!confirm('Test verileri oluşturulsun mu?\n\nBu işlem:\n- Rolleri Türkçeye çevirecek\n- Her departmandan test kullanıcısı ekleyecek\n- Şifre: 123456')) {
+                return;
+            }
+
+            try {
+                console.log('🎯 Test verileri oluşturuluyor...');
+
+                // Rolleri Türkçeye çevir
+                await apiCall('/api/setup/update-roles', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        roles: [
+                            { old_name: 'admin', new_name: 'Yönetici' },
+                            { old_name: 'sales_rep', new_name: 'Satış Temsilcisi' },
+                            { old_name: 'production', new_name: 'Üretim Personeli' },
+                            { old_name: 'shipping', new_name: 'Sevkiyat Personeli' },
+                            { old_name: 'accounting', new_name: 'Muhasebe Personeli' }
+                        ]
+                    })
+                });
+
+                // Test kullanıcılarını ekle
+                const testUsers = [
+                    {
+                        username: 'admin',
+                        password: '123456',
+                        full_name: 'Yönetici Kullanıcı',
+                        email: 'admin@test.com',
+                        role_name: 'Yönetici'
+                    },
+                    {
+                        username: 'satis',
+                        password: '123456',
+                        full_name: 'Satış Temsilcisi',
+                        email: 'satis@test.com',
+                        role_name: 'Satış Temsilcisi'
+                    },
+                    {
+                        username: 'uretim',
+                        password: '123456',
+                        full_name: 'Üretim Personeli',
+                        email: 'uretim@test.com',
+                        role_name: 'Üretim Personeli'
+                    },
+                    {
+                        username: 'sevkiyat',
+                        password: '123456',
+                        full_name: 'Sevkiyat Personeli',
+                        email: 'sevkiyat@test.com',
+                        role_name: 'Sevkiyat Personeli'
+                    },
+                    {
+                        username: 'muhasebe',
+                        password: '123456',
+                        full_name: 'Muhasebe Personeli',
+                        email: 'muhasebe@test.com',
+                        role_name: 'Muhasebe Personeli'
+                    }
+                ];
+
+                await apiCall('/api/setup/create-test-users', {
+                    method: 'POST',
+                    body: JSON.stringify({ users: testUsers })
+                });
+
+                let message = '✅ Test verileri başarıyla oluşturuldu!\n\n';
+                message += '=== Test Kullanıcıları ===\n';
+                message += 'admin / 123456 (Yönetici)\n';
+                message += 'satis / 123456 (Satış Temsilcisi)\n';
+                message += 'uretim / 123456 (Üretim Personeli)\n';
+                message += 'sevkiyat / 123456 (Sevkiyat Personeli)\n';
+                message += 'muhasebe / 123456 (Muhasebe Personeli)\n\n';
+                message += 'Artık her departmandan kullanıcı ile giriş yapabilirsiniz!';
+
+                alert(message);
+
+            } catch (error) {
+                console.error('❌ Test verileri oluşturulamadı:', error);
+                alert('❌ Test verileri oluşturulamadı: ' + error.message);
             }
         }
 

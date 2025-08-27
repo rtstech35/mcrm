@@ -75,15 +75,15 @@
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     
                     // Role-based yönlendirme
-                    if (currentUser.role === 'admin') {
+                    if (currentUser.role === 'Yönetici' || currentUser.role === 'admin') {
                         window.location.href = '/admin.html';
-                    } else if (currentUser.role === 'sales_rep') {
+                    } else if (currentUser.role === 'Satış Temsilcisi' || currentUser.role === 'sales_rep') {
                         window.location.href = '/sales.html';
-                    } else if (currentUser.role === 'production') {
+                    } else if (currentUser.role === 'Üretim Personeli' || currentUser.role === 'production') {
                         window.location.href = '/production.html';
-                    } else if (currentUser.role === 'shipping') {
+                    } else if (currentUser.role === 'Sevkiyat Personeli' || currentUser.role === 'shipping') {
                         window.location.href = '/shipping.html';
-                    } else if (currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
+                    } else if (currentUser.role === 'Muhasebe Personeli' || currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
                         window.location.href = '/accounting.html';
                     } else {
                         // Default dashboard göster

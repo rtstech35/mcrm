@@ -9,6 +9,7 @@
     "test": "node test-server.js",
     "setup": "node setup.js",
     "setup-db": "node setup-database.js",
+    "setup-users": "node setup-test-users.js",
     "build": "npm install"
   },
   "dependencies": {
