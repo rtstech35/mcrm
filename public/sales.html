@@ -1730,14 +1730,19 @@
                     if (visitData.next_action && visitData.next_date) {
                         try {
                             const appointmentData = {
+                                title: `${visitData.next_action} - ${formData.company_name}`,
+                                description: `Yeni ziyaret sonrası planlanan ${visitData.next_action}`,
+                                type: visitData.next_action,
+                                priority: 'medium',
+                                start_date: visitData.next_date,
+                                start_time: visitData.next_time || '09:00',
+                                assigned_to: currentUser.id,
                                 customer_id: customerId,
-                                appointment_date: visitData.next_date,
-                                appointment_time: visitData.next_time || '09:00',
-                                appointment_type: visitData.next_action,
-                                notes: `${visitData.next_action} - ${formData.company_name}`,
-                                status: 'scheduled',
-                                sales_rep_id: currentUser.id
+                                location: formData.company_name,
+                                address: formData.address
                             };
+                            
+                            console.log('Randevu verisi gönderiliyor:', appointmentData);
                             
                             await apiCall('/api/appointments', {
                                 method: 'POST',
