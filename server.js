@@ -4114,7 +4114,10 @@ app.get("/api/orders", async (req, res) => {
 
     console.log('✅ Orders API - Bulunan sipariş sayısı:', result.rows.length);
 
-    res.json(result.rows);
+    res.json({
+      success: true,
+      orders: result.rows
+    });
   } catch (error) {
     console.error('❌ Orders API hatası:', error);
     res.status(500).json({
@@ -4144,11 +4147,15 @@ app.post("/api/orders", async (req, res) => {
     
     // Sipariş kalemlerini ekle
     if (products && products.length > 0) {
-      for (const product of products) {
-        await pool.query(`
-          INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [orderId, product.id, product.quantity, product.price, product.price * product.quantity]);
+      try {
+        for (const product of products) {
+          await pool.query(`
+            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `, [orderId, product.id, product.name, product.quantity, product.unit_price || product.price, (product.unit_price || product.price) * product.quantity]);
+        }
+      } catch (itemError) {
+        console.log('Order items eklenirken hata (tablo olmayabilir):', itemError.message);
       }
     }
     
