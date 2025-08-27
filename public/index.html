@@ -75,21 +75,24 @@
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     
                     // Role-based yönlendirme
-                    if (currentUser.role === 'Yönetici' || currentUser.role === 'admin') {
+                    localStorage.setItem('token', authToken);
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    
+                    const roleName = currentUser.role_name || '';
+                    
+                    if (roleName.includes('Yönetici') || roleName.includes('Admin')) {
                         window.location.href = '/admin.html';
-                    } else if (currentUser.role === 'Satış Temsilcisi' || currentUser.role === 'sales_rep') {
+                    } else if (roleName.includes('Satış')) {
                         window.location.href = '/sales.html';
-                    } else if (currentUser.role === 'Üretim Personeli' || currentUser.role === 'production') {
+                    } else if (roleName.includes('Üretim')) {
                         window.location.href = '/production.html';
-                    } else if (currentUser.role === 'Sevkiyat Personeli' || currentUser.role === 'shipping') {
+                    } else if (roleName.includes('Sevkiyat')) {
                         window.location.href = '/shipping.html';
-                    } else if (currentUser.role === 'Muhasebe Personeli' || currentUser.role === 'accounting' || currentUser.role === 'warehouse') {
+                    } else if (roleName.includes('Muhasebe')) {
                         window.location.href = '/accounting.html';
                     } else {
-                        // Default dashboard göster
-                        document.getElementById('loginContainer').style.display = 'none';
-                        document.getElementById('dashboard').style.display = 'block';
-                        showDashboard();
+                        // Default admin sayfası
+                        window.location.href = '/admin.html';
                     }
                 } else {
                     alert(data.error || data.message || 'Giriş başarısız');

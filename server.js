@@ -210,7 +210,13 @@ app.post("/api/login", async (req, res) => {
     const { username, password } = req.body;
     
     // Kullanıcıyı ara
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    const result = await pool.query(`
+      SELECT u.*, r.name as role_name, d.name as department_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.username = $1
+    `, [username]);
     
     if (result.rows.length === 0) {
       console.log("❌ Kullanıcı bulunamadı");
@@ -240,7 +246,10 @@ app.post("/api/login", async (req, res) => {
           id: user.id,
           username: user.username,
           full_name: user.full_name,
-          role: 'admin'
+          role_id: user.role_id,
+          role_name: user.role_name,
+          department_id: user.department_id,
+          department_name: user.department_name
         }
       });
     }
@@ -266,7 +275,10 @@ app.post("/api/login", async (req, res) => {
             id: user.id,
             username: user.username,
             full_name: user.full_name,
-            role: 'admin'
+            role_id: user.role_id,
+            role_name: user.role_name,
+            department_id: user.department_id,
+            department_name: user.department_name
           }
         });
       }
