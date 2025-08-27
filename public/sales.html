@@ -698,7 +698,7 @@
             try {
                 const ordersResponse = await apiCall('/api/orders');
                 const orders = ordersResponse.orders || [];
-                const myOrders = orders.filter(o => o.sales_rep_id == currentUser.id);
+                const myOrders = orders; // Tüm siparişleri göster
                 
                 let html = `
                     <div class="card">
@@ -721,7 +721,7 @@
                     html += `
                         <tr>
                             <td>#${order.order_number}</td>
-                            <td>${order.customer_name || 'Bilinmiyor'}</td>
+                            <td>${order.company_name || 'Bilinmiyor'}</td>
                             <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
                             <td>${order.total_amount} TL</td>
                             <td>${order.status}</td>
