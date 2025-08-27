@@ -124,6 +124,38 @@
         </div>
     </div>
 
+    <!-- Müşteri Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('customerModal')">&times;</span>
+            <h3 id="customerModalTitle">Yeni Müşteri</h3>
+            <form id="customerForm">
+                <input type="hidden" id="customer_edit_id">
+                <div class="form-group">
+                    <label>Firma Adı:</label>
+                    <input type="text" id="company_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Yetkili Kişi:</label>
+                    <input type="text" id="contact_person">
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="tel" id="customer_phone">
+                </div>
+                <div class="form-group">
+                    <label>E-posta:</label>
+                    <input type="email" id="customer_email">
+                </div>
+                <div class="form-group">
+                    <label>Adres:</label>
+                    <textarea id="customer_address" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn" id="customerSubmitBtn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Randevu Planlama Modal -->
     <div id="appointmentModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
@@ -392,21 +424,23 @@
                 let html = `
                     <div class="card">
                         <h2>Müşterilerim</h2>
+                        <button class="btn" onclick="openCustomerModal()" style="margin-bottom: 1rem;">+ Yeni Müşteri</button>
                         <div style="display: grid; gap: 1rem;">
                 `;
                 
                 customers.forEach(customer => {
                     html += `
-                        <div class="customer-card" onclick="viewCustomerDetail(${customer.id})" style="cursor: pointer;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div class="customer-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                                 <div>
                                     <h4>${customer.company_name}</h4>
                                     <p>Yetkili: ${customer.contact_person || '-'}</p>
                                     <p>Telefon: ${customer.phone || '-'}</p>
                                     <p>Durum: ${customer.customer_status}</p>
                                 </div>
-                                <div>
-                                    <button class="btn" onclick="event.stopPropagation(); visitCustomer(${customer.id})">Ziyaret Et</button>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button class="btn" onclick="editCustomer(${customer.id})" style="background: #ed8936;">✏️ Düzenle</button>
+                                    <button class="btn" onclick="visitCustomer(${customer.id})">📋 Ziyaret</button>
                                 </div>
                             </div>
                         </div>
@@ -574,6 +608,44 @@
                 document.getElementById('visitForm').reset();
                 closeModal('visitModal');
                 showVisit();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        document.getElementById('customerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const customerId = document.getElementById('customer_edit_id').value;
+            const formData = {
+                company_name: document.getElementById('company_name').value,
+                contact_person: document.getElementById('contact_person').value,
+                phone: document.getElementById('customer_phone').value,
+                email: document.getElementById('customer_email').value,
+                address: document.getElementById('customer_address').value,
+                assigned_sales_rep: currentUser.id
+            };
+            
+            try {
+                if (customerId) {
+                    // Güncelleme
+                    await apiCall(`/api/customers/${customerId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Müşteri başarıyla güncellendi!');
+                } else {
+                    // Yeni ekleme
+                    await apiCall('/api/customers', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Müşteri başarıyla eklendi!');
+                }
+                
+                document.getElementById('customerForm').reset();
+                closeModal('customerModal');
+                showCustomers();
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
@@ -1001,6 +1073,34 @@
             if (confirm('Randevu tamamlandı olarak işaretlensin mi?')) {
                 alert('Randevu tamamlandı!');
                 showDashboard();
+            }
+        }
+
+        // Müşteri yönetimi fonksiyonları
+        function openCustomerModal() {
+            document.getElementById('customerModalTitle').textContent = 'Yeni Müşteri';
+            document.getElementById('customerSubmitBtn').textContent = 'Kaydet';
+            document.getElementById('customerForm').reset();
+            document.getElementById('customer_edit_id').value = '';
+            document.getElementById('customerModal').style.display = 'block';
+        }
+
+        async function editCustomer(customerId) {
+            try {
+                const customer = await apiCall(`/api/customers/${customerId}`);
+                
+                document.getElementById('customerModalTitle').textContent = 'Müşteri Düzenle';
+                document.getElementById('customerSubmitBtn').textContent = 'Güncelle';
+                document.getElementById('customer_edit_id').value = customerId;
+                document.getElementById('company_name').value = customer.customer.company_name || '';
+                document.getElementById('contact_person').value = customer.customer.contact_person || '';
+                document.getElementById('customer_phone').value = customer.customer.phone || '';
+                document.getElementById('customer_email').value = customer.customer.email || '';
+                document.getElementById('customer_address').value = customer.customer.address || '';
+                
+                document.getElementById('customerModal').style.display = 'block';
+            } catch (error) {
+                alert('Müşteri bilgileri yüklenemedi: ' + error.message);
             }
         }
 
