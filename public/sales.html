@@ -47,7 +47,7 @@
 
     <!-- Sipariş Modal -->
     <div id="orderModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 800px;">
             <span class="close" onclick="closeModal('orderModal')">&times;</span>
             <h3>Yeni Sipariş</h3>
             <form id="orderForm">
@@ -59,17 +59,36 @@
                     <label>Sipariş Tarihi:</label>
                     <input type="date" id="order_date" required>
                 </div>
+                
+                <!-- Ürün Seçimi -->
+                <div class="form-group">
+                    <label>Ürünler:</label>
+                    <div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; background: #f8f9fa;">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: end;">
+                            <div style="flex: 2;">
+                                <label>Ürün:</label>
+                                <select id="product_select">
+                                    <option value="">Ürün Seçiniz</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label>Miktar:</label>
+                                <input type="number" id="product_quantity" min="1" value="1">
+                            </div>
+                            <button type="button" onclick="addProductToOrder()" class="btn" style="background: #28a745;">+ Ekle</button>
+                        </div>
+                        <div id="selected_products" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Seçilen ürünler buraya eklenecek -->
+                        </div>
+                        <div style="text-align: right; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+                            <strong>Toplam: <span id="order_total">0.00</span> TL</strong>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <label>Teslimat Tarihi:</label>
                     <input type="date" id="delivery_date">
-                </div>
-                <div class="form-group">
-                    <label>Ödeme Vadesi:</label>
-                    <input type="date" id="payment_due_date">
-                </div>
-                <div class="form-group">
-                    <label>Toplam Tutar:</label>
-                    <input type="number" id="total_amount" step="0.01" required>
                 </div>
                 <div class="form-group">
                     <label>Notlar:</label>
@@ -724,10 +743,17 @@
             document.getElementById(modalId).style.display = 'none';
         }
 
+        let orderProducts = [];
+        
         async function openOrderModal() {
             try {
-                const customersResponse = await apiCall('/api/customers');
+                const [customersResponse, productsResponse] = await Promise.all([
+                    apiCall('/api/customers'),
+                    apiCall('/api/products')
+                ]);
+                
                 const customers = customersResponse.customers || [];
+                const products = productsResponse.products || [];
 
                 const customerSelect = document.getElementById('order_customer_id');
                 customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
@@ -735,25 +761,115 @@
                     customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
                 });
                 
+                const productSelect = document.getElementById('product_select');
+                productSelect.innerHTML = '<option value="">Ürün Seçiniz</option>';
+                products.forEach(product => {
+                    productSelect.innerHTML += `<option value="${product.id}" data-price="${product.unit_price}" data-name="${product.name}">${product.name} - ${product.unit_price} TL</option>`;
+                });
+                
                 // Bugünün tarihini varsayılan olarak ayarla
                 document.getElementById('order_date').value = new Date().toISOString().split('T')[0];
                 
+                // Sipariş listesini temizle
+                orderProducts = [];
+                updateOrderDisplay();
+                
                 document.getElementById('orderModal').style.display = 'block';
             } catch (error) {
-                alert('Müşteriler yüklenemedi: ' + error.message);
+                alert('Veriler yüklenemedi: ' + error.message);
             }
+        }
+        
+        function addProductToOrder() {
+            const productSelect = document.getElementById('product_select');
+            const quantityInput = document.getElementById('product_quantity');
+            
+            const selectedOption = productSelect.options[productSelect.selectedIndex];
+            if (!selectedOption.value) {
+                alert('Lütfen bir ürün seçin!');
+                return;
+            }
+            
+            const quantity = parseInt(quantityInput.value);
+            if (!quantity || quantity < 1) {
+                alert('Lütfen geçerli bir miktar girin!');
+                return;
+            }
+            
+            const productId = selectedOption.value;
+            const productName = selectedOption.dataset.name;
+            const productPrice = parseFloat(selectedOption.dataset.price);
+            
+            // Aynı ürün varsa miktarını artır
+            const existingProduct = orderProducts.find(p => p.id === productId);
+            if (existingProduct) {
+                existingProduct.quantity += quantity;
+            } else {
+                orderProducts.push({
+                    id: productId,
+                    name: productName,
+                    price: productPrice,
+                    quantity: quantity
+                });
+            }
+            
+            // Formu temizle
+            productSelect.selectedIndex = 0;
+            quantityInput.value = 1;
+            
+            updateOrderDisplay();
+        }
+        
+        function removeProductFromOrder(index) {
+            orderProducts.splice(index, 1);
+            updateOrderDisplay();
+        }
+        
+        function updateOrderDisplay() {
+            const container = document.getElementById('selected_products');
+            const totalElement = document.getElementById('order_total');
+            
+            if (orderProducts.length === 0) {
+                container.innerHTML = '<p style="color: #666; text-align: center; padding: 1rem;">Henüz ürün eklenmedi</p>';
+                totalElement.textContent = '0.00';
+                return;
+            }
+            
+            let total = 0;
+            container.innerHTML = orderProducts.map((product, index) => {
+                const subtotal = product.price * product.quantity;
+                total += subtotal;
+                return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: white; border-radius: 4px; margin-bottom: 0.5rem;">
+                        <div>
+                            <strong>${product.name}</strong><br>
+                            <small>${product.quantity} x ${product.price} TL = ${subtotal.toFixed(2)} TL</small>
+                        </div>
+                        <button type="button" onclick="removeProductFromOrder(${index})" class="btn" style="background: #dc3545; padding: 0.25rem 0.5rem; font-size: 0.75rem;">Sil</button>
+                    </div>
+                `;
+            }).join('');
+            
+            totalElement.textContent = total.toFixed(2);
         }
         
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            if (orderProducts.length === 0) {
+                alert('Lütfen en az bir ürün ekleyin!');
+                return;
+            }
+            
+            const total = orderProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
+            
             const formData = {
                 customer_id: document.getElementById('order_customer_id').value,
                 order_date: document.getElementById('order_date').value,
                 delivery_date: document.getElementById('delivery_date').value,
-                payment_due_date: document.getElementById('payment_due_date').value,
-                total_amount: document.getElementById('total_amount').value,
-                notes: document.getElementById('order_notes').value
+                total_amount: total,
+                notes: document.getElementById('order_notes').value,
+                products: orderProducts
             };
             
             try {
@@ -762,8 +878,9 @@
                     body: JSON.stringify(formData)
                 });
                 
-                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${result.order_number}`);
+                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${result.order.order_number || 'SIP' + Date.now()}`);
                 document.getElementById('orderForm').reset();
+                orderProducts = [];
                 closeModal('orderModal');
                 showOrders();
             } catch (error) {

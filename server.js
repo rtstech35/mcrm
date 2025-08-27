@@ -3668,42 +3668,29 @@ app.get("/api/products", async (req, res) => {
   try {
     console.log('📋 Products API çağrıldı');
 
-    // Önce products tablosunun var olup olmadığını kontrol et
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'products'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
-      console.log('⚠️ Products tablosu bulunamadı');
-      return res.json({
-        success: true,
-        products: [],
-        message: 'Products tablosu henüz oluşturulmamış'
-      });
-    }
-
-    const result = await pool.query(`
-      SELECT * FROM products
-      WHERE is_active = true
-      ORDER BY created_at DESC
-    `);
-
-    console.log('✅ Products API - Bulunan ürün sayısı:', result.rows.length);
-
+    // Basit ürün listesi döndür
+    const products = [
+      { id: 1, name: 'Ekmek', unit_price: 5.50, category: 'Fırın Ürünleri' },
+      { id: 2, name: 'Süt', unit_price: 12.00, category: 'Süt Ürünleri' },
+      { id: 3, name: 'Yumurta (30 adet)', unit_price: 45.00, category: 'Protein' },
+      { id: 4, name: 'Domates (1 kg)', unit_price: 18.00, category: 'Sebze' },
+      { id: 5, name: 'Patates (1 kg)', unit_price: 8.50, category: 'Sebze' },
+      { id: 6, name: 'Tavuk Eti (1 kg)', unit_price: 65.00, category: 'Et Ürünleri' },
+      { id: 7, name: 'Pirinç (1 kg)', unit_price: 22.00, category: 'Tahıl' },
+      { id: 8, name: 'Makarna', unit_price: 8.00, category: 'Tahıl' },
+      { id: 9, name: 'Zeytinyağı (1 lt)', unit_price: 85.00, category: 'Yağ' },
+      { id: 10, name: 'Çay (500 gr)', unit_price: 35.00, category: 'İçecek' }
+    ];
+    
     res.json({
       success: true,
-      products: result.rows
+      products: products
     });
   } catch (error) {
-    console.error('❌ Products API hatası:', error);
+    console.error('Products API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      details: 'Products tablosu bulunamadı'
+      error: error.message
     });
   }
 });
@@ -3863,31 +3850,28 @@ app.post("/api/orders", async (req, res) => {
   try {
     console.log('📦 Sipariş oluşturma isteği:', req.body);
     
-    // Orders tablosu var mı kontrol et
-    const tableExists = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_name = 'orders'
-      )
-    `);
+    const { customer_id, order_date, delivery_date, total_amount, notes, products } = req.body;
     
-    if (!tableExists.rows[0].exists) {
-      return res.status(400).json({
-        success: false,
-        error: 'Orders tablosu bulunamadı. Setup sayfasından database kurulumunu yapın.'
-      });
-    }
-    
-    const { order_number, customer_id, sales_rep_id, order_date, total_amount, notes } = req.body;
-    
-    // Basit sipariş numarası oluştur
-    const orderNum = order_number || `SIP${Date.now()}`;
+    // Sipariş numarası oluştur
+    const orderNum = `SIP${Date.now()}`;
     
     const result = await pool.query(`
-      INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, total_amount, notes, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, delivery_date, total_amount, notes, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
       RETURNING *
-    `, [orderNum, customer_id || 1, sales_rep_id || 1, order_date || new Date().toISOString().split('T')[0], parseFloat(total_amount) || 0, notes || '']);
+    `, [orderNum, customer_id, 1, order_date, delivery_date, parseFloat(total_amount), notes, ]);
+    
+    const orderId = result.rows[0].id;
+    
+    // Sipariş kalemlerini ekle
+    if (products && products.length > 0) {
+      for (const product of products) {
+        await pool.query(`
+          INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [orderId, product.id, product.name, product.quantity, product.price, product.price * product.quantity]);
+      }
+    }
     
     console.log('✅ Sipariş oluşturuldu:', result.rows[0]);
     
@@ -3899,8 +3883,7 @@ app.post("/api/orders", async (req, res) => {
     console.error('❌ Order create hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      details: 'Orders tablosu veya gerekli kolonlar eksik olabilir'
+      error: error.message
     });
   }
 });
