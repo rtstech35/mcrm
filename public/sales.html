@@ -767,10 +767,7 @@
                     productSelect.innerHTML += `<option value="${product.id}" data-price="${product.unit_price}" data-name="${product.name}">${product.name} - ${product.unit_price} TL</option>`;
                 });
                 
-                // Bugünün tarihini varsayılan olarak ayarla
                 document.getElementById('order_date').value = new Date().toISOString().split('T')[0];
-                
-                // Sipariş listesini temizle
                 orderProducts = [];
                 updateOrderDisplay();
                 
