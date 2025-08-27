@@ -33,7 +33,7 @@
             </ul>
         </div>
 
-        <div class="content" id="content">
+        <div class="content" id="content" style="margin-left: 280px; padding: 1rem;">
             <div class="card">
                 <h2>Satış Dashboard</h2>
                 <p>Satış paneline hoş geldiniz!</p>
@@ -196,7 +196,7 @@
                 
                 document.getElementById('content').innerHTML = `
                     <!-- Hedefler ve Gerçekleşmeler -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                         <!-- Aylık Satış Hedefi -->
                         <div class="card" style="margin-bottom: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -262,29 +262,29 @@
                     </div>
                     
                     <!-- Bugünkü Randevular -->
-                    <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card" style="margin-bottom: 1rem;">
                         <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📅 Bugünkü Randevular</h3>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #48bb78;">
+                        <div style="display: grid; gap: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #48bb78; flex-wrap: wrap; gap: 0.5rem;">
                                 <div>
                                     <strong>09:00 - ABC Restaurant</strong>
                                     <div style="font-size: 0.875rem; color: #666;">Sipariş takibi ve yeni ürün tanıtımı</div>
                                 </div>
-                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(1)">✓ Tamamla</button>
+                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(1)">✓ Tamamla</button>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #ed8936;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #ed8936; flex-wrap: wrap; gap: 0.5rem;">
                                 <div>
                                     <strong>14:00 - XYZ Cafe</strong>
                                     <div style="font-size: 0.875rem; color: #666;">Aylık sipariş planlanması</div>
                                 </div>
-                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(2)">✓ Tamamla</button>
+                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(2)">✓ Tamamla</button>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #9f7aea;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #9f7aea; flex-wrap: wrap; gap: 0.5rem;">
                                 <div>
                                     <strong>16:30 - DEF Otel</strong>
                                     <div style="font-size: 0.875rem; color: #666;">Tahsilat takibi</div>
                                 </div>
-                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(3)">✓ Tamamla</button>
+                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(3)">✓ Tamamla</button>
                             </div>
                         </div>
                     </div>
@@ -292,7 +292,7 @@
 
                     
                     <!-- Sipariş Durumu ve Müşteri Haritası -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                         <!-- Sipariş Durumu -->
                         <div class="card" style="margin-bottom: 0;">
                             <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📋 Sipariş Durumu</h3>
@@ -1031,8 +1031,61 @@
         
         setInterval(updateUserInfo, 60000);
     </script>
-    <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(40, 167, 69, 0.9); padding: 1rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 200px;">
+    <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(40, 167, 69, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.875rem;">
         <!-- JavaScript ile doldurulacak -->
     </div>
 </body>
 </html>
+<style>
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        order: 2;
+        margin-top: 1rem;
+    }
+    
+    .content {
+        margin-left: 0 !important;
+        padding: 0.5rem !important;
+        order: 1;
+    }
+    
+    .card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card h2, .card h3 {
+        font-size: 1.1rem;
+    }
+    
+    #userInfo {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        margin: 1rem 0;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .content {
+        padding: 0.25rem !important;
+    }
+    
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
