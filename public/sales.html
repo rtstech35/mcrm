@@ -410,7 +410,7 @@
             
             // Test için dummy token ve user oluştur
             authToken = 'dummy-token';
-            currentUser = { id: 1, full_name: 'Test Kullanıcısı' };
+            currentUser = { id: 1, full_name: 'Test Kullanıcısı', role: 'admin' };
             console.log('📝 Test modu: Dummy token ve user oluşturuldu');
         }
 
@@ -2507,8 +2507,145 @@
             }
         }
         
-        function viewOrderDetail(orderId) {
-            alert(`Sipariş detayı: ${orderId}`);
+        async function viewOrderDetail(orderId) {
+            try {
+                const orderResponse = await apiCall(`/api/orders/${orderId}`);
+                const order = orderResponse.order;
+                
+                const itemsResponse = await apiCall(`/api/orders/${orderId}/items`);
+                const items = itemsResponse.items || [];
+                
+                // Kullanıcı rolüne göre yetki kontrolü
+                const userRole = currentUser.role || 'employee';
+                const canEditPrice = ['admin', 'sales', 'manager'].includes(userRole);
+                const canEditQuantity = ['admin', 'sales', 'manager', 'production'].includes(userRole);
+                const canComplete = userRole === 'production';
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>📋 Sipariş Detayı - #${order.order_number}</h2>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                            <div>
+                                <h4>Sipariş Bilgileri</h4>
+                                <p><strong>Müşteri:</strong> ${order.company_name}</p>
+                                <p><strong>Tarih:</strong> ${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                                <p><strong>Teslimat:</strong> 
+                                    ${canEditPrice ? `<input type="date" id="delivery_date" value="${order.delivery_date || ''}" style="border: 1px solid #ddd; padding: 0.25rem;">` : new Date(order.delivery_date).toLocaleDateString('tr-TR')}
+                                </p>
+                                <p><strong>Durum:</strong> ${order.status}</p>
+                                ${canEditPrice ? `<p><strong>Toplam:</strong> ${order.total_amount} TL</p>` : ''}
+                            </div>
+                            <div>
+                                <h4>İşlemler</h4>
+                                ${canEditPrice ? `<button class="btn" onclick="updateOrder(${orderId})" style="background: #007bff; margin: 0.25rem;">💾 Güncelle</button>` : ''}
+                                ${canEditPrice ? `<button class="btn" onclick="cancelOrder(${orderId})" style="background: #dc3545; margin: 0.25rem;">❌ İptal Et</button>` : ''}
+                                ${canComplete && order.status === 'production' ? `<button class="btn" onclick="completeProduction(${orderId})" style="background: #28a745; margin: 0.25rem;">✅ Üretim Tamamla</button>` : ''}
+                                <button class="btn" onclick="showOrders()" style="background: #6c757d; margin: 0.25rem;">🔙 Geri</button>
+                            </div>
+                        </div>
+                        
+                        <h4>Sipariş Kalemleri</h4>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Ürün</th>
+                                    <th>Miktar</th>
+                                    ${canEditPrice ? '<th>Birim Fiyat</th>' : ''}
+                                    ${canEditPrice ? '<th>Toplam</th>' : ''}
+                                    ${canEditQuantity ? '<th>İşlem</th>' : ''}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${items.map(item => `
+                                    <tr>
+                                        <td>${item.product_name || 'Ürün'}</td>
+                                        <td>${canEditQuantity ? `<input type="number" id="qty_${item.id}" value="${item.quantity}" min="1" style="width: 80px; border: 1px solid #ddd; padding: 0.25rem;">` : item.quantity}</td>
+                                        ${canEditPrice ? `<td>${item.unit_price} TL</td>` : ''}
+                                        ${canEditPrice ? `<td>${(item.quantity * item.unit_price).toFixed(2)} TL</td>` : ''}
+                                        ${canEditQuantity ? `<td><button class="btn" onclick="updateItem(${item.id})" style="background: #ffc107; padding: 0.25rem 0.5rem; font-size: 0.75rem;">Güncelle</button></td>` : ''}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        
+                        ${order.notes ? `<div style="margin-top: 1rem;"><strong>Notlar:</strong> ${order.notes}</div>` : ''}
+                    </div>
+                `;
+            } catch (error) {
+                alert('Sipariş detayı yüklenemedi: ' + error.message);
+            }
+        }
+        
+        async function updateOrder(orderId) {
+            const deliveryDate = document.getElementById('delivery_date').value;
+            try {
+                await apiCall(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ delivery_date: deliveryDate })
+                });
+                alert('Sipariş güncellendi!');
+                viewOrderDetail(orderId);
+            } catch (error) {
+                alert('Güncelleme hatası: ' + error.message);
+            }
+        }
+        
+        async function cancelOrder(orderId) {
+            if (confirm('Siparişi iptal etmek istediğinizden emin misiniz?')) {
+                try {
+                    await apiCall(`/api/orders/${orderId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: 'cancelled' })
+                    });
+                    alert('Sipariş iptal edildi!');
+                    showOrders();
+                } catch (error) {
+                    alert('İptal hatası: ' + error.message);
+                }
+            }
+        }
+        
+        async function completeProduction(orderId) {
+            if (confirm('Üretim tamamlandı olarak işaretlensin ve irsaliyeye dönüştürülsün mü?')) {
+                try {
+                    await apiCall(`/api/orders/${orderId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: 'completed' })
+                    });
+                    
+                    // İrsaliye oluştur
+                    const deliveryNumber = 'IRS' + Date.now().toString().slice(-6);
+                    await apiCall('/api/delivery-notes', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            delivery_number: deliveryNumber,
+                            order_id: orderId,
+                            delivery_date: new Date().toISOString().split('T')[0],
+                            status: 'pending'
+                        })
+                    });
+                    
+                    alert('Üretim tamamlandı ve irsaliye oluşturuldu!');
+                    showOrders();
+                } catch (error) {
+                    alert('Tamamlama hatası: ' + error.message);
+                }
+            }
+        }
+        
+        async function updateItem(itemId) {
+            const newQty = document.getElementById(`qty_${itemId}`).value;
+            try {
+                await apiCall(`/api/order-items/${itemId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ quantity: parseInt(newQty) })
+                });
+                alert('Miktar güncellendi!');
+                location.reload();
+            } catch (error) {
+                alert('Güncelleme hatası: ' + error.message);
+            }
         }
         
         function logout() {
