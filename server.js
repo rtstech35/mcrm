@@ -4082,10 +4082,7 @@ app.get("/api/orders", async (req, res) => {
 
     console.log('✅ Orders API - Bulunan sipariş sayısı:', result.rows.length);
 
-    res.json({
-      success: true,
-      orders: result.rows
-    });
+    res.json(result.rows);
   } catch (error) {
     console.error('❌ Orders API hatası:', error);
     res.status(500).json({
