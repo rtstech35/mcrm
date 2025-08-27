@@ -2515,6 +2515,13 @@
                 
                 const userRole = currentUser.role || 'employee';
                 const isAccounting = userRole === 'accounting' || userRole === 'admin';
+                const isSales = userRole === 'sales';
+                
+                if (isSales) {
+                    // Satış temsilcisi sadece cari hesap görebilir
+                    showAccounting();
+                    return;
+                }
                 
                 document.getElementById('content').innerHTML = `
                     <div class="card">
@@ -2524,7 +2531,11 @@
                             <div style="margin-bottom: 1.5rem;">
                                 <button class="btn" onclick="showPendingDeliveries()" style="background: #28a745;">📋 Faturalaşacak İrsaliyeler</button>
                             </div>
-                        ` : ''}
+                        ` : `
+                            <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
+                                <strong>⚠️ Yetki Kısıtlaması:</strong> Satış temsilcileri sadece cari hesap bilgilerini görebilir.
+                            </div>
+                        `}
                         
                         <div style="display: grid; gap: 1rem;">
                             ${invoices.map(invoice => {
@@ -2552,6 +2563,7 @@
                                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                                 <button class="btn" onclick="viewInvoice(${invoice.id})" style="background: #007bff;">👁️ Görüntüle</button>
                                                 ${isAccounting && invoice.status === 'sent' ? `<button class="btn" onclick="markAsPaid(${invoice.id})" style="background: #28a745;">💰 Ödendi</button>` : ''}
+                                                ${isAccounting ? `<button class="btn" onclick="deleteInvoice(${invoice.id})" style="background: #dc3545;">🗑️ Sil</button>` : ''}
                                             </div>
                                         </div>
                                     </div>
@@ -2565,35 +2577,121 @@
             }
         }
         
+        let selectedDeliveries = [];
+        
         async function showPendingDeliveries() {
             try {
                 const response = await apiCall('/api/delivery-notes?status=delivered');
                 const deliveries = response.delivery_notes || [];
                 
+                // Müşteriye göre grupla
+                const groupedByCustomer = deliveries.reduce((acc, delivery) => {
+                    const key = delivery.customer_id;
+                    if (!acc[key]) acc[key] = [];
+                    acc[key].push(delivery);
+                    return acc;
+                }, {});
+                
                 document.getElementById('content').innerHTML = `
                     <div class="card">
                         <h2>📋 Faturalaşacak İrsaliyeler</h2>
-                        <button class="btn" onclick="showInvoices()" style="background: #6c757d; margin-bottom: 1rem;">🔙 Faturalara Dön</button>
-                        
-                        <div style="display: grid; gap: 1rem;">
-                            ${deliveries.map(delivery => `
-                                <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8f9fa;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <h4>${delivery.delivery_number}</h4>
-                                            <p><strong>Müşteri:</strong> ${delivery.customer_name}</p>
-                                            <p><strong>Teslim Tarihi:</strong> ${new Date(delivery.delivery_date).toLocaleDateString('tr-TR')}</p>
-                                        </div>
-                                        <button class="btn" onclick="createInvoiceFromDelivery(${delivery.id})" style="background: #28a745;">🧾 Faturalaştır</button>
-                                    </div>
-                                </div>
-                            `).join('')}
+                        <div style="margin-bottom: 1rem;">
+                            <button class="btn" onclick="showInvoices()" style="background: #6c757d;">🔙 Faturalara Dön</button>
+                            <button class="btn" onclick="createBulkInvoice()" style="background: #28a745; margin-left: 0.5rem;" id="bulkInvoiceBtn" disabled>🧾 Seçili İrsaliyeleri Faturalaştır (<span id="selectedCount">0</span>)</button>
                         </div>
+                        
+                        ${Object.entries(groupedByCustomer).map(([customerId, customerDeliveries]) => `
+                            <div style="margin-bottom: 2rem; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                                <h4 style="margin-bottom: 1rem; color: #007bff;">${customerDeliveries[0].customer_name} (${customerDeliveries.length} İrsaliye)</h4>
+                                <div style="display: grid; gap: 0.5rem;">
+                                    ${customerDeliveries.map(delivery => `
+                                        <div style="padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <input type="checkbox" id="delivery_${delivery.id}" onchange="toggleDeliverySelection(${delivery.id}, '${delivery.customer_name}')">
+                                                <div>
+                                                    <strong>${delivery.delivery_number}</strong>
+                                                    <div style="font-size: 0.875rem; color: #666;">Teslim: ${new Date(delivery.delivery_date).toLocaleDateString('tr-TR')}</div>
+                                                </div>
+                                            </div>
+                                            <button class="btn" onclick="createSingleInvoice(${delivery.id})" style="background: #007bff; font-size: 0.75rem;">🧾 Tekil Fatura</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div style="margin-top: 0.5rem; text-align: right;">
+                                    <button class="btn" onclick="selectAllCustomerDeliveries(${customerId})" style="background: #6c757d; font-size: 0.75rem;">✓ Tümünü Seç</button>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
                 `;
+                
+                selectedDeliveries = [];
+                updateBulkButton();
             } catch (error) {
                 alert('İrsaliyeler yüklenemedi: ' + error.message);
             }
+        }
+        
+        function toggleDeliverySelection(deliveryId, customerName) {
+            const checkbox = document.getElementById(`delivery_${deliveryId}`);
+            if (checkbox.checked) {
+                selectedDeliveries.push({ id: deliveryId, customer: customerName });
+            } else {
+                selectedDeliveries = selectedDeliveries.filter(d => d.id !== deliveryId);
+            }
+            updateBulkButton();
+        }
+        
+        function selectAllCustomerDeliveries(customerId) {
+            const checkboxes = document.querySelectorAll(`input[id^="delivery_"]`);
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    cb.click();
+                }
+            });
+        }
+        
+        function updateBulkButton() {
+            const btn = document.getElementById('bulkInvoiceBtn');
+            const count = document.getElementById('selectedCount');
+            if (btn && count) {
+                count.textContent = selectedDeliveries.length;
+                btn.disabled = selectedDeliveries.length === 0;
+            }
+        }
+        
+        async function createBulkInvoice() {
+            if (selectedDeliveries.length === 0) {
+                alert('Lütfen en az bir irsaliye seçin!');
+                return;
+            }
+            
+            // Aynı müşteri kontrolü
+            const customers = [...new Set(selectedDeliveries.map(d => d.customer))];
+            if (customers.length > 1) {
+                alert('Farklı müşterilerin irsaliyeleri birleştirilemez!');
+                return;
+            }
+            
+            if (confirm(`${selectedDeliveries.length} irsaliye için birleşik fatura oluşturulsun mu?`)) {
+                try {
+                    const response = await apiCall('/api/invoices/bulk-from-deliveries', {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            delivery_note_ids: selectedDeliveries.map(d => d.id)
+                        })
+                    });
+                    
+                    alert(`Birleşik fatura oluşturuldu! Fatura No: ${response.invoice.invoice_number}`);
+                    showInvoices();
+                } catch (error) {
+                    alert('Fatura oluşturma hatası: ' + error.message);
+                }
+            }
+        }
+        
+        function createSingleInvoice(deliveryId) {
+            createInvoiceFromDelivery(deliveryId);
         }
         
         async function createInvoiceFromDelivery(deliveryId) {
@@ -2625,6 +2723,18 @@
                     showInvoices();
                 } catch (error) {
                     alert('Ödeme kaydetme hatası: ' + error.message);
+                }
+            }
+        }
+        
+        async function deleteInvoice(invoiceId) {
+            if (confirm('Faturayı silmek istediğinizden emin misiniz?')) {
+                try {
+                    await apiCall(`/api/invoices/${invoiceId}`, { method: 'DELETE' });
+                    alert('Fatura silindi!');
+                    showInvoices();
+                } catch (error) {
+                    alert('Silme hatası: ' + error.message);
                 }
             }
         }

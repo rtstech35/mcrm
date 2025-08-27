@@ -3652,6 +3652,109 @@ app.post("/api/invoices/from-delivery", async (req, res) => {
   }
 });
 
+// Çoklu irsaliyeden birleşik fatura oluştur
+app.post("/api/invoices/bulk-from-deliveries", async (req, res) => {
+  try {
+    const { delivery_note_ids } = req.body;
+    
+    if (!delivery_note_ids || delivery_note_ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'İrsaliye seçilmedi' });
+    }
+    
+    // İrsaliye bilgilerini al
+    const deliveriesResult = await pool.query(`
+      SELECT dn.*, c.id as customer_id, c.company_name, o.id as order_id
+      FROM delivery_notes dn
+      LEFT JOIN customers c ON dn.customer_id = c.id
+      LEFT JOIN orders o ON dn.order_id = o.id
+      WHERE dn.id = ANY($1)
+    `, [delivery_note_ids]);
+    
+    const deliveries = deliveriesResult.rows;
+    if (deliveries.length === 0) {
+      return res.status(404).json({ success: false, error: 'İrsaliye bulunamadı' });
+    }
+    
+    // Aynı müşteri kontrolü
+    const customerIds = [...new Set(deliveries.map(d => d.customer_id))];
+    if (customerIds.length > 1) {
+      return res.status(400).json({ success: false, error: 'Farklı müşterilerin irsaliyeleri birleştirilemez' });
+    }
+    
+    const customerId = customerIds[0];
+    const invoiceNumber = 'FAT' + Date.now().toString().slice(-6);
+    
+    // Tüm sipariş kalemlerini al ve birleştir
+    const orderIds = deliveries.map(d => d.order_id).filter(Boolean);
+    const itemsResult = await pool.query(`
+      SELECT oi.*, p.name as product_name
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ANY($1)
+    `, [orderIds]);
+    
+    // Aynı ürünleri birleştir
+    const consolidatedItems = {};
+    itemsResult.rows.forEach(item => {
+      const key = item.product_id;
+      if (consolidatedItems[key]) {
+        consolidatedItems[key].quantity += item.quantity;
+        consolidatedItems[key].total_price += item.total_price;
+      } else {
+        consolidatedItems[key] = { ...item };
+      }
+    });
+    
+    const totalAmount = Object.values(consolidatedItems).reduce((sum, item) => sum + item.total_price, 0);
+    const vatAmount = totalAmount * 0.20;
+    const totalWithVat = totalAmount + vatAmount;
+    
+    // Fatura oluştur
+    const invoiceResult = await pool.query(`
+      INSERT INTO invoices (
+        invoice_number, customer_id, subtotal, vat_amount, total_amount, 
+        status, due_date, delivery_note_ids, consolidated_items
+      ) VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8)
+      RETURNING *
+    `, [
+      invoiceNumber, customerId, totalAmount, vatAmount, totalWithVat,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      JSON.stringify(delivery_note_ids),
+      JSON.stringify(Object.values(consolidatedItems))
+    ]);
+    
+    // İrsaliyeleri faturalanıyor olarak işaretle
+    await pool.query(`
+      UPDATE delivery_notes SET invoice_id = $1 WHERE id = ANY($2)
+    `, [invoiceResult.rows[0].id, delivery_note_ids]);
+    
+    res.json({ success: true, invoice: invoiceResult.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Fatura sil
+app.delete("/api/invoices/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // İlişkili irsaliyeleri temizle
+    await pool.query('UPDATE delivery_notes SET invoice_id = NULL WHERE invoice_id = $1', [id]);
+    
+    // Faturayı sil
+    const result = await pool.query('DELETE FROM invoices WHERE id = $1 RETURNING *', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Fatura bulunamadı' });
+    }
+    
+    res.json({ success: true, message: 'Fatura silindi' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Fatura ödeme kaydet
 app.post("/api/invoices/:id/payment", async (req, res) => {
   try {
