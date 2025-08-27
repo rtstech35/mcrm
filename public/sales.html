@@ -13,8 +13,8 @@
 <body>
 
 
-    <div class="container" style="min-height: 100vh; padding-top: 2rem;">
-        <div class="sidebar" style="position: relative;">
+    <div class="container">
+        <div class="sidebar">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h2 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Saha CRM</h2>
                 <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Satış Paneli</p>
@@ -33,7 +33,7 @@
             </ul>
         </div>
 
-        <div class="content" id="content" style="margin-left: 280px; padding: 1rem;">
+        <div class="content" id="content">
             <div class="card">
                 <h2>Satış Dashboard</h2>
                 <p>Satış paneline hoş geldiniz!</p>
@@ -196,7 +196,7 @@
                 
                 document.getElementById('content').innerHTML = `
                     <!-- Hedefler ve Gerçekleşmeler -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                         <!-- Aylık Satış Hedefi -->
                         <div class="card" style="margin-bottom: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -292,7 +292,7 @@
 
                     
                     <!-- Sipariş Durumu ve Müşteri Haritası -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                         <!-- Sipariş Durumu -->
                         <div class="card" style="margin-bottom: 0;">
                             <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📋 Sipariş Durumu</h3>
@@ -1036,56 +1036,3 @@
     </div>
 </body>
 </html>
-<style>
-@media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        position: relative !important;
-        width: 100% !important;
-        height: auto !important;
-        order: 2;
-        margin-top: 1rem;
-    }
-    
-    .content {
-        margin-left: 0 !important;
-        padding: 0.5rem !important;
-        order: 1;
-    }
-    
-    .card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .card h2, .card h3 {
-        font-size: 1.1rem;
-    }
-    
-    #userInfo {
-        position: relative !important;
-        bottom: auto !important;
-        left: auto !important;
-        margin: 1rem 0;
-        text-align: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .content {
-        padding: 0.25rem !important;
-    }
-    
-    .card {
-        padding: 0.75rem;
-    }
-    
-    .btn {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-    }
-}
-</style>

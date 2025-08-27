@@ -345,15 +345,23 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
     .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.3s;
-        width: 250px;
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        order: 2;
+        margin-top: 1rem;
+        transform: none;
     }
     
     .content {
         margin-left: 0 !important;
         padding: 0.75rem !important;
+        order: 1;
     }
     
     .grid-2,
@@ -362,7 +370,35 @@ body {
         grid-template-columns: 1fr;
     }
     
+    .card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card h2, .card h3 {
+        font-size: 1.1rem;
+    }
+    
     #userInfo {
-        display: none;
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        margin: 1rem 0;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .content {
+        padding: 0.5rem !important;
+    }
+    
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
     }
 }
