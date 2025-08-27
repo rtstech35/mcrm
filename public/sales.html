@@ -27,6 +27,7 @@
                 <li><a href="#" onclick="showOrders()">📋 Siparişler</a></li>
                 <li><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
                 <li><a href="#" onclick="showAppointments()">📅 Randevu & Görevler</a></li>
+                <li><a href="#" onclick="showNewVisit()">🆕 Yeni Ziyaret</a></li>
                 <li><a href="#" onclick="showAccounting()">💰 Cari Hesap</a></li>
                 <li><a href="/map.html">🗺️ Harita</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
@@ -187,6 +188,99 @@
                     <input type="date" id="task_due_date" required>
                 </div>
                 <button type="submit" class="btn">Görev Oluştur</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Yeni Müşteri Modal (Harita) -->
+    <div id="newCustomerFromMapModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="closeModal('newCustomerFromMapModal')">&times;</span>
+            <h3>🏢 Yeni Müşteri Kaydı</h3>
+            <form id="newCustomerFromMapForm">
+                <input type="hidden" id="map_lat">
+                <input type="hidden" id="map_lng">
+                <div class="form-group">
+                    <label>Firma Adı:</label>
+                    <input type="text" id="map_company_name" required>
+                </div>
+                <div class="form-group">
+                    <label>Yetkili Kişi:</label>
+                    <input type="text" id="map_contact_person">
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="tel" id="map_phone">
+                </div>
+                <div class="form-group">
+                    <label>E-posta:</label>
+                    <input type="email" id="map_email">
+                </div>
+                <div class="form-group">
+                    <label>Adres:</label>
+                    <textarea id="map_address" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ziyaret Notu:</label>
+                    <textarea id="visit_note" rows="3" placeholder="Ziyaret sırasında alınan notlar..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ziyaret Sonucu:</label>
+                    <select id="visit_result" required>
+                        <option value="">Sonuç Seçiniz</option>
+                        <option value="positive">Olumlu - Sipariş Alındı</option>
+                        <option value="potential">Potansiyel - Takip Edilecek</option>
+                        <option value="negative">Olumsuz - İlgilenmiyor</option>
+                    </select>
+                </div>
+                <div id="nextActionSection" style="display: none;">
+                    <div class="form-group">
+                        <label>Sonraki İşlem:</label>
+                        <select id="next_action">
+                            <option value="">Seçiniz</option>
+                            <option value="appointment">Randevu Planla</option>
+                            <option value="call">Telefon Görüşmesi</option>
+                            <option value="visit">Tekrar Ziyaret</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="nextDateSection" style="display: none;">
+                        <label>Tarih:</label>
+                        <input type="date" id="next_date">
+                    </div>
+                    <div class="form-group" id="nextTimeSection" style="display: none;">
+                        <label>Saat:</label>
+                        <input type="time" id="next_time">
+                    </div>
+                </div>
+                <button type="submit" class="btn">Müşteri Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sipariş Oluşturma Modal -->
+    <div id="quickOrderModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('quickOrderModal')">&times;</span>
+            <h3>📋 Hızlı Sipariş</h3>
+            <form id="quickOrderForm">
+                <input type="hidden" id="quick_customer_id">
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <input type="text" id="quick_customer_name" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Sipariş Tutaru0131:</label>
+                    <input type="number" id="quick_amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Teslimat Tarihi:</label>
+                    <input type="date" id="quick_delivery_date">
+                </div>
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="quick_notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Sipariş Oluştur</button>
             </form>
         </div>
     </div>
@@ -1415,6 +1509,189 @@
         function viewAccountHistory(customerId) {
             alert('Hareket geçmişi görüntüleme özelliği yakında eklenecek.');
         }
+        
+        function showNewVisit() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    loadNearbyBusinesses(lat, lng);
+                }, function(error) {
+                    alert('Konum bilgisi alınamadı. Lütfen konum izni verin.');
+                    loadNearbyBusinesses(41.0082, 28.9784); // İstanbul varsayılan
+                });
+            } else {
+                alert('Tarayıcınız konum desteği sağlamıyor.');
+                loadNearbyBusinesses(41.0082, 28.9784);
+            }
+        }
+        
+        function loadNearbyBusinesses(lat, lng) {
+            // Simulated nearby businesses data
+            const nearbyBusinesses = [
+                { id: 1, name: 'Lezzet Restaurant', type: 'Restaurant', address: 'Merkez Mah. 123. Sok. No:5', distance: '150m', lat: lat + 0.001, lng: lng + 0.001 },
+                { id: 2, name: 'Gül Pastanesi', type: 'Pastane', address: 'Yeşil Cad. No:78', distance: '300m', lat: lat + 0.002, lng: lng - 0.001 },
+                { id: 3, name: 'Aile Lokantasi', type: 'Lokanta', address: 'Cumhuriyet Mey. No:45', distance: '450m', lat: lat - 0.001, lng: lng + 0.002 },
+                { id: 4, name: 'Mavi Otel', type: 'Otel', address: 'Sahil Yolu No:12', distance: '600m', lat: lat + 0.003, lng: lng + 0.001 },
+                { id: 5, name: 'Cafe Corner', type: 'Cafe', address: 'Park Karşısı No:8', distance: '750m', lat: lat - 0.002, lng: lng - 0.002 },
+                { id: 6, name: 'Deniz Restaurant', type: 'Restaurant', address: 'Marina Yanı No:3', distance: '900m', lat: lat + 0.004, lng: lng - 0.001 }
+            ];
+            
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>🆕 Yeni Ziyaret - Yakındaki İşletmeler</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem;">Mevcut konumunuza yakın işletmeleri seçerek yeni müşteri kaydı oluşturabilirsiniz.</p>
+                    
+                    <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">📍</span>
+                        <span>Konum: ${lat.toFixed(4)}, ${lng.toFixed(4)} - ${nearbyBusinesses.length} işletme bulundu</span>
+                    </div>
+                    
+                    <div style="display: grid; gap: 1rem;">
+                        ${nearbyBusinesses.map(business => `
+                            <div class="business-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;" 
+                                 onclick="selectBusiness(${business.id}, '${business.name}', '${business.type}', '${business.address}', ${business.lat}, ${business.lng})" 
+                                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.borderColor='#007bff'" 
+                                 onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e2e8f0'">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h4 style="margin-bottom: 0.5rem; color: #2d3748;">${business.name}</h4>
+                                        <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">🏢 ${business.type}</p>
+                                        <p style="color: #666; font-size: 0.875rem; margin-bottom: 0.25rem;">📍 ${business.address}</p>
+                                        <p style="color: #007bff; font-size: 0.875rem; font-weight: 600;">🚶 ${business.distance}</p>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                        <button class="btn" style="background: #28a745; padding: 0.5rem 1rem; font-size: 0.875rem;">👥 Ziyaret Et</button>
+                                        <button class="btn" onclick="event.stopPropagation(); viewOnMap(${business.lat}, ${business.lng})" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">🗺️ Harita</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="margin-top: 2rem; text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                        <p style="color: #666; margin-bottom: 1rem;">Listede olmayan bir işletme mi ziyaret edeceksiniz?</p>
+                        <button class="btn" onclick="openManualBusinessEntry()" style="background: #fd7e14;">➕ Manuel İşletme Ekle</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function selectBusiness(id, name, type, address, lat, lng) {
+            document.getElementById('map_company_name').value = name;
+            document.getElementById('map_address').value = address;
+            document.getElementById('map_lat').value = lat;
+            document.getElementById('map_lng').value = lng;
+            document.getElementById('newCustomerFromMapModal').style.display = 'block';
+        }
+        
+        function viewOnMap(lat, lng) {
+            window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+        }
+        
+        function openManualBusinessEntry() {
+            document.getElementById('map_company_name').value = '';
+            document.getElementById('map_address').value = '';
+            document.getElementById('map_lat').value = '';
+            document.getElementById('map_lng').value = '';
+            document.getElementById('newCustomerFromMapModal').style.display = 'block';
+        }
+        
+        document.getElementById('visit_result').addEventListener('change', function() {
+            const result = this.value;
+            const nextActionSection = document.getElementById('nextActionSection');
+            
+            if (result === 'potential') {
+                nextActionSection.style.display = 'block';
+            } else {
+                nextActionSection.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('next_action').addEventListener('change', function() {
+            const action = this.value;
+            const dateSection = document.getElementById('nextDateSection');
+            const timeSection = document.getElementById('nextTimeSection');
+            
+            if (action) {
+                dateSection.style.display = 'block';
+                timeSection.style.display = 'block';
+            } else {
+                dateSection.style.display = 'none';
+                timeSection.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('newCustomerFromMapForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                company_name: document.getElementById('map_company_name').value,
+                contact_person: document.getElementById('map_contact_person').value,
+                phone: document.getElementById('map_phone').value,
+                email: document.getElementById('map_email').value,
+                address: document.getElementById('map_address').value,
+                assigned_sales_rep: currentUser.id,
+                latitude: document.getElementById('map_lat').value,
+                longitude: document.getElementById('map_lng').value
+            };
+            
+            const visitData = {
+                visit_note: document.getElementById('visit_note').value,
+                visit_result: document.getElementById('visit_result').value,
+                next_action: document.getElementById('next_action').value,
+                next_date: document.getElementById('next_date').value,
+                next_time: document.getElementById('next_time').value
+            };
+            
+            try {
+                // Simulate customer creation
+                const customerId = Math.floor(Math.random() * 1000) + 100;
+                
+                if (visitData.visit_result === 'positive') {
+                    // Sipariş oluşturma modalını aç
+                    document.getElementById('quick_customer_id').value = customerId;
+                    document.getElementById('quick_customer_name').value = formData.company_name;
+                    closeModal('newCustomerFromMapModal');
+                    document.getElementById('quickOrderModal').style.display = 'block';
+                } else {
+                    alert(`Müşteri kaydı oluşturuldu! Ziyaret sonucu: ${visitData.visit_result === 'potential' ? 'Potansiyel' : 'Olumsuz'}`);
+                    
+                    if (visitData.next_action && visitData.next_date) {
+                        alert(`Randevu planlandı: ${visitData.next_date} ${visitData.next_time || ''} - ${visitData.next_action}`);
+                    }
+                    
+                    document.getElementById('newCustomerFromMapForm').reset();
+                    closeModal('newCustomerFromMapModal');
+                    showNewVisit();
+                }
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        document.getElementById('quickOrderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const orderData = {
+                customer_id: document.getElementById('quick_customer_id').value,
+                total_amount: document.getElementById('quick_amount').value,
+                delivery_date: document.getElementById('quick_delivery_date').value,
+                notes: document.getElementById('quick_notes').value,
+                order_date: new Date().toISOString().split('T')[0]
+            };
+            
+            try {
+                const orderNumber = 'SP' + Date.now().toString().slice(-6);
+                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${orderNumber}`);
+                
+                document.getElementById('quickOrderForm').reset();
+                closeModal('quickOrderModal');
+                showNewVisit();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
         
         function completeAppointment(id) {
             if (confirm('Randevu tamamlandı olarak işaretlensin mi?')) {
