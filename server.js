@@ -3589,6 +3589,102 @@ app.post("/api/customers", async (req, res) => {
   }
 });
 
+// Faturalar API
+app.get("/api/invoices", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT i.*, c.company_name as customer_name
+      FROM invoices i
+      LEFT JOIN customers c ON i.customer_id = c.id
+      ORDER BY i.created_at DESC
+    `);
+    res.json({ success: true, invoices: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// İrsaliyeden fatura oluştur
+app.post("/api/invoices/from-delivery", async (req, res) => {
+  try {
+    const { delivery_note_id } = req.body;
+    
+    // İrsaliye bilgilerini al
+    const deliveryResult = await pool.query(`
+      SELECT dn.*, c.id as customer_id, c.company_name
+      FROM delivery_notes dn
+      LEFT JOIN customers c ON dn.customer_id = c.id
+      WHERE dn.id = $1
+    `, [delivery_note_id]);
+    
+    if (deliveryResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'İrsaliye bulunamadı' });
+    }
+    
+    const delivery = deliveryResult.rows[0];
+    const invoiceNumber = 'FAT' + Date.now().toString().slice(-6);
+    
+    // Sipariş tutarlarını al
+    const orderResult = await pool.query(`
+      SELECT total_amount FROM orders WHERE id = $1
+    `, [delivery.order_id]);
+    
+    const totalAmount = orderResult.rows[0]?.total_amount || 0;
+    const vatAmount = totalAmount * 0.20;
+    const totalWithVat = totalAmount + vatAmount;
+    
+    // Fatura oluştur
+    const invoiceResult = await pool.query(`
+      INSERT INTO invoices (
+        invoice_number, delivery_note_id, customer_id, 
+        subtotal, vat_amount, total_amount, status, due_date
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7)
+      RETURNING *
+    `, [
+      invoiceNumber, delivery_note_id, delivery.customer_id,
+      totalAmount, vatAmount, totalWithVat, 
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 gün vade
+    ]);
+    
+    res.json({ success: true, invoice: invoiceResult.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Fatura ödeme kaydet
+app.post("/api/invoices/:id/payment", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount } = req.body;
+    
+    // Faturayı ödendi olarak işaretle
+    await pool.query(`
+      UPDATE invoices SET status = 'paid', paid_date = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [id]);
+    
+    // Cari hesaba alacak kaydet
+    const invoiceResult = await pool.query('SELECT customer_id FROM invoices WHERE id = $1', [id]);
+    const customerId = invoiceResult.rows[0]?.customer_id;
+    
+    if (customerId) {
+      await pool.query(`
+        INSERT INTO account_transactions (
+          customer_id, transaction_type, amount, transaction_date, 
+          description, reference_number, created_by
+        ) VALUES ($1, 'credit', $2, CURRENT_DATE, $3, $4, 1)
+      `, [
+        customerId, amount, 'Fatura ödemesi', `FAT-${id}`
+      ]);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Tek müşteri getir
 app.get("/api/customers/:id", async (req, res) => {
   try {

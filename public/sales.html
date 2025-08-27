@@ -32,6 +32,7 @@
                 <li><a href="#" onclick="showAppointments()">📅 Randevu & Görevler</a></li>
                 <li><a href="#" onclick="showNewVisit()">🆕 Yeni Ziyaret</a></li>
                 <li><a href="#" onclick="showAccounting()">💰 Cari Hesap</a></li>
+                <li><a href="#" onclick="showInvoices()">🧾 Faturalar</a></li>
                 <li><a href="/map.html">🗺️ Harita</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
             </ul>
@@ -2498,13 +2499,138 @@
                             signature_date: new Date().toISOString()
                         })
                     });
-                    alert('İrsaliye teslim edildi!');
+                    alert('İrsaliye teslim edildi! Muhasebe departmanına faturalaşma için gönderildi.');
                     closeModal('deliveryDetailModal');
                     showDeliveryNotes();
                 } catch (error) {
                     alert('Hata: ' + error.message);
                 }
             }
+        }
+        
+        async function showInvoices() {
+            try {
+                const invoicesResponse = await apiCall('/api/invoices');
+                const invoices = invoicesResponse.invoices || [];
+                
+                const userRole = currentUser.role || 'employee';
+                const isAccounting = userRole === 'accounting' || userRole === 'admin';
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🧾 Fatura Yönetimi</h2>
+                        
+                        ${isAccounting ? `
+                            <div style="margin-bottom: 1.5rem;">
+                                <button class="btn" onclick="showPendingDeliveries()" style="background: #28a745;">📋 Faturalaşacak İrsaliyeler</button>
+                            </div>
+                        ` : ''}
+                        
+                        <div style="display: grid; gap: 1rem;">
+                            ${invoices.map(invoice => {
+                                const statusColors = {
+                                    'draft': '#6c757d',
+                                    'sent': '#007bff',
+                                    'paid': '#28a745', 
+                                    'overdue': '#dc3545'
+                                };
+                                const statusNames = {
+                                    'draft': 'Taslak',
+                                    'sent': 'Gönderildi',
+                                    'paid': 'Ödendi',
+                                    'overdue': 'Vadesi Geçmiş'
+                                };
+                                return `
+                                    <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; border-left: 4px solid ${statusColors[invoice.status]};">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <h4>${invoice.invoice_number}</h4>
+                                                <p><strong>Müşteri:</strong> ${invoice.customer_name}</p>
+                                                <p><strong>Tutar:</strong> ${invoice.total_amount} TL</p>
+                                                <p><strong>Durum:</strong> <span style="color: ${statusColors[invoice.status]};">${statusNames[invoice.status]}</span></p>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                                <button class="btn" onclick="viewInvoice(${invoice.id})" style="background: #007bff;">👁️ Görüntüle</button>
+                                                ${isAccounting && invoice.status === 'sent' ? `<button class="btn" onclick="markAsPaid(${invoice.id})" style="background: #28a745;">💰 Ödendi</button>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Faturalar yüklenemedi:', error);
+            }
+        }
+        
+        async function showPendingDeliveries() {
+            try {
+                const response = await apiCall('/api/delivery-notes?status=delivered');
+                const deliveries = response.delivery_notes || [];
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>📋 Faturalaşacak İrsaliyeler</h2>
+                        <button class="btn" onclick="showInvoices()" style="background: #6c757d; margin-bottom: 1rem;">🔙 Faturalara Dön</button>
+                        
+                        <div style="display: grid; gap: 1rem;">
+                            ${deliveries.map(delivery => `
+                                <div style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8f9fa;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <h4>${delivery.delivery_number}</h4>
+                                            <p><strong>Müşteri:</strong> ${delivery.customer_name}</p>
+                                            <p><strong>Teslim Tarihi:</strong> ${new Date(delivery.delivery_date).toLocaleDateString('tr-TR')}</p>
+                                        </div>
+                                        <button class="btn" onclick="createInvoiceFromDelivery(${delivery.id})" style="background: #28a745;">🧾 Faturalaştır</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                alert('İrsaliyeler yüklenemedi: ' + error.message);
+            }
+        }
+        
+        async function createInvoiceFromDelivery(deliveryId) {
+            if (confirm('Bu irsaliye için fatura oluşturulsun mu?')) {
+                try {
+                    const response = await apiCall('/api/invoices/from-delivery', {
+                        method: 'POST',
+                        body: JSON.stringify({ delivery_note_id: deliveryId })
+                    });
+                    
+                    alert(`Fatura oluşturuldu! Fatura No: ${response.invoice.invoice_number}`);
+                    showInvoices();
+                } catch (error) {
+                    alert('Fatura oluşturma hatası: ' + error.message);
+                }
+            }
+        }
+        
+        async function markAsPaid(invoiceId) {
+            const amount = prompt('Ödenen tutar:');
+            if (amount) {
+                try {
+                    await apiCall(`/api/invoices/${invoiceId}/payment`, {
+                        method: 'POST',
+                        body: JSON.stringify({ amount: parseFloat(amount) })
+                    });
+                    
+                    alert('Ödeme kaydedildi!');
+                    showInvoices();
+                } catch (error) {
+                    alert('Ödeme kaydetme hatası: ' + error.message);
+                }
+            }
+        }
+        
+        function viewInvoice(invoiceId) {
+            alert(`Fatura detayı: ${invoiceId}`);
         }
         
         async function viewOrderDetail(orderId) {
