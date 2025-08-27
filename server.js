@@ -24,7 +24,16 @@ app.use(cors());
 app.use(express.json());
 console.log('✅ Express app yapılandırıldı');
 
-// ---------------- STATİK DOSYALAR ---------------- //
+// ---------------- API ROTALARINI ÖNCELİKLENDİR ---------------- //
+// API rotaları static dosyalardan önce tanımlanmalı
+
+// API prefix kontrolü
+app.use('/api/*', (req, res, next) => {
+  console.log('🔗 API isteği:', req.method, req.url);
+  next();
+});
+
+// ---------------- STATİK DOSYALAR (API'lerden sonra) ---------------- //
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
