@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="/theme.css">
     <link rel="stylesheet" href="/mobile.css">
     <style>
+        .card { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn { padding: 0.5rem 1rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #218838; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
         .shipping-tabs {
             display: flex;
             background: white;
@@ -281,8 +286,10 @@
 
         async function showFilteredOrders(status) {
             try {
+                console.log('Filtering orders by status:', status);
                 const ordersResponse = await apiCall('/api/orders');
                 const orders = ordersResponse.orders || [];
+                console.log('Total orders:', orders.length);
                 let filteredOrders;
                 let title;
                 
@@ -296,6 +303,8 @@
                     filteredOrders = orders.filter(o => o.status === 'delivered');
                     title = 'Tamamlanan Sevkiyatlar';
                 }
+                
+                console.log('Filtered orders:', filteredOrders.length);
                 
                 let html = `
                     <div class="card">

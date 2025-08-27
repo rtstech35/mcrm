@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 2rem; }
+        .test-card { border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; border-radius: 8px; }
+        .btn { padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 0.5rem; }
+        .btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Test Sayfası</h1>
+    
+    <div class="test-card">
+        <h2>Satış Personeli Dashboard</h2>
+        <p>Özellikler:</p>
+        <ul>
+            <li>✅ Aylık Satış Hedefi ve Gerçekleşme</li>
+            <li>✅ Aylık Ziyaret Hedefi ve Gerçekleşme</li>
+            <li>✅ Aylık Tahsilat Hedefi ve Gerçekleşme</li>
+            <li>✅ Bugünkü Randevular</li>
+            <li>✅ Sipariş Durumu</li>
+            <li>✅ Müşteri Haritası</li>
+        </ul>
+        <button class="btn" onclick="window.open('/sales.html', '_blank')">Satış Dashboard'u Aç</button>
+    </div>
+    
+    <div class="test-card">
+        <h2>Üretim Personeli Dashboard</h2>
+        <p>Özellikler:</p>
+        <ul>
+            <li>✅ Aylık Üretim Hedefi ve Gerçekleşme</li>
+            <li>✅ Bekleyen Siparişler (Tıklanabilir)</li>
+            <li>✅ Üretimdeki Siparişler (Tıklanabilir)</li>
+            <li>✅ Tamamlanan Siparişler (Tıklanabilir)</li>
+            <li>✅ Teslimat Bekleyenler (Tıklanabilir)</li>
+            <li>✅ Müşteri Haritası</li>
+        </ul>
+        <button class="btn" onclick="window.open('/production.html', '_blank')">Üretim Dashboard'u Aç</button>
+    </div>
+    
+    <div class="test-card">
+        <h2>Sevkiyat Personeli Dashboard</h2>
+        <p>Özellikler:</p>
+        <ul>
+            <li>✅ Aylık Sevkiyat Hedefi ve Gerçekleşme</li>
+            <li>✅ Sevkiyat Bekleyen Siparişler (Tıklanabilir)</li>
+            <li>✅ Sevkiyatını Aldığı Siparişler (Tıklanabilir)</li>
+            <li>✅ Tamamlanan Sevkiyatlar (Tıklanabilir)</li>
+            <li>✅ Müşteri Haritası</li>
+        </ul>
+        <button class="btn" onclick="window.open('/shipping.html', '_blank')">Sevkiyat Dashboard'u Aç</button>
+    </div>
+    
+    <div class="test-card">
+        <h2>Test Talimatları</h2>
+        <ol>
+            <li>Her dashboard'u aç</li>
+            <li>Menü linklerinin çalıştığını kontrol et</li>
+            <li>Dashboard'daki kartlara tıkla (örn: "Bekleyen Siparişler")</li>
+            <li>Filtrelenmiş listelerin göründüğünü kontrol et</li>
+            <li>"Dashboard'a Dön" butonunun çalıştığını kontrol et</li>
+            <li>Harita linkinin çalıştığını kontrol et</li>
+        </ol>
+    </div>
+    
+    <script>
+        console.log('Dashboard test sayfası yüklendi');
+        
+        // Test için localStorage'a sahte auth token ekle
+        if (!localStorage.getItem('authToken')) {
+            localStorage.setItem('authToken', 'test-token');
+            localStorage.setItem('currentUser', JSON.stringify({
+                id: 1,
+                full_name: 'Test Kullanıcı',
+                role: 'sales'
+            }));
+            console.log('Test auth token eklendi');
+        }
+    </script>
+</body>
+</html>
