@@ -36,34 +36,29 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🚚 Sevkiyat Paneli</h1>
-        <div>
-            <span id="userInfo"></span>
-            <button onclick="logout()" class="btn">Çıkış</button>
-        </div>
-    </div>
-
     <div class="container">
-        <div class="shipping-tabs">
-            <div class="shipping-tab active" data-tab="pending">📦 Bekleyen Sevkiyatlar</div>
-            <div class="shipping-tab" data-tab="shipping">🚚 Sevkiyatta</div>
-            <div class="shipping-tab" data-tab="delivered">✅ Teslim Edildi</div>
+        <div class="sidebar" style="width: 250px; background: #28a745; min-height: 100vh; padding: 1rem; position: fixed;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h2 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Saha CRM</h2>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Sevkiyat Paneli</p>
+            </div>
+            
+            <h3 style="color: white;">Menü</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
+                <li><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
+                <li><a href="#" onclick="showDeliveryNotes()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 İrsaliyeler</a></li>
+                <li><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
+                <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
+            </ul>
         </div>
 
-        <div id="pending" class="shipping-content active">
-            <h3>Sevkiyat Bekleyen Siparişler</h3>
-            <div id="pending-orders"></div>
-        </div>
-
-        <div id="shipping" class="shipping-content">
-            <h3>Sevkiyatta Olan Siparişler</h3>
-            <div id="shipping-orders"></div>
-        </div>
-
-        <div id="delivered" class="shipping-content">
-            <h3>Teslim Edilen Siparişler</h3>
-            <div id="delivered-orders"></div>
+        <div class="content" id="content" style="margin-left: 270px; padding: 2rem;">
+            <div class="card">
+                <h2>Sevkiyat Dashboard</h2>
+                <p>Sevkiyat paneline hoş geldiniz!</p>
+            </div>
         </div>
     </div>
 
@@ -122,30 +117,85 @@
             });
         });
 
-        // Siparişleri yükle
-        async function loadOrders() {
+        async function showDashboard() {
             try {
                 const ordersResponse = await apiCall('/api/orders');
                 const orders = ordersResponse.orders || [];
-                console.log('Tüm siparişler:', orders);
                 
-                // Filtreleme
-                const pending = orders.filter(o => o.status === 'completed');
-                const shipping = orders.filter(o => o.status === 'shipping');
-                const delivered = orders.filter(o => o.status === 'delivered');
+                const pendingShipments = orders.filter(o => o.status === 'completed').length;
+                const activeShipments = orders.filter(o => o.status === 'shipping').length;
+                const completedShipments = orders.filter(o => o.status === 'delivered').length;
                 
-                console.log('Bekleyen:', pending.length);
-                console.log('Sevkiyatta:', shipping.length);
-                console.log('Teslim edildi:', delivered.length);
-                
-                // Gösterme
-                showOrders('pending-orders', pending, 'pending');
-                showOrders('shipping-orders', shipping, 'shipping');
-                showOrders('delivered-orders', delivered, 'delivered');
-                
+                document.getElementById('content').innerHTML = `
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🚚 Aylık Sevkiyat Hedefi ve Gerçekleşme</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <p style="color: #718096; font-size: 0.875rem;">Hedef: 120 sevkiyat</p>
+                            </div>
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎯</div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 89 sevkiyat</span>
+                                <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">74%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 74%; height: 100%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.875rem; color: #28a745;">Kalan: 31 sevkiyat</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <div onclick="showFilteredOrders('completed')" style="background: linear-gradient(135deg, #FFA726, #FF7043); padding: 1.5rem; border-radius: 16px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(255, 167, 38, 0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 12px; font-size: 1.5rem;">📦</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 2.5rem; font-weight: 700; line-height: 1;">${pendingShipments}</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Sevkiyat Bekleyen</div>
+                            <div style="font-size: 0.875rem; opacity: 0.8;">Tıklayarak görüntüle</div>
+                        </div>
+                        
+                        <div onclick="showFilteredOrders('shipping')" style="background: linear-gradient(135deg, #42A5F5, #1E88E5); padding: 1.5rem; border-radius: 16px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(66, 165, 245, 0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 12px; font-size: 1.5rem;">🚚</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 2.5rem; font-weight: 700; line-height: 1;">${activeShipments}</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Sevkiyatını Aldığı</div>
+                            <div style="font-size: 0.875rem; opacity: 0.8;">Tıklayarak takip et</div>
+                        </div>
+                        
+                        <div onclick="showFilteredOrders('delivered')" style="background: linear-gradient(135deg, #66BB6A, #43A047); padding: 1.5rem; border-radius: 16px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(102, 187, 106, 0.3);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 12px; font-size: 1.5rem;">✅</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 2.5rem; font-weight: 700; line-height: 1;">${completedShipments}</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Tamamlanan Sevkiyatlar</div>
+                            <div style="font-size: 0.875rem; opacity: 0.8;">Tıklayarak görüntüle</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🗺️ Müşteri Haritası</h3>
+                        <div style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                            <div style="text-align: center; color: #666;">
+                                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🗺️</div>
+                                <div>Teslimat rotaları</div>
+                                <div style="font-size: 0.875rem;">En yakın teslimat noktalarını görüntüle</div>
+                            </div>
+                        </div>
+                        <button onclick="window.location.href='/map.html'" class="btn" style="width: 100%; background: #28a745;">Haritayı Aç</button>
+                    </div>
+                `;
             } catch (error) {
-                console.error('Hata:', error);
-                alert('Siparişler yüklenemedi');
+                console.error('Dashboard yüklenemedi:', error);
             }
         }
 
@@ -229,15 +279,103 @@
             }
         }
 
+        async function showFilteredOrders(status) {
+            try {
+                const ordersResponse = await apiCall('/api/orders');
+                const orders = ordersResponse.orders || [];
+                let filteredOrders;
+                let title;
+                
+                if (status === 'completed') {
+                    filteredOrders = orders.filter(o => o.status === 'completed');
+                    title = 'Sevkiyat Bekleyen Siparişler';
+                } else if (status === 'shipping') {
+                    filteredOrders = orders.filter(o => o.status === 'shipping');
+                    title = 'Sevkiyatını Aldığı Siparişler';
+                } else if (status === 'delivered') {
+                    filteredOrders = orders.filter(o => o.status === 'delivered');
+                    title = 'Tamamlanan Sevkiyatlar';
+                }
+                
+                let html = `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>${title}</h2>
+                            <button class="btn" onclick="showDashboard()" style="background: #6c757d;">← Dashboard'a Dön</button>
+                        </div>
+                        <p>Toplam ${filteredOrders.length} sipariş bulundu</p>
+                        <div style="margin-top: 1.5rem;">
+                `;
+                
+                if (filteredOrders.length === 0) {
+                    html += '<p style="text-align: center; color: #718096; padding: 2rem;">Bu durumda sipariş bulunmuyor.</p>';
+                } else {
+                    filteredOrders.forEach(order => {
+                        html += `
+                            <div class="order-item" style="margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 8px; padding: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <h4>Sipariş #${order.order_number}</h4>
+                                        <p>Müşteri: ${order.customer_name || 'Bilinmiyor'}</p>
+                                        <p>Tarih: ${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
+                                        <p>Tutar: ${order.total_amount} TL</p>
+                                    </div>
+                                    <div>
+                                        ${status === 'completed' ? 
+                                            `<button class="btn" onclick="startShipping(${order.id})" style="background: #28a745;">Sevkiyata Al</button>` : 
+                                            status === 'shipping' ? 
+                                            `<button class="btn" onclick="completeDelivery(${order.id})" style="background: #007bff;">Teslim Et</button>` : 
+                                            `<span style="color: green;">✓ Teslim Edildi</span>`
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                html += '</div></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Filtrelenmiş siparişler yüklenemedi:', error);
+            }
+        }
+        
+        function showCustomers() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>🏢 Müşteriler</h2>
+                    <p>Müşteri yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function showOrders() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📋 Siparişler</h2>
+                    <p>Sipariş yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function showDeliveryNotes() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📋 İrsaliyeler</h2>
+                    <p>İrsaliye yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+
         function logout() {
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
             window.location.href = '/';
         }
 
-        // Başlangıç
-        document.getElementById('userInfo').textContent = `Hoş geldiniz, ${currentUser.full_name}`;
-        loadOrders();
+        showDashboard();
     </script>
 </body>
 </html>

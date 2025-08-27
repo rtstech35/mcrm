@@ -23,13 +23,13 @@
             <h3>Menü</h3>
             <ul style="list-style: none; padding: 0;">
                 <li><a href="#" onclick="showDashboard()">📊 Dashboard</a></li>
-                <li><a href="#" onclick="showCalendar()">📅 Takvim</a></li>
-                <li><a href="/visit-nearby.html">🏢 Müşteri Ziyaret</a></li>
-                <li><a href="#" onclick="showCustomers()">👥 Müşterilerim</a></li>
-                <li><a href="#" onclick="showOrders()">📋 Siparişlerim</a></li>
-                <li><a href="/order-detail.html">📝 Yeni Sipariş</a></li>
+                <li><a href="#" onclick="showCustomers()">🏢 Müşteriler</a></li>
+                <li><a href="#" onclick="showOrders()">📋 Siparişler</a></li>
+                <li><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
+                <li><a href="#" onclick="showAppointments()">📅 Randevular</a></li>
+                <li><a href="#" onclick="showAccounting()">💰 Cari Hesap</a></li>
                 <li><a href="/map.html">🗺️ Harita</a></li>
-                <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚪 Çıkış</a></li>
+                <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
             </ul>
         </div>
 
@@ -194,118 +194,139 @@
                 const visitsTarget = targets.find(t => t.target_type === 'visits');
                 
                 document.getElementById('content').innerHTML = `
-
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                        <!-- 1. Aylık Satış Hedefi -->
+                    <!-- Hedefler ve Gerçekleşmeler -->
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <!-- Aylık Satış Hedefi -->
                         <div class="card" style="margin-bottom: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Satış Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">${salesTarget ? salesTarget.target_value.toLocaleString() : '0'} TL</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${salesTarget ? salesTarget.target_value.toLocaleString() : '100,000'} TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💰</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 45.000 TL</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${salesTarget ? Math.round((45000 / salesTarget.target_value) * 100) : 0}%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 75,000 TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">75%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: ${salesTarget ? Math.min((45000 / salesTarget.target_value) * 100, 100) : 0}%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
+                                    <div style="width: 75%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: ${salesTarget && 45000 >= salesTarget.target_value * 0.8 ? '#48bb78' : '#f56565'};">Kalan: ${salesTarget ? (salesTarget.target_value - 45000).toLocaleString() : '0'} TL</div>
+                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: 25,000 TL</div>
                         </div>
                         
-                        <!-- 2. Ziyaret Hedefi -->
+                        <!-- Aylık Ziyaret Hedefi -->
                         <div class="card" style="margin-bottom: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Ziyaret Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">${visitsTarget ? visitsTarget.target_value : '0'} ziyaret</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${visitsTarget ? visitsTarget.target_value : '30'} ziyaret</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #48bb78, #38a169); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎯</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 15 ziyaret</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${visitsTarget ? Math.round((15 / visitsTarget.target_value) * 100) : 0}%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 22 ziyaret</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">73%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: ${visitsTarget ? Math.min((15 / visitsTarget.target_value) * 100, 100) : 0}%; height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease;"></div>
+                                    <div style="width: 73%; height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: ${visitsTarget && 15 >= visitsTarget.target_value * 0.8 ? '#48bb78' : '#f56565'};">Kalan: ${visitsTarget ? (visitsTarget.target_value - 15) : '0'} ziyaret</div>
+                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: 8 ziyaret</div>
                         </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 2rem;">
-                        <!-- 3. Tahsilat Oranı -->
+                        
+                        <!-- Aylık Tahsilat Hedefi -->
                         <div class="card" style="margin-bottom: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
-                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Tahsilat Oranı</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Toplam: 38.000 TL</p>
+                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Tahsilat Hedefi</h3>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: 90,000 TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ed8936, #dd6b20); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💳</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Tahsil edilen: 32.000 TL</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">84%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 68,000 TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">76%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 84%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
+                                    <div style="width: 76%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #ed8936;">Bekleyen: 6.000 TL</div>
+                            <div style="font-size: 0.875rem; color: #ed8936;">Kalan: 22,000 TL</div>
                         </div>
-                        
-                        <!-- 4. Bugünkü Ziyaretler -->
-                        <div class="card" style="margin-bottom: 0; cursor: pointer;" onclick="showCalendar()">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    </div>
+                    
+                    <!-- Bugünkü Randevular -->
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📅 Bugünkü Randevular</h3>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #48bb78;">
                                 <div>
-                                    <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Bugünkü Ziyaretler</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Planlı aktiviteler</p>
+                                    <strong>09:00 - ABC Restaurant</strong>
+                                    <div style="font-size: 0.875rem; color: #666;">Sipariş takibi ve yeni ürün tanıtımı</div>
                                 </div>
-                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #9f7aea, #805ad5); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">📅</div>
+                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(1)">✓ Tamamla</button>
                             </div>
-                            <div style="margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Tamamlanan: 3 ziyaret</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">60%</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #ed8936;">
+                                <div>
+                                    <strong>14:00 - XYZ Cafe</strong>
+                                    <div style="font-size: 0.875rem; color: #666;">Aylık sipariş planlanması</div>
                                 </div>
-                                <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 60%; height: 100%; background: linear-gradient(90deg, #9f7aea, #805ad5); transition: width 0.3s ease;"></div>
-                                </div>
+                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(2)">✓ Tamamla</button>
                             </div>
-                            <div style="font-size: 0.875rem; color: #9f7aea;">Kalan: 2 ziyaret</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #9f7aea;">
+                                <div>
+                                    <strong>16:30 - DEF Otel</strong>
+                                    <div style="font-size: 0.875rem; color: #666;">Tahsilat takibi</div>
+                                </div>
+                                <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="completeAppointment(3)">✓ Tamamla</button>
+                            </div>
                         </div>
                     </div>
                     
 
                     
-                    <!-- Hızlı İşlemler -->
-                    <div class="card">
-                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1.5rem;">Hızlı İşlemler</h3>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
-                            <button class="btn" onclick="window.location.href='/order-detail.html'" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
-                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
-                                <span>Yeni Sipariş</span>
-                            </button>
-                            <button class="btn" onclick="window.location.href='/visit-nearby.html'" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
-                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏢</div>
-                                <span>Yeni Ziyaret</span>
-                            </button>
-                            <button class="btn" onclick="showCustomers()" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
-                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">👥</div>
-                                <span>Müşterilerim</span>
-                            </button>
-                            <button class="btn" onclick="showOrders()" style="display: flex; flex-direction: column; align-items: center; padding: 1.5rem; height: auto;">
-                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
-                                <span>Siparişlerim</span>
-                            </button>
+                    <!-- Sipariş Durumu ve Müşteri Haritası -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <!-- Sipariş Durumu -->
+                        <div class="card" style="margin-bottom: 0;">
+                            <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📋 Sipariş Durumu</h3>
+                            <div style="display: grid; gap: 0.5rem;">
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #e8f5e8; border-radius: 4px;">
+                                    <span>Onaylandı</span>
+                                    <strong style="color: #48bb78;">8 sipariş</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #fff3cd; border-radius: 4px;">
+                                    <span>Hazırlanıyor</span>
+                                    <strong style="color: #ed8936;">5 sipariş</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #d4edda; border-radius: 4px;">
+                                    <span>Teslim Edildi</span>
+                                    <strong style="color: #155724;">12 sipariş</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8d7da; border-radius: 4px;">
+                                    <span>İptal</span>
+                                    <strong style="color: #721c24;">2 sipariş</strong>
+                                </div>
+                            </div>
+                            <button class="btn" onclick="showOrders()" style="width: 100%; margin-top: 1rem;">Tüm Siparişleri Görüntüle</button>
+                        </div>
+                        
+                        <!-- Müşteri Haritası -->
+                        <div class="card" style="margin-bottom: 0;">
+                            <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🗺️ Müşteri Haritası</h3>
+                            <div style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                <div style="text-align: center; color: #666;">
+                                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🗺️</div>
+                                    <div>Yakındaki müşteriler</div>
+                                    <div style="font-size: 0.875rem;">5 km çevrede 12 müşteri</div>
+                                </div>
+                            </div>
+                            <button class="btn" onclick="window.location.href='/map.html'" style="width: 100%;">Haritayı Aç</button>
                         </div>
                     </div>
                 `;
@@ -946,6 +967,40 @@
             document.getElementById('activityTime').value = '';
             document.getElementById('activityCustomer').value = '';
             document.getElementById('activityNote').value = '';
+        }
+
+        function showDeliveryNotes() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📋 İrsaliyeler</h2>
+                    <p>İrsaliye yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function showAppointments() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📅 Randevular</h2>
+                    <p>Randevu yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function showAccounting() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>💰 Cari Hesap</h2>
+                    <p>Cari hesap yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function completeAppointment(id) {
+            if (confirm('Randevu tamamlandı olarak işaretlensin mi?')) {
+                alert('Randevu tamamlandı!');
+                showDashboard();
+            }
         }
 
         function logout() {

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/mobile.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/admin-orders.js"></script>
 
 </head>
 <body>
@@ -518,6 +519,41 @@
             <div id="signatureContent">
                 <!-- İmza içeriği buraya yüklenecek -->
             </div>
+        </div>
+    </div>
+
+    <!-- Sipariş Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('orderModal')">&times;</span>
+            <h3>Yeni Sipariş</h3>
+            <form id="orderForm">
+                <div class="form-group">
+                    <label>Sipariş No:</label>
+                    <input type="text" id="order_number" required>
+                </div>
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="order_customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Satış Temsilcisi:</label>
+                    <select id="order_sales_rep_id"></select>
+                </div>
+                <div class="form-group">
+                    <label>Sipariş Tarihi:</label>
+                    <input type="date" id="order_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Toplam Tutar:</label>
+                    <input type="number" id="order_total_amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="order_notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
         </div>
     </div>
 
@@ -2201,6 +2237,7 @@
                 let html = `
                     <div class="card">
                         <h2>Sipariş Yönetimi</h2>
+                        <button class="btn" onclick="openOrderModal()">Yeni Sipariş</button>
                         <table class="table">
                             <thead>
                                 <tr>

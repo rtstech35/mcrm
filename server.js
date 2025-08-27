@@ -3542,40 +3542,46 @@ app.get("/api/orders", async (req, res) => {
 
 app.post("/api/orders", async (req, res) => {
   try {
+    console.log('📦 Sipariş oluşturma isteği:', req.body);
+    
+    // Orders tablosu var mı kontrol et
+    const tableExists = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'orders'
+      )
+    `);
+    
+    if (!tableExists.rows[0].exists) {
+      return res.status(400).json({
+        success: false,
+        error: 'Orders tablosu bulunamadı. Setup sayfasından database kurulumunu yapın.'
+      });
+    }
+    
     const { order_number, customer_id, sales_rep_id, order_date, total_amount, notes } = req.body;
     
-    // Gerekli alanları kontrol et
-    if (!order_number || !customer_id || !order_date || !total_amount) {
-      return res.status(400).json({
-        success: false,
-        error: 'Gerekli alanlar eksik: order_number, customer_id, order_date, total_amount'
-      });
-    }
-    
-    // Sipariş numarası benzersizlik kontrolü
-    const existingOrder = await pool.query('SELECT id FROM orders WHERE order_number = $1', [order_number]);
-    if (existingOrder.rows.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Bu sipariş numarası zaten kullanılıyor'
-      });
-    }
+    // Basit sipariş numarası oluştur
+    const orderNum = order_number || `SIP${Date.now()}`;
     
     const result = await pool.query(`
       INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, total_amount, notes, status)
       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
-    `, [order_number, customer_id || null, sales_rep_id || null, order_date, parseFloat(total_amount), notes || null]);
+    `, [orderNum, customer_id || 1, sales_rep_id || 1, order_date || new Date().toISOString().split('T')[0], parseFloat(total_amount) || 0, notes || '']);
+    
+    console.log('✅ Sipariş oluşturuldu:', result.rows[0]);
     
     res.json({
       success: true,
       order: result.rows[0]
     });
   } catch (error) {
-    console.error('Order create hatası:', error);
+    console.error('❌ Order create hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: 'Orders tablosu veya gerekli kolonlar eksik olabilir'
     });
   }
 });

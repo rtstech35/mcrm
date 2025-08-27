@@ -54,8 +54,10 @@
             <h3>Menü</h3>
             <ul style="list-style: none; padding: 0;">
                 <li><a href="#" onclick="showDashboard()">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showCustomers()">🏢 Müşteriler</a></li>
                 <li><a href="#" onclick="showAllOrders()">📋 Siparişler</a></li>
-                <li><a href="#" onclick="showProduction()">🏭 Üretim Takibi</a></li>
+                <li><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
+                <li><a href="/map.html">🗺️ Harita</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
             </ul>
             
@@ -105,8 +107,29 @@
                 const completedOrders = orders.filter(o => o.status === 'completed').length;
                 
                 document.getElementById('content').innerHTML = `
+                    <!-- Aylık Üretim Hedefi -->
+                    <div class="card" style="margin-bottom: 2rem;">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🏭 Aylık Üretim Hedefi ve Gerçekleşme</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <p style="color: #718096; font-size: 0.875rem;">Hedef: 150 sipariş</p>
+                            </div>
+                            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ff9800, #f57c00); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎯</div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 112 sipariş</span>
+                                <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">75%</span>
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: 75%; height: 100%; background: linear-gradient(90deg, #ff9800, #f57c00); transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.875rem; color: #ff9800;">Kalan: 38 sipariş</div>
+                    </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <!-- Sipariş Durumları -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
                         <div onclick="showFilteredOrders('pending')" style="background: linear-gradient(135deg, #FFA726, #FF7043); padding: 1.5rem; border-radius: 16px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(255, 167, 38, 0.3);" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='0 20px 40px rgba(255, 167, 38, 0.4)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 8px 32px rgba(255, 167, 38, 0.3)'">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 12px; font-size: 1.5rem;">⏳</div>
@@ -142,38 +165,30 @@
                             <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Tamamlanan</div>
                             <div style="font-size: 0.875rem; opacity: 0.8;">Tıklayarak görüntüleyin</div>
                         </div>
+                        
+                        <div onclick="showFilteredOrders('shipping')" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2); padding: 1.5rem; border-radius: 16px; color: white; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 8px 32px rgba(156, 39, 176, 0.3);" onmouseover="this.style.transform='translateY(-8px) scale(1.02)'; this.style.boxShadow='0 20px 40px rgba(156, 39, 176, 0.4)'" onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 8px 32px rgba(156, 39, 176, 0.3)'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div style="background: rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 12px; font-size: 1.5rem;">🚚</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 2.5rem; font-weight: 700; line-height: 1;">${orders.filter(o => o.status === 'shipping').length}</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Teslimat Bekleyenler</div>
+                            <div style="font-size: 0.875rem; opacity: 0.8;">Tıklayarak görüntüle</div>
+                        </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
-                        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-                            <h3 style="color: #2d3748; margin-bottom: 1.5rem; font-weight: 600;">Hızlı İşlemler</h3>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                                <button onclick="showAllOrders()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 1rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                                    📋 Tüm Siparişler
-                                </button>
-                                <button onclick="showProduction()" style="background: linear-gradient(135deg, #42A5F5, #1E88E5); color: white; border: none; padding: 1rem 1.5rem; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                                    🏭 Üretim Takibi
-                                </button>
+                    <!-- Müşteri Haritası -->
+                    <div class="card">
+                        <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🗺️ Müşteri Haritası</h3>
+                        <div style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                            <div style="text-align: center; color: #666;">
+                                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🗺️</div>
+                                <div>Müşteri konumları</div>
+                                <div style="font-size: 0.875rem;">Teslimat rotalarını görüntüle</div>
                             </div>
                         </div>
-                        
-                        <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
-                            <h3 style="color: #2d3748; margin-bottom: 1.5rem; font-weight: 600;">Bugünün Özeti</h3>
-                            <div style="space-y: 1rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-                                    <span style="color: #718096;">Toplam Sipariş</span>
-                                    <span style="font-weight: 600; color: #2d3748;">${pendingOrders + productionOrders + completedOrders}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-                                    <span style="color: #718096;">Tamamlanma Oranı</span>
-                                    <span style="font-weight: 600; color: #48bb78;">${Math.round((completedOrders / (pendingOrders + productionOrders + completedOrders || 1)) * 100)}%</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0;">
-                                    <span style="color: #718096;">Ortalama Süre</span>
-                                    <span style="font-weight: 600; color: #2d3748;">2.5 saat</span>
-                                </div>
-                            </div>
-                        </div>
+                        <button onclick="window.location.href='/map.html'" class="btn" style="width: 100%;">Haritayı Aç</button>
                     </div>
                 `;
             } catch (error) {
@@ -433,6 +448,24 @@
             }
         }
         
+        function showCustomers() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>🏢 Müşteriler</h2>
+                    <p>Müşteri yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+        
+        function showDeliveryNotes() {
+            document.getElementById('content').innerHTML = `
+                <div class="card">
+                    <h2>📋 İrsaliyeler</h2>
+                    <p>İrsaliye yönetimi sayfası geliştirilecek.</p>
+                </div>
+            `;
+        }
+
         function logout() {
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
