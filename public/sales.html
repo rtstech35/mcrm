@@ -13,8 +13,11 @@
 <body>
 
 
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
+    
     <div class="container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h2 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Saha CRM</h2>
                 <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Satış Paneli</p>
@@ -1746,6 +1749,27 @@
                 `;
             }
         }
+        
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+        
+        // Menü linklerine tıklandığında mobil menüyü kapat
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
         
         showDashboard();
         
