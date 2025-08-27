@@ -45,10 +45,10 @@
         <h1>Muhasebe Paneli - Saha CRM</h1>
         <div class="nav">
             <button onclick="showDashboard()" class="active">Dashboard</button>
+            <button onclick="showCustomers()">Müşteriler</button>
             <button onclick="showInvoices()">Faturalar</button>
             <button onclick="showAccounts()">Cari Hesap</button>
             <button onclick="showDeliveries()">İrsaliyeler</button>
-            <button onclick="window.location.href='/map.html'">Harita</button>
             <button onclick="logout()">Çıkış</button>
         </div>
     </div>
@@ -58,11 +58,10 @@
             <h3>Menü</h3>
             <ul style="list-style: none; padding: 0;">
                 <li><a href="#" onclick="showDashboard()">📊 Dashboard</a></li>
+                <li><a href="#" onclick="showCustomers()">👥 Müşteriler</a></li>
                 <li><a href="#" onclick="showInvoices()">🧾 Faturalar</a></li>
                 <li><a href="#" onclick="showAccounts()">💰 Cari Hesap</a></li>
-                <li><a href="accounting-invoices.html">🧧 Fatura Yönetimi</a></li>
                 <li><a href="#" onclick="showDeliveries()">📋 İrsaliyeler</a></li>
-                <li><a href="/map.html">🗺️ Teslimat Haritası</a></li>
             </ul>
         </div>
 
@@ -98,6 +97,38 @@
                 <div class="form-group">
                     <label>Açıklama:</label>
                     <input type="text" id="description">
+                </div>
+                <button type="submit" class="btn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Müşteri Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('customerModal')">&times;</span>
+            <h3 id="customerModalTitle">Yeni Müşteri</h3>
+            <form id="customerForm">
+                <input type="hidden" id="edit_customer_id">
+                <div class="form-group">
+                    <label>Şirket Adı:</label>
+                    <input type="text" id="company_name" required>
+                </div>
+                <div class="form-group">
+                    <label>İletişim Kişisi:</label>
+                    <input type="text" id="contact_person">
+                </div>
+                <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="text" id="phone">
+                </div>
+                <div class="form-group">
+                    <label>E-posta:</label>
+                    <input type="email" id="email">
+                </div>
+                <div class="form-group">
+                    <label>Adres:</label>
+                    <input type="text" id="address">
                 </div>
                 <button type="submit" class="btn">Kaydet</button>
             </form>
@@ -370,6 +401,136 @@
                 document.getElementById('paymentForm').reset();
                 closeModal('paymentModal');
                 showAccounts();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
+        async function showCustomers() {
+            try {
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                
+                let html = `
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h2>Müşteri Yönetimi</h2>
+                            <button class="btn btn-success" onclick="openCustomerModal()">Yeni Müşteri</button>
+                        </div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Şirket Adı</th>
+                                    <th>İletişim Kişisi</th>
+                                    <th>Telefon</th>
+                                    <th>E-posta</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                customers.forEach(customer => {
+                    html += `
+                        <tr>
+                            <td>${customer.company_name}</td>
+                            <td>${customer.contact_person || '-'}</td>
+                            <td>${customer.phone || '-'}</td>
+                            <td>${customer.email || '-'}</td>
+                            <td>
+                                <button class="btn" onclick="editCustomer(${customer.id})">Düzenle</button>
+                                <button class="btn" style="background: #dc3545; margin-left: 5px;" onclick="deleteCustomer(${customer.id})">Sil</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('content').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>Müşteri Yönetimi</h2>
+                        <p>Müşteriler yüklenirken hata oluştu: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function openCustomerModal(customerId = null) {
+            document.getElementById('customerModalTitle').textContent = customerId ? 'Müşteri Düzenle' : 'Yeni Müşteri';
+            document.getElementById('edit_customer_id').value = customerId || '';
+            
+            if (customerId) {
+                loadCustomerData(customerId);
+            } else {
+                document.getElementById('customerForm').reset();
+            }
+            
+            document.getElementById('customerModal').style.display = 'block';
+        }
+
+        async function loadCustomerData(customerId) {
+            try {
+                const customer = await apiCall(`/api/customers/${customerId}`);
+                document.getElementById('company_name').value = customer.customer.company_name || '';
+                document.getElementById('contact_person').value = customer.customer.contact_person || '';
+                document.getElementById('phone').value = customer.customer.phone || '';
+                document.getElementById('email').value = customer.customer.email || '';
+                document.getElementById('address').value = customer.customer.address || '';
+            } catch (error) {
+                alert('Müşteri bilgileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function editCustomer(customerId) {
+            openCustomerModal(customerId);
+        }
+
+        async function deleteCustomer(customerId) {
+            if (confirm('Bu müşteriyi silmek istediğinizden emin misiniz?')) {
+                try {
+                    await apiCall(`/api/customers/${customerId}`, { method: 'DELETE' });
+                    alert('Müşteri başarıyla silindi!');
+                    showCustomers();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+
+        document.getElementById('customerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const customerId = document.getElementById('edit_customer_id').value;
+            const formData = {
+                company_name: document.getElementById('company_name').value,
+                contact_person: document.getElementById('contact_person').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                address: document.getElementById('address').value
+            };
+            
+            try {
+                if (customerId) {
+                    await apiCall(`/api/customers/${customerId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Müşteri başarıyla güncellendi!');
+                } else {
+                    await apiCall('/api/customers', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Müşteri başarıyla eklendi!');
+                }
+                
+                document.getElementById('customerForm').reset();
+                closeModal('customerModal');
+                showCustomers();
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
