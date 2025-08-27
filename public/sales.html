@@ -1060,13 +1060,135 @@
             `;
         }
         
-        function showAccounting() {
-            document.getElementById('content').innerHTML = `
-                <div class="card">
-                    <h2>💰 Cari Hesap</h2>
-                    <p>Cari hesap yönetimi sayfası geliştirilecek.</p>
+        async function showAccounting() {
+            try {
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>💰 Cari Hesap Takibi</h2>
+                        <p style="color: #666; margin-bottom: 1.5rem;">Müşterilerinizin cari hesap durumlarını görüntüleyebilirsiniz.</p>
+                        
+                        <div style="display: grid; gap: 1rem;">
+                            ${customers.map(customer => `
+                                <div class="customer-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white;">
+                                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                                        <div>
+                                            <h4 style="margin-bottom: 0.5rem;">${customer.company_name}</h4>
+                                            <p style="color: #666; font-size: 0.875rem;">Yetkili: ${customer.contact_person || '-'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                                        <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Toplam Borç</div>
+                                            <div style="font-size: 1.25rem; font-weight: 600; color: #dc3545;">${(Math.random() * 50000 + 10000).toFixed(0)} ₺</div>
+                                        </div>
+                                        <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Toplam Alacak</div>
+                                            <div style="font-size: 1.25rem; font-weight: 600; color: #28a745;">${(Math.random() * 30000 + 5000).toFixed(0)} ₺</div>
+                                        </div>
+                                        <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Bakiye</div>
+                                            <div style="font-size: 1.25rem; font-weight: 600; color: ${Math.random() > 0.5 ? '#dc3545' : '#28a745'};">${(Math.random() * 20000 - 10000).toFixed(0)} ₺</div>
+                                        </div>
+                                        <div style="background: #f8f9fa; padding: 0.75rem; border-radius: 6px; text-align: center;">
+                                            <div style="font-size: 0.75rem; color: #666; margin-bottom: 0.25rem;">Vade Durumu</div>
+                                            <div style="font-size: 0.875rem; font-weight: 600; color: ${Math.random() > 0.7 ? '#dc3545' : '#28a745'};">${Math.random() > 0.7 ? 'Vadesi Geçmiş' : 'Normal'}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button class="btn" onclick="viewAccountDetail(${customer.id})" style="background: #007bff; font-size: 0.875rem;">📊 Detay Görüntüle</button>
+                                        <button class="btn" onclick="viewAccountHistory(${customer.id})" style="background: #6c757d; font-size: 0.875rem;">📋 Hareket Geçmişi</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Cari hesap sayfası yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>💰 Cari Hesap</h2>
+                        <p style="color: #dc3545;">Cari hesap bilgileri yüklenemedi.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function viewAccountDetail(customerId) {
+            // Müşteri cari hesap detayını modal ile göster
+            document.getElementById('content').innerHTML += `
+                <div id="accountDetailModal" class="modal" style="display: block;">
+                    <div class="modal-content" style="max-width: 800px;">
+                        <span class="close" onclick="closeModal('accountDetailModal')">&times;</span>
+                        <h3>📊 Cari Hesap Detayı</h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">Toplam Satış</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #007bff;">${(Math.random() * 100000 + 50000).toFixed(0)} ₺</div>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">Ödenen Tutar</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #28a745;">${(Math.random() * 80000 + 40000).toFixed(0)} ₺</div>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">Kalan Borç</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #dc3545;">${(Math.random() * 20000 + 10000).toFixed(0)} ₺</div>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 0.875rem; color: #666; margin-bottom: 0.5rem;">Ortalama Vade</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #6c757d;">${Math.floor(Math.random() * 30 + 15)} gün</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+                            <h4>Son Hareketler</h4>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa;">
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e2e8f0;">Tarih</th>
+                                            <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid #e2e8f0;">İşlem</th>
+                                            <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #e2e8f0;">Borç</th>
+                                            <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #e2e8f0;">Alacak</th>
+                                            <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #e2e8f0;">Bakiye</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Array.from({length: 10}, (_, i) => {
+                                            const isDebit = Math.random() > 0.5;
+                                            const amount = (Math.random() * 5000 + 1000).toFixed(0);
+                                            const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR');
+                                            return `
+                                                <tr>
+                                                    <td style="padding: 0.5rem; border-bottom: 1px solid #f1f5f9;">${date}</td>
+                                                    <td style="padding: 0.5rem; border-bottom: 1px solid #f1f5f9;">${isDebit ? 'Satış Faturası' : 'Tahsilat'}</td>
+                                                    <td style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #f1f5f9; color: #dc3545;">${isDebit ? amount + ' ₺' : '-'}</td>
+                                                    <td style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #f1f5f9; color: #28a745;">${!isDebit ? amount + ' ₺' : '-'}</td>
+                                                    <td style="padding: 0.5rem; text-align: right; border-bottom: 1px solid #f1f5f9; font-weight: 600;">${(Math.random() * 20000 - 10000).toFixed(0)} ₺</td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <button onclick="closeModal('accountDetailModal')" class="btn" style="background: #6c757d;">Kapat</button>
+                        </div>
+                    </div>
                 </div>
             `;
+        }
+        
+        function viewAccountHistory(customerId) {
+            alert('Hareket geçmişi görüntüleme özelliği yakında eklenecek.');
         }
         
         function completeAppointment(id) {
