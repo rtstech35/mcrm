@@ -3796,6 +3796,26 @@ app.get("/api/orders/:id", async (req, res) => {
   }
 });
 
+// Sipariş durumu güncelle
+app.put("/api/orders/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE orders SET status = $1 WHERE id = $2 RETURNING *
+    `, [status, id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
+    }
+    
+    res.json({ success: true, order: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Tek müşteri getir
 app.get("/api/customers/:id", async (req, res) => {
   try {
