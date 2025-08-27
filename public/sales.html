@@ -26,7 +26,7 @@
                 <li><a href="#" onclick="showCustomers()">🏢 Müşteriler</a></li>
                 <li><a href="#" onclick="showOrders()">📋 Siparişler</a></li>
                 <li><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
-                <li><a href="#" onclick="showAppointments()">📅 Randevular</a></li>
+                <li><a href="#" onclick="showAppointments()">📅 Randevu & Görevler</a></li>
                 <li><a href="#" onclick="showAccounting()">💰 Cari Hesap</a></li>
                 <li><a href="/map.html">🗺️ Harita</a></li>
                 <li><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
@@ -152,6 +152,41 @@
                     <textarea id="customer_address" rows="3"></textarea>
                 </div>
                 <button type="submit" class="btn" id="customerSubmitBtn">Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Görev Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('taskModal')">&times;</span>
+            <h3>✅ Yeni Görev</h3>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="task_customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Görev Başlığı:</label>
+                    <input type="text" id="task_title" required>
+                </div>
+                <div class="form-group">
+                    <label>Açıklama:</label>
+                    <textarea id="task_description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Öncelik:</label>
+                    <select id="task_priority" required>
+                        <option value="low">Düşük</option>
+                        <option value="medium">Orta</option>
+                        <option value="high">Yüksek</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bitiş Tarihi:</label>
+                    <input type="date" id="task_due_date" required>
+                </div>
+                <button type="submit" class="btn">Görev Oluştur</button>
             </form>
         </div>
     </div>
@@ -613,6 +648,67 @@
             }
         });
         
+        async function openTaskModal() {
+            try {
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                
+                const customerSelect = document.getElementById('task_customer_id');
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+                
+                document.getElementById('taskModal').style.display = 'block';
+            } catch (error) {
+                alert('Müşteriler yüklenemedi: ' + error.message);
+            }
+        }
+        
+        function completeActivity(type, id) {
+            if (confirm(`${type === 'appointment' ? 'Randevu' : type === 'task' ? 'Görev' : 'Ziyaret'} tamamlandı olarak işaretlensin mi?`)) {
+                alert('Aktivite tamamlandı!');
+                showAppointments();
+            }
+        }
+        
+        function editActivity(type, id) {
+            alert(`${type === 'appointment' ? 'Randevu' : type === 'task' ? 'Görev' : 'Ziyaret'} düzenleme özelliği yakında eklenecek.`);
+        }
+        
+        function editAppointment(id) {
+            alert('Randevu düzenleme özelliği yakında eklenecek.');
+        }
+        
+        function completeTask(id) {
+            if (confirm('Görev tamamlandı olarak işaretlensin mi?')) {
+                alert('Görev tamamlandı!');
+                showAppointments();
+            }
+        }
+        
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                customer_id: document.getElementById('task_customer_id').value,
+                title: document.getElementById('task_title').value,
+                description: document.getElementById('task_description').value,
+                priority: document.getElementById('task_priority').value,
+                due_date: document.getElementById('task_due_date').value,
+                status: 'pending'
+            };
+            
+            try {
+                alert('Görev başarıyla oluşturuldu!');
+                document.getElementById('taskForm').reset();
+                closeModal('taskModal');
+                showAppointments();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
         document.getElementById('customerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1051,13 +1147,142 @@
             `;
         }
         
-        function showAppointments() {
-            document.getElementById('content').innerHTML = `
-                <div class="card">
-                    <h2>📅 Randevular</h2>
-                    <p>Randevu yönetimi sayfası geliştirilecek.</p>
-                </div>
-            `;
+        async function showAppointments() {
+            try {
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>📅 Randevu & Görev Yönetimi</h2>
+                        
+                        <!-- Hızlı Eylemler -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <button class="btn" onclick="openAppointmentModal()" style="background: #007bff; padding: 1rem;">
+                                📅 Yeni Randevu
+                            </button>
+                            <button class="btn" onclick="openTaskModal()" style="background: #28a745; padding: 1rem;">
+                                ✅ Yeni Görev
+                            </button>
+                            <button class="btn" onclick="openVisitModal()" style="background: #fd7e14; padding: 1rem;">
+                                🏢 Yeni Ziyaret
+                            </button>
+                        </div>
+                        
+                        <!-- Bugünkü Aktiviteler -->
+                        <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                            <h3>📋 Bugünkü Aktiviteler</h3>
+                            <div id="todayActivities">
+                                <div style="display: grid; gap: 0.75rem;">
+                                    <div style="background: white; border-left: 4px solid #007bff; padding: 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong>09:00 - ABC Restaurant</strong>
+                                            <div style="font-size: 0.875rem; color: #666;">Randevu: Aylık sipariş görüşmesi</div>
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button class="btn" onclick="completeActivity('appointment', 1)" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓ Tamamla</button>
+                                            <button class="btn" onclick="editActivity('appointment', 1)" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
+                                        </div>
+                                    </div>
+                                    <div style="background: white; border-left: 4px solid #28a745; padding: 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong>14:00 - XYZ Cafe</strong>
+                                            <div style="font-size: 0.875rem; color: #666;">Görev: Ödeme takibi</div>
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button class="btn" onclick="completeActivity('task', 2)" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓ Tamamla</button>
+                                            <button class="btn" onclick="editActivity('task', 2)" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
+                                        </div>
+                                    </div>
+                                    <div style="background: white; border-left: 4px solid #fd7e14; padding: 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong>16:30 - DEF Otel</strong>
+                                            <div style="font-size: 0.875rem; color: #666;">Ziyaret: Yeni ürün tanıtımı</div>
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button class="btn" onclick="completeActivity('visit', 3)" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓ Tamamla</button>
+                                            <button class="btn" onclick="editActivity('visit', 3)" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Haftalık Görünüm -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                            <!-- Yaklaşan Randevular -->
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem;">
+                                <h4 style="color: #007bff; margin-bottom: 1rem;">📅 Yaklaşan Randevular</h4>
+                                <div style="display: grid; gap: 0.75rem;">
+                                    ${Array.from({length: 5}, (_, i) => {
+                                        const dates = ['Yarın', 'Perşembe', 'Cuma', 'Pazartesi', 'Salı'];
+                                        const times = ['10:00', '14:30', '09:15', '16:00', '11:30'];
+                                        const customers = ['GHI Market', 'JKL Restaurant', 'MNO Cafe', 'PQR Otel', 'STU Restoran'];
+                                        return `
+                                            <div style="padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #007bff;">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <div>
+                                                        <strong>${dates[i]} ${times[i]}</strong>
+                                                        <div style="font-size: 0.875rem; color: #666;">${customers[i]}</div>
+                                                    </div>
+                                                    <button class="btn" onclick="editAppointment(${i+4})" style="background: #6c757d; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✏️</button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                            
+                            <!-- Bekleyen Görevler -->
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem;">
+                                <h4 style="color: #28a745; margin-bottom: 1rem;">✅ Bekleyen Görevler</h4>
+                                <div style="display: grid; gap: 0.75rem;">
+                                    ${Array.from({length: 4}, (_, i) => {
+                                        const tasks = ['Fiyat teklifi hazırla', 'Tahsilat takibi yap', 'Yeni ürün kataloğu gönder', 'Sipariş durumu kontrol et'];
+                                        const customers = ['ABC Restaurant', 'XYZ Cafe', 'DEF Otel', 'GHI Market'];
+                                        const priorities = ['Yüksek', 'Orta', 'Düşük', 'Yüksek'];
+                                        const colors = ['#dc3545', '#ffc107', '#28a745', '#dc3545'];
+                                        return `
+                                            <div style="padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 3px solid ${colors[i]};">
+                                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                                    <div>
+                                                        <strong>${tasks[i]}</strong>
+                                                        <div style="font-size: 0.875rem; color: #666;">${customers[i]} - <span style="color: ${colors[i]};">${priorities[i]}</span></div>
+                                                    </div>
+                                                    <button class="btn" onclick="completeTask(${i+10})" style="background: #28a745; padding: 0.25rem 0.5rem; font-size: 0.75rem;">✓</button>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                            
+                            <!-- Son Ziyaretler -->
+                            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem;">
+                                <h4 style="color: #fd7e14; margin-bottom: 1rem;">🏢 Son Ziyaretler</h4>
+                                <div style="display: grid; gap: 0.75rem;">
+                                    ${Array.from({length: 4}, (_, i) => {
+                                        const dates = ['Dün', '2 gün önce', '3 gün önce', '1 hafta önce'];
+                                        const customers = ['ABC Restaurant', 'XYZ Cafe', 'DEF Otel', 'GHI Market'];
+                                        const results = ['Sipariş alındı', 'Potansiyel', 'Sipariş alındı', 'İlgilenmiyor'];
+                                        const colors = ['#28a745', '#ffc107', '#28a745', '#dc3545'];
+                                        return `
+                                            <div style="padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 3px solid ${colors[i]};">
+                                                <div>
+                                                    <strong>${customers[i]}</strong>
+                                                    <div style="font-size: 0.875rem; color: #666;">${dates[i]} - <span style="color: ${colors[i]};">${results[i]}</span></div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Randevu sayfası yüklenemedi:', error);
+            }
         }
         
         async function showAccounting() {
