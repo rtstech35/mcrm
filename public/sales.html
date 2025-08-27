@@ -719,7 +719,7 @@
                 
                 myOrders.forEach(order => {
                     html += `
-                        <tr>
+                        <tr onclick="viewOrderDetail(${order.id})" style="cursor: pointer;">
                             <td>#${order.order_number}</td>
                             <td>${order.company_name || 'Bilinmiyor'}</td>
                             <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
@@ -2505,6 +2505,10 @@
                     alert('Hata: ' + error.message);
                 }
             }
+        }
+        
+        function viewOrderDetail(orderId) {
+            alert(`Sipariş detayı: ${orderId}`);
         }
         
         function logout() {
