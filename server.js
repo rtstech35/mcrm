@@ -3910,9 +3910,9 @@ app.post("/api/orders", async (req, res) => {
     if (products && products.length > 0) {
       for (const product of products) {
         await pool.query(`
-          INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `, [orderId, product.id, product.name, product.quantity, product.price, product.price * product.quantity]);
+          INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [orderId, product.id, product.quantity, product.price, product.price * product.quantity]);
       }
     }
     
