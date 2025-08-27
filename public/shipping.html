@@ -756,11 +756,96 @@
             // Yükleme animasyonu göster
             mapContainer.innerHTML = `
                 <div style="padding: 20px; text-align: center;">
-                    <div class="loading" style="margin: 20px 0;">Harita yükleniyor...</div>
+                    <div class="loading" style="margin: 20px 0;">Konum alınıyor ve yakındaki müşteriler aranıyor...</div>
                 </div>
             `;
             
-            // 1 saniye sonra haritayı göster
+            // Gerçek konum al
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        loadNearbyCustomers(lat, lng);
+                    },
+                    (error) => {
+                        console.error('Konum alınamadı:', error);
+                        loadStaticMap();
+                    }
+                );
+            } else {
+                loadStaticMap();
+            }
+        }
+        
+        function loadNearbyCustomers(userLat, userLng) {
+            const mapContainer = document.getElementById('customerMap');
+            
+            // Örnek müşteri konumları (gerçek projede API'den gelecek)
+            const customers = [
+                { name: 'ABC Teknoloji', lat: userLat + 0.01, lng: userLng + 0.01 },
+                { name: 'XYZ İnşaat', lat: userLat - 0.005, lng: userLng + 0.008 },
+                { name: 'Mavi Deniz Lojistik', lat: userLat + 0.008, lng: userLng - 0.012 },
+                { name: 'Altın Gıda', lat: userLat - 0.015, lng: userLng - 0.005 },
+                { name: 'Yeşil Enerji', lat: userLat + 0.02, lng: userLng + 0.015 }
+            ];
+            
+            // Mesafeleri hesapla
+            const customersWithDistance = customers.map(customer => {
+                const distance = calculateDistance(userLat, userLng, customer.lat, customer.lng);
+                return { ...customer, distance };
+            }).sort((a, b) => a.distance - b.distance);
+            
+            setTimeout(() => {
+                mapContainer.innerHTML = `
+                    <div style="padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h4 style="margin: 0; color: #333;">Yakındaki Müşteriler</h4>
+                            <span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 12px;">${customersWithDistance.length} Konum</span>
+                        </div>
+                        <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 12px;">
+                            📍 Konumunuz: ${userLat.toFixed(4)}, ${userLng.toFixed(4)}
+                        </div>
+                        <div style="margin: 20px 0;">
+                            ${customersWithDistance.map(customer => {
+                                const statusColor = customer.distance < 2 ? '#4caf50' : customer.distance < 5 ? '#ff9800' : '#f44336';
+                                const statusText = customer.distance < 2 ? 'Yakın' : customer.distance < 5 ? 'Orta' : 'Uzak';
+                                
+                                return `
+                                    <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
+                                        <span style="font-size: 1.5em; color: ${statusColor};">📍</span>
+                                        <div style="flex: 1;">
+                                            <strong style="color: #333;">${customer.name}</strong>
+                                            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Mesafe: ${customer.distance.toFixed(1)} km</p>
+                                            <p style="margin: 2px 0 0 0; color: #888; font-size: 0.8em;">Konum: ${customer.lat.toFixed(4)}, ${customer.lng.toFixed(4)}</p>
+                                        </div>
+                                        <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">${statusText}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="resetMap()" class="btn btn-secondary">Haritayı Kapat</button>
+                            <button onclick="loadCustomerMap()" class="btn btn-primary">Yenile</button>
+                        </div>
+                    </div>
+                `;
+            }, 1500);
+        }
+        
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Dünya'nın yarıçapı (km)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        function loadStaticMap() {
+            const mapContainer = document.getElementById('customerMap');
             setTimeout(() => {
                 mapContainer.innerHTML = `
                     <div style="padding: 20px;">
