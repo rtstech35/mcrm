@@ -334,6 +334,49 @@
         </div>
     </div>
 
+    <!-- İrsaliye Modal -->
+    <div id="deliveryNoteModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeModal('deliveryNoteModal')">&times;</span>
+            <h3 id="deliveryNoteModalTitle">🚚 Yeni İrsaliye</h3>
+            <form id="deliveryNoteForm">
+                <div class="form-group">
+                    <label>İrsaliye No:</label>
+                    <input type="text" id="delivery_number" readonly style="background: #f8f9fa;">
+                </div>
+                <div class="form-group">
+                    <label>Müşteri:</label>
+                    <select id="delivery_customer_id" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Teslimat Tarihi:</label>
+                    <input type="date" id="delivery_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Teslimat Saati:</label>
+                    <input type="time" id="delivery_time">
+                </div>
+                <div class="form-group">
+                    <label>Teslimat Adresi:</label>
+                    <textarea id="delivery_address" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Notlar:</label>
+                    <textarea id="delivery_notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">İrsaliye Kaydet</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- İrsaliye Detay Modal -->
+    <div id="deliveryDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close" onclick="closeModal('deliveryDetailModal')">&times;</span>
+            <div id="deliveryDetailContent"></div>
+        </div>
+    </div>
+
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -1479,13 +1522,70 @@
             document.getElementById('activityNote').value = '';
         }
 
-        function showDeliveryNotes() {
-            document.getElementById('content').innerHTML = `
-                <div class="card">
-                    <h2>📋 İrsaliyeler</h2>
-                    <p>İrsaliye yönetimi sayfası geliştirilecek.</p>
-                </div>
-            `;
+        async function showDeliveryNotes() {
+            try {
+                const deliveryNotesResponse = await apiCall('/api/delivery-notes');
+                const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
+                
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🚚 İrsaliye Yönetimi</h2>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn" onclick="openDeliveryNoteModal()" style="background: #28a745;">+ Yeni İrsaliye</button>
+                            </div>
+                        </div>
+                        
+                        <div id="deliveryNotesContainer">
+                            ${deliveryNotes.length > 0 ? `
+                                <div style="display: grid; gap: 1rem;">
+                                    ${deliveryNotes.map(dn => {
+                                        const statusColors = {
+                                            'pending': '#ffc107',
+                                            'in_transit': '#007bff', 
+                                            'delivered': '#28a745',
+                                            'cancelled': '#dc3545'
+                                        };
+                                        const statusNames = {
+                                            'pending': 'Hazırlanıyor',
+                                            'in_transit': 'Yolda',
+                                            'delivered': 'Teslim Edildi',
+                                            'cancelled': 'İptal'
+                                        };
+                                        const color = statusColors[dn.status] || '#6c757d';
+                                        return `
+                                            <div class="delivery-note-card" style="padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white; border-left: 4px solid ${color};">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                                    <div>
+                                                        <h4 style="margin-bottom: 0.5rem;">${dn.delivery_number}</h4>
+                                                        <p style="margin-bottom: 0.25rem;"><strong>Müşteri:</strong> ${dn.customer_name || 'Bilinmiyor'}</p>
+                                                        <p style="margin-bottom: 0.25rem;"><strong>Tarih:</strong> ${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
+                                                        <p style="margin-bottom: 0.25rem;"><strong>Durum:</strong> <span style="color: ${color}; font-weight: 600;">${statusNames[dn.status] || dn.status}</span></p>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                                        <button class="btn" onclick="viewDeliveryNote(${dn.id})" style="background: #007bff; font-size: 0.875rem;">👁️ Görüntüle</button>
+                                                        ${dn.status === 'pending' ? `<button class="btn" onclick="startDelivery(${dn.id})" style="background: #ffc107; font-size: 0.875rem;">🚚 Gönder</button>` : ''}
+                                                        ${dn.status === 'in_transit' ? `<button class="btn" onclick="completeDelivery(${dn.id})" style="background: #28a745; font-size: 0.875rem;">✅ Teslim Et</button>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : '<p style="text-align: center; color: #666; padding: 2rem;">Henüz irsaliye kaydı yok.</p>'}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('İrsaliyeler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2>🚚 İrsaliye Yönetimi</h2>
+                        <p style="color: #dc3545;">İrsaliyeler yüklenemedi: ${error.message}</p>
+                    </div>
+                `;
+            }
         }
         
         async function showAppointments() {
@@ -2124,6 +2224,128 @@
             }
         }
 
+        async function openDeliveryNoteModal() {
+            try {
+                const numberResponse = await apiCall('/api/delivery-notes/generate-number');
+                document.getElementById('delivery_number').value = numberResponse.delivery_number;
+                
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+                
+                const customerSelect = document.getElementById('delivery_customer_id');
+                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customers.forEach(customer => {
+                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                });
+                
+                document.getElementById('delivery_date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('delivery_time').value = '14:00';
+                document.getElementById('deliveryNoteModal').style.display = 'block';
+            } catch (error) {
+                alert('Modal açılamadı: ' + error.message);
+            }
+        }
+        
+        document.getElementById('deliveryNoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                delivery_number: document.getElementById('delivery_number').value,
+                customer_id: document.getElementById('delivery_customer_id').value,
+                delivery_date: document.getElementById('delivery_date').value,
+                delivery_time: document.getElementById('delivery_time').value,
+                delivery_address: document.getElementById('delivery_address').value,
+                notes: document.getElementById('delivery_notes').value
+            };
+            
+            try {
+                await apiCall('/api/delivery-notes', {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+                alert('İrsaliye oluşturuldu!');
+                document.getElementById('deliveryNoteForm').reset();
+                closeModal('deliveryNoteModal');
+                showDeliveryNotes();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        async function viewDeliveryNote(id) {
+            try {
+                const response = await apiCall(`/api/delivery-notes/${id}`);
+                const dn = response.delivery_note;
+                
+                const statusNames = {
+                    'pending': 'Hazırlanıyor',
+                    'in_transit': 'Yolda', 
+                    'delivered': 'Teslim Edildi'
+                };
+                
+                document.getElementById('deliveryDetailContent').innerHTML = `
+                    <h3>🚚 İrsaliye Detayı</h3>
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div><strong>İrsaliye No:</strong> ${dn.delivery_number}</div>
+                            <div><strong>Durum:</strong> ${statusNames[dn.status] || dn.status}</div>
+                            <div><strong>Müşteri:</strong> ${dn.customer_name || 'Bilinmiyor'}</div>
+                            <div><strong>Tarih:</strong> ${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</div>
+                        </div>
+                        ${dn.notes ? `<div style="margin-top: 1rem;"><strong>Notlar:</strong><br>${dn.notes}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin: 1rem 0;">
+                        ${dn.status === 'pending' ? `<button onclick="startDelivery(${dn.id})" class="btn" style="background: #ffc107;">🚚 Gönder</button>` : ''}
+                        ${dn.status === 'in_transit' ? `<button onclick="completeDelivery(${dn.id})" class="btn" style="background: #28a745;">✅ Teslim Et</button>` : ''}
+                    </div>
+                    <div style="text-align: center;">
+                        <button onclick="closeModal('deliveryDetailModal')" class="btn" style="background: #6c757d;">Kapat</button>
+                    </div>
+                `;
+                
+                document.getElementById('deliveryDetailModal').style.display = 'block';
+            } catch (error) {
+                alert('Detay yüklenemedi: ' + error.message);
+            }
+        }
+        
+        async function startDelivery(id) {
+            if (confirm('İrsaliye gönderiye başlatılsın mı?')) {
+                try {
+                    await apiCall(`/api/delivery-notes/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status: 'in_transit' })
+                    });
+                    alert('İrsaliye yola çıktı!');
+                    closeModal('deliveryDetailModal');
+                    showDeliveryNotes();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+        
+        async function completeDelivery(id) {
+            const customerName = prompt('Teslim alan kişinin adı:');
+            if (customerName) {
+                try {
+                    await apiCall(`/api/delivery-notes/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            status: 'delivered',
+                            customer_name: customerName,
+                            signature_date: new Date().toISOString()
+                        })
+                    });
+                    alert('İrsaliye teslim edildi!');
+                    closeModal('deliveryDetailModal');
+                    showDeliveryNotes();
+                } catch (error) {
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+        
         function logout() {
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
