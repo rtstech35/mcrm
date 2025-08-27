@@ -3544,11 +3544,28 @@ app.post("/api/orders", async (req, res) => {
   try {
     const { order_number, customer_id, sales_rep_id, order_date, total_amount, notes } = req.body;
     
+    // Gerekli alanları kontrol et
+    if (!order_number || !customer_id || !order_date || !total_amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Gerekli alanlar eksik: order_number, customer_id, order_date, total_amount'
+      });
+    }
+    
+    // Sipariş numarası benzersizlik kontrolü
+    const existingOrder = await pool.query('SELECT id FROM orders WHERE order_number = $1', [order_number]);
+    if (existingOrder.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bu sipariş numarası zaten kullanılıyor'
+      });
+    }
+    
     const result = await pool.query(`
       INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, total_amount, notes, status)
       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
-    `, [order_number, customer_id, sales_rep_id, order_date, total_amount, notes]);
+    `, [order_number, customer_id || null, sales_rep_id || null, order_date, parseFloat(total_amount), notes || null]);
     
     res.json({
       success: true,
