@@ -178,22 +178,33 @@
                     // Her sipariş kalemi için ürün bilgilerini ayrı ayrı getir
                     const itemsWithProducts = await Promise.all(
                         items.map(async (item) => {
+                            // Ürün ID kontrolü
+                            if (!item.product_id) {
+                                console.error('Ürün ID bulunamadı:', item);
+                                return {
+                                    ...item,
+                                    product_name: item.product_name || 'Bilinmeyen Ürün',
+                                    product_description: item.product_description || 'Ürün bilgisi eksik',
+                                    product_unit: item.unit || 'adet'
+                                };
+                            }
+                            
                             try {
                                 const productResponse = await apiCall(`/api/products/${item.product_id}`);
                                 const product = productResponse.product || productResponse;
                                 return {
                                     ...item,
-                                    product_name: product.name,
-                                    product_description: product.description,
-                                    product_unit: product.unit
+                                    product_name: product.name || item.product_name || 'Bilinmeyen Ürün',
+                                    product_description: product.description || item.product_description || '',
+                                    product_unit: product.unit || item.unit || 'adet'
                                 };
                             } catch (error) {
                                 console.error(`Ürün ${item.product_id} bilgileri alınamadı:`, error);
                                 return {
                                     ...item,
-                                    product_name: `Ürün ID: ${item.product_id}`,
-                                    product_description: 'Ürün bilgisi bulunamadı',
-                                    product_unit: 'adet'
+                                    product_name: item.product_name || `Ürün ID: ${item.product_id}`,
+                                    product_description: item.product_description || 'Ürün bilgisi bulunamadı',
+                                    product_unit: item.unit || 'adet'
                                 };
                             }
                         })
