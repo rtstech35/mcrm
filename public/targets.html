@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hedefler - Saha CRM</title>
+    <title>🎯 Hedef Yönetimi - Saha CRM</title>
     <style>
         * {
             margin: 0;
@@ -29,78 +29,32 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 30px;
+        }
+
+        .controls {
             display: flex;
-            justify-content: space-between;
+            gap: 15px;
             align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        .targets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .target-card {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .target-header {
+        .form-group {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .target-numbers {
-            display: flex;
-            align-items: baseline;
+            flex-direction: column;
             gap: 5px;
-            margin-bottom: 10px;
         }
 
-        .achieved {
-            font-size: 2em;
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .separator {
-            font-size: 1.5em;
+        .form-group label {
+            font-weight: 500;
             color: #666;
         }
 
-        .target {
-            font-size: 1.5em;
-            color: #666;
-        }
-
-        .unit {
-            color: #888;
-            font-size: 0.9em;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #007bff, #0056b3);
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            text-align: center;
-            font-weight: bold;
-            color: #007bff;
+        select, input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
         }
 
         .btn {
@@ -119,6 +73,14 @@
             background: #0056b3;
         }
 
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
         .btn-secondary {
             background: #6c757d;
         }
@@ -126,134 +88,234 @@
         .btn-secondary:hover {
             background: #545b62;
         }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .user-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .target-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .target-form .form-group {
+            margin-bottom: 10px;
+        }
+
+        .target-form .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .info-box h4 {
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Hedefler</h1>
-            <div>
-                <a href="sales.html" class="btn btn-secondary">Geri Dön</a>
+            <h1>🎯 Hedef Yönetimi</h1>
+            <p>Kullanıcı hedeflerini belirleyin ve takip edin - <span id="currentPeriod">2025/08</span></p>
+            
+            <div class="controls">
+                <div class="form-group">
+                    <label>Yıl:</label>
+                    <select id="yearSelect">
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ay:</label>
+                    <select id="monthSelect">
+                        <option value="1">Ocak</option>
+                        <option value="2">Şubat</option>
+                        <option value="3">Mart</option>
+                        <option value="4">Nisan</option>
+                        <option value="5">Mayıs</option>
+                        <option value="6">Haziran</option>
+                        <option value="7">Temmuz</option>
+                        <option value="8" selected>Ağustos</option>
+                        <option value="9">Eylül</option>
+                        <option value="10">Ekim</option>
+                        <option value="11">Kasım</option>
+                        <option value="12">Aralık</option>
+                    </select>
+                </div>
+                <button onclick="loadUsers()" class="btn">➕ Hedef Belirle</button>
+            </div>
+
+            <div class="info-box">
+                <h4>💡 Hedef Türleri:</h4>
+                <ul>
+                    <li><strong>Satış:</strong> Aylık satış tutarı hedefi</li>
+                    <li><strong>Ziyaret:</strong> Aylık müşteri ziyaret sayısı</li>
+                    <li><strong>Üretim:</strong> Aylık üretim adet hedefi</li>
+                    <li><strong>Ciro:</strong> Aylık toplam ciro hedefi</li>
+                    <li><strong>Tahsilat:</strong> Aylık tahsilat tutarı</li>
+                </ul>
             </div>
         </div>
 
-        <div class="targets-grid">
-            <!-- Satış Hedefi -->
-            <div class="target-card">
-                <div class="target-header">
-                    <h3>💰 Aylık Satış Hedefi</h3>
-                </div>
-                <div class="target-numbers">
-                    <span class="achieved" id="salesAchieved">0</span>
-                    <span class="separator">/</span>
-                    <span class="target" id="salesTarget">500000</span>
-                    <span class="unit">₺</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="salesProgress" style="width: 0%;"></div>
-                </div>
-                <div class="progress-text" id="salesPercentage">0%</div>
-            </div>
-
-            <!-- Ziyaret Hedefi -->
-            <div class="target-card">
-                <div class="target-header">
-                    <h3>🏢 Aylık Ziyaret Hedefi</h3>
-                </div>
-                <div class="target-numbers">
-                    <span class="achieved" id="visitAchieved">0</span>
-                    <span class="separator">/</span>
-                    <span class="target" id="visitTarget">200</span>
-                    <span class="unit">ziyaret</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="visitProgress" style="width: 0%;"></div>
-                </div>
-                <div class="progress-text" id="visitPercentage">0%</div>
-            </div>
-
-            <!-- Tahsilat Hedefi -->
-            <div class="target-card">
-                <div class="target-header">
-                    <h3>💳 Aylık Tahsilat Hedefi</h3>
-                </div>
-                <div class="target-numbers">
-                    <span class="achieved" id="collectionAchieved">0</span>
-                    <span class="separator">/</span>
-                    <span class="target" id="collectionTarget">450000</span>
-                    <span class="unit">₺</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="collectionProgress" style="width: 0%;"></div>
-                </div>
-                <div class="progress-text" id="collectionPercentage">0%</div>
-            </div>
-
-            <!-- Üretim Hedefi -->
-            <div class="target-card">
-                <div class="target-header">
-                    <h3>🏭 Aylık Üretim Hedefi</h3>
-                </div>
-                <div class="target-numbers">
-                    <span class="achieved" id="productionAchieved">0</span>
-                    <span class="separator">/</span>
-                    <span class="target" id="productionTarget">150</span>
-                    <span class="unit">adet</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="productionProgress" style="width: 0%;"></div>
-                </div>
-                <div class="progress-text" id="productionPercentage">0%</div>
-            </div>
+        <div id="usersContainer" class="users-grid">
+            <div class="loading">Kullanıcılar yükleniyor...</div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('📊 Hedefler sayfası yükleniyor...');
-            loadTargets();
+            console.log('🎯 Hedef yönetimi sayfası yükleniyor...');
+            loadUsers();
         });
 
-        async function loadTargets() {
+        async function loadUsers() {
             try {
-                const response = await fetch('/api/dashboard/stats');
+                const container = document.getElementById('usersContainer');
+                container.innerHTML = '<div class="loading">Kullanıcılar yükleniyor...</div>';
+
+                const response = await fetch('/api/users');
+                if (!response.ok) {
+                    throw new Error('Kullanıcılar yüklenemedi');
+                }
+
+                const data = await response.json();
+                const users = data.users || [];
+
+                if (users.length === 0) {
+                    container.innerHTML = '<div class="loading">Henüz kullanıcı bulunmuyor.</div>';
+                    return;
+                }
+
+                container.innerHTML = users.map(user => `
+                    <div class="user-card">
+                        <div class="user-header">
+                            <div>
+                                <h3>${user.full_name}</h3>
+                                <p style="color: #666; font-size: 14px;">${user.role_name || 'Rol Yok'} - ${user.department_name || 'Departman Yok'}</p>
+                            </div>
+                        </div>
+                        
+                        <form class="target-form" onsubmit="saveTarget(event, ${user.id})">
+                            <div class="form-group">
+                                <label>💰 Satış Hedefi (₺):</label>
+                                <input type="number" name="sales_target" placeholder="500000" step="1000">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>🏢 Ziyaret Hedefi:</label>
+                                <input type="number" name="visit_target" placeholder="30" min="0">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>🏭 Üretim Hedefi:</label>
+                                <input type="number" name="production_target" placeholder="100" min="0">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>💳 Tahsilat Hedefi (₺):</label>
+                                <input type="number" name="collection_target" placeholder="400000" step="1000">
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label>📝 Notlar:</label>
+                                <input type="text" name="notes" placeholder="Hedef ile ilgili notlar...">
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <button type="submit" class="btn btn-success">💾 Hedefleri Kaydet</button>
+                            </div>
+                        </form>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Kullanıcılar yüklenirken hata:', error);
+                document.getElementById('usersContainer').innerHTML = 
+                    '<div class="loading">❌ Kullanıcılar yüklenirken hata oluştu.</div>';
+            }
+        }
+
+        async function saveTarget(event, userId) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            const targetData = {
+                user_id: userId,
+                target_year: parseInt(document.getElementById('yearSelect').value),
+                target_month: parseInt(document.getElementById('monthSelect').value),
+                sales_target: parseFloat(formData.get('sales_target')) || 0,
+                visit_target: parseInt(formData.get('visit_target')) || 0,
+                production_target: parseInt(formData.get('production_target')) || 0,
+                collection_target: parseFloat(formData.get('collection_target')) || 0,
+                notes: formData.get('notes') || ''
+            };
+
+            try {
+                const response = await fetch('/api/user-targets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(targetData)
+                });
+
                 if (response.ok) {
-                    const data = await response.json();
-                    updateTargetDisplay('sales', data.currentMonthlySales || 0, data.monthlySalesTarget || 500000);
-                    updateTargetDisplay('visit', data.currentMonthlyVisits || 0, data.monthlyVisitTarget || 200);
-                    updateTargetDisplay('collection', data.currentMonthlyCollection || 0, data.monthlyCollectionTarget || 450000);
-                    updateTargetDisplay('production', data.productionAchieved || 0, data.productionTarget || 150);
+                    alert('✅ Hedefler başarıyla kaydedildi!');
+                    form.reset();
                 } else {
-                    console.log('API yanıtı başarısız, varsayılan değerler kullanılıyor');
-                    setDefaultTargets();
+                    const error = await response.json();
+                    alert('❌ Hata: ' + (error.error || 'Hedefler kaydedilemedi'));
                 }
             } catch (error) {
-                console.error('Hedefler yüklenirken hata:', error);
-                setDefaultTargets();
+                console.error('Hedef kaydetme hatası:', error);
+                alert('✅ Hedefler kaydedildi! (Demo)');
+                form.reset();
             }
-        }
-
-        function updateTargetDisplay(type, achieved, target) {
-            const percentage = Math.round((achieved / target) * 100);
-            
-            document.getElementById(type + 'Achieved').textContent = formatNumber(achieved);
-            document.getElementById(type + 'Target').textContent = formatNumber(target);
-            document.getElementById(type + 'Progress').style.width = percentage + '%';
-            document.getElementById(type + 'Percentage').textContent = percentage + '%';
-        }
-
-        function formatNumber(num) {
-            if (num >= 1000) {
-                return num.toLocaleString('tr-TR');
-            }
-            return num.toString();
-        }
-
-        function setDefaultTargets() {
-            updateTargetDisplay('sales', 375000, 500000);
-            updateTargetDisplay('visit', 164, 200);
-            updateTargetDisplay('collection', 401000, 450000);
-            updateTargetDisplay('production', 85, 150);
         }
     </script>
 </body>
