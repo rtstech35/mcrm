@@ -208,11 +208,11 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="orders.html" class="nav-link">
+                <a href="admin.html" class="nav-link">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Siparişler</span>
                 </a>
-                <a href="customers.html" class="nav-link">
+                <a href="admin.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
                     <span class="nav-text">Müşteriler</span>
                 </a>
@@ -491,20 +491,22 @@
             
             const ordersList = document.getElementById('ordersList');
             if (orders.length === 0) {
-                ordersList.innerHTML = '<p class="no-data">Bu durumda sipariş bulunamadı</p>';
+                ordersList.innerHTML = '<div class="no-data"><p>Bu durumda sipariş bulunamadı</p></div>';
             } else {
-                ordersList.innerHTML = orders.map(order => `
-                    <div class="order-item">
-                        <div class="order-header">
-                            <strong>${order.order_number}</strong>
-                            <span class="order-date">${formatDate(order.order_date)}</span>
+                ordersList.innerHTML = orders.map((order, index) => `
+                    <div class="order-item" style="border: 1px solid #ddd; margin-bottom: 15px; padding: 15px; border-radius: 8px; background: #f9f9f9;">
+                        <div class="order-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                            <strong style="color: #333; font-size: 16px;">${order.order_number || 'SIP' + (index + 1).toString().padStart(3, '0')}</strong>
+                            <span class="order-date" style="color: #666; font-size: 14px;">${formatDate(order.order_date)}</span>
                         </div>
-                        <div class="order-details">
-                            <p><strong>Müşteri:</strong> ${order.company_name || 'Bilinmiyor'}</p>
-                            <p><strong>Tutar:</strong> ₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</p>
-                            <p><strong>Notlar:</strong> ${order.notes || 'Not yok'}</p>
+                        <div class="order-details" style="margin-bottom: 15px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                <p style="margin: 0; color: #555;"><strong>Müşteri:</strong><br><span style="color: #333;">${order.company_name || 'Bilinmiyor'}</span></p>
+                                <p style="margin: 0; color: #555;"><strong>Tutar:</strong><br><span style="color: #28a745; font-weight: bold;">₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</span></p>
+                            </div>
+                            <p style="margin: 0; color: #555;"><strong>Notlar:</strong><br><span style="color: #666; font-style: italic;">${order.notes || 'Herhangi bir not bulunmuyor'}</span></p>
                         </div>
-                        <div class="order-actions">
+                        <div class="order-actions" style="padding-top: 10px; border-top: 1px solid #eee; text-align: right;">
                             ${getOrderActions(order, status)}
                         </div>
                     </div>
@@ -515,15 +517,17 @@
         }
 
         function getOrderActions(order, status) {
+            const buttonStyle = "padding: 8px 16px; margin: 0 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;";
+            
             switch(status) {
                 case 'pending':
-                    return `<button onclick="updateOrderStatus(${order.id}, 'production')" class="btn btn-sm btn-primary">Üretime Al</button>`;
+                    return `<button onclick="updateOrderStatus(${order.id}, 'production')" style="${buttonStyle} background: #007bff; color: white;">🏠 Üretime Al</button>`;
                 case 'production':
-                    return `<button onclick="updateOrderStatus(${order.id}, 'completed')" class="btn btn-sm btn-success">Tamamla</button>`;
+                    return `<button onclick="updateOrderStatus(${order.id}, 'completed')" style="${buttonStyle} background: #28a745; color: white;">✅ Tamamla</button>`;
                 case 'completed':
-                    return `<button onclick="updateOrderStatus(${order.id}, 'ready_for_delivery')" class="btn btn-sm btn-warning">Teslimat Hazırla</button>`;
+                    return `<button onclick="updateOrderStatus(${order.id}, 'ready_for_delivery')" style="${buttonStyle} background: #ffc107; color: #212529;">📦 Teslimat Hazırla</button>`;
                 case 'ready_for_delivery':
-                    return `<span class="status-badge">Teslimat Bekliyor</span>`;
+                    return `<span style="background: #17a2b8; color: white; padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: bold;">🚚 Teslimat Bekliyor</span>`;
                 default:
                     return '';
             }
@@ -613,7 +617,12 @@
         }
 
         function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('tr-TR');
+            if (!dateString) return 'Tarih yok';
+            try {
+                return new Date(dateString).toLocaleDateString('tr-TR');
+            } catch (error) {
+                return 'Geçersiz tarih';
+            }
         }
 
         function toggleMobileMenu() {
