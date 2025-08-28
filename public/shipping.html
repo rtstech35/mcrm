@@ -404,7 +404,7 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="delivery-notes.html" class="nav-link">
+                <a href="#" onclick="window.open('delivery-notes.html', '_blank')" class="nav-link">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">İrsaliyeler</span>
                 </a>
@@ -714,7 +714,7 @@
                                         <div>
                                             <strong style="color: #333; font-size: 16px;">Sipariş: ${order.order_number || 'SIP' + order.id}</strong><br>
                                             <span style="color: #666;">Müşteri: ${order.company_name || 'Bilinmiyor'}</span><br>
-                                            <span style="color: #666;">Tutar: <strong>${order.total_amount} TL</strong></span><br>
+                                            <span style="color: #666;">Tutar: <strong>₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</strong></span><br>
                                             <span style="color: #666;">Tarih: ${formatDate(order.order_date)}</span>
                                         </div>
                                         <div style="display: flex; flex-direction: column; gap: 5px;">
