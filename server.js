@@ -363,6 +363,369 @@ app.get("/api/profile", authenticateToken, async (req, res) => {
 });
 
 // ---------------- ÜRÜNLER ---------------- //
+// Ürün ekleme
+app.post("/api/products", async (req, res) => {
+  try {
+    const { name, description, unit_price, vat_rate, unit, category, stock_quantity, min_stock_level } = req.body;
+
+    console.log('Ürün ekleme isteği:', req.body);
+
+    // Önce products tablosunun kolonlarını kontrol et
+    const columnsResult = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'products'
+    `);
+
+    const columns = columnsResult.rows.map(row => row.column_name);
+    const hasVatColumns = columns.includes('vat_rate') && columns.includes('price_with_vat');
+    const hasStockColumns = columns.includes('stock_quantity') && columns.includes('min_stock_level');
+    const hasCategoryColumn = columns.includes('category');
+
+    let query, params;
+    const vatRateValue = parseFloat(vat_rate) || 20;
+    const unitPriceValue = parseFloat(unit_price);
+    const priceWithVat = unitPriceValue * (1 + vatRateValue / 100);
+
+    if (hasVatColumns && hasStockColumns && hasCategoryColumn) {
+      // Tüm kolonlar var
+      query = `
+        INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, category, stock_quantity, min_stock_level, is_active)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+        RETURNING *
+      `;
+      params = [name, description, unitPriceValue, vatRateValue, priceWithVat, unit, category, 
+                parseInt(stock_quantity) || 0, parseInt(min_stock_level) || 0];
+    } else {
+      // Temel kolonlar
+      query = `
+        INSERT INTO products (name, description, unit_price, unit, is_active)
+        VALUES ($1, $2, $3, $4, true)
+        RETURNING *
+      `;
+      params = [name, description, unitPriceValue, unit];
+    }
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Product create hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ürün güncelleme
+app.put("/api/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, unit_price, vat_rate, unit, category, stock_quantity, min_stock_level, is_active } = req.body;
+
+    // Kolonları kontrol et
+    const columnsResult = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'products'
+    `);
+
+    const columns = columnsResult.rows.map(row => row.column_name);
+    const hasVatColumns = columns.includes('vat_rate') && columns.includes('price_with_vat');
+    const hasStockColumns = columns.includes('stock_quantity') && columns.includes('min_stock_level');
+    const hasCategoryColumn = columns.includes('category');
+
+    let query, params;
+    const vatRateValue = parseFloat(vat_rate) || 20;
+    const unitPriceValue = parseFloat(unit_price);
+    const priceWithVat = unitPriceValue * (1 + vatRateValue / 100);
+
+    if (hasVatColumns && hasStockColumns && hasCategoryColumn) {
+      query = `
+        UPDATE products SET
+          name = $1,
+          description = $2,
+          unit_price = $3,
+          vat_rate = $4,
+          price_with_vat = $5,
+          unit = $6,
+          category = $7,
+          stock_quantity = $8,
+          min_stock_level = $9,
+          is_active = $10
+        WHERE id = $11
+        RETURNING *
+      `;
+      params = [name, description, unitPriceValue, vatRateValue, priceWithVat, unit, category,
+                parseInt(stock_quantity) || 0, parseInt(min_stock_level) || 0, is_active !== false, id];
+    } else {
+      query = `
+        UPDATE products SET
+          name = $1,
+          description = $2,
+          unit_price = $3,
+          unit = $4,
+          is_active = $5
+        WHERE id = $6
+        RETURNING *
+      `;
+      params = [name, description, unitPriceValue, unit, is_active !== false, id];
+    }
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ürün bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Product update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Tek ürün getir
+app.get("/api/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ürün bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      product: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Product get hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ürün sil
+app.delete("/api/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ürün bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Ürün başarıyla silindi'
+    });
+  } catch (error) {
+    console.error('Product delete hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Ürün kategorileri
+app.get("/api/product-categories", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT category
+      FROM products
+      WHERE category IS NOT NULL AND category != ''
+      ORDER BY category
+    `);
+
+    const categories = result.rows.map(row => row.category);
+    
+    // Varsayılan kategoriler ekle
+    const defaultCategories = ['Elektronik', 'Gıda', 'Tekstil', 'Makine', 'Kimyasal', 'Diğer'];
+    const allCategories = [...new Set([...categories, ...defaultCategories])];
+
+    res.json({
+      success: true,
+      categories: allCategories
+    });
+  } catch (error) {
+    console.error('Categories API hatası:', error);
+    res.json({
+      success: true,
+      categories: ['Elektronik', 'Gıda', 'Tekstil', 'Makine', 'Kimyasal', 'Diğer']
+    });
+  }
+});
+
+// Ürün tablosu migration
+app.post("/api/migrate-products", async (req, res) => {
+  try {
+    console.log('📦 Ürün tablosu migration başlatılıyor...');
+
+    // Yeni kolonları ekle
+    await pool.query(`
+      DO $$
+      BEGIN
+          -- KDV kolonları
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'vat_rate') THEN
+              ALTER TABLE products ADD COLUMN vat_rate DECIMAL(5,2) DEFAULT 20;
+          END IF;
+          
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'price_with_vat') THEN
+              ALTER TABLE products ADD COLUMN price_with_vat DECIMAL(10,2);
+          END IF;
+          
+          -- Stok kolonları
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'stock_quantity') THEN
+              ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 0;
+          END IF;
+          
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'min_stock_level') THEN
+              ALTER TABLE products ADD COLUMN min_stock_level INTEGER DEFAULT 0;
+          END IF;
+          
+          -- Kategori kolonu
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'category') THEN
+              ALTER TABLE products ADD COLUMN category VARCHAR(100);
+          END IF;
+          
+          -- Ürün kodu kolonu
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'product_code') THEN
+              ALTER TABLE products ADD COLUMN product_code VARCHAR(50) UNIQUE;
+          END IF;
+          
+          -- Tedarikçi kolonu
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'supplier') THEN
+              ALTER TABLE products ADD COLUMN supplier VARCHAR(200);
+          END IF;
+      END $$;
+    `);
+
+    // Mevcut ürünler için KDV dahil fiyatı hesapla
+    await pool.query(`
+      UPDATE products
+      SET price_with_vat = unit_price * (1 + COALESCE(vat_rate, 20) / 100)
+      WHERE price_with_vat IS NULL
+    `);
+
+    // Örnek ürünler ekle (eğer tablo boşsa)
+    const productCount = await pool.query('SELECT COUNT(*) as count FROM products');
+    if (parseInt(productCount.rows[0].count) === 0) {
+      const sampleProducts = [
+        {
+          name: 'Laptop Bilgisayar',
+          description: 'Intel i5 işlemci, 8GB RAM, 256GB SSD',
+          unit_price: 15000.00,
+          vat_rate: 20,
+          unit: 'adet',
+          category: 'Elektronik',
+          stock_quantity: 25,
+          min_stock_level: 5,
+          product_code: 'ELK001',
+          supplier: 'Teknoloji A.Ş.'
+        },
+        {
+          name: 'Ofis Masası',
+          description: 'Ahşap ofis masası 120x80 cm',
+          unit_price: 2500.00,
+          vat_rate: 20,
+          unit: 'adet',
+          category: 'Mobilya',
+          stock_quantity: 15,
+          min_stock_level: 3,
+          product_code: 'MOB001',
+          supplier: 'Mobilya Ltd.'
+        },
+        {
+          name: 'A4 Kağıt',
+          description: '80 gr/m² beyaz fotokopi kağıdı',
+          unit_price: 45.00,
+          vat_rate: 20,
+          unit: 'paket',
+          category: 'Kırtasiye',
+          stock_quantity: 100,
+          min_stock_level: 20,
+          product_code: 'KRT001',
+          supplier: 'Kağıt San. Tic.'
+        },
+        {
+          name: 'Endüstriyel Vida M8x20',
+          description: 'Paslanmaz çelik vida M8x20mm',
+          unit_price: 2.50,
+          vat_rate: 20,
+          unit: 'adet',
+          category: 'Makine',
+          stock_quantity: 500,
+          min_stock_level: 100,
+          product_code: 'MAK001',
+          supplier: 'Demir Çelik A.Ş.'
+        },
+        {
+          name: 'Temizlik Deterjanı',
+          description: 'Çok amaçlı yüzey temizleyici 5L',
+          unit_price: 85.00,
+          vat_rate: 20,
+          unit: 'litre',
+          category: 'Kimyasal',
+          stock_quantity: 30,
+          min_stock_level: 10,
+          product_code: 'KIM001',
+          supplier: 'Temizlik Ürünleri Ltd.'
+        }
+      ];
+
+      for (const product of sampleProducts) {
+        const priceWithVat = product.unit_price * (1 + product.vat_rate / 100);
+        
+        await pool.query(`
+          INSERT INTO products (
+            name, description, unit_price, vat_rate, price_with_vat, unit, 
+            category, stock_quantity, min_stock_level, product_code, supplier, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+        `, [
+          product.name, product.description, product.unit_price, product.vat_rate,
+          priceWithVat, product.unit, product.category, product.stock_quantity,
+          product.min_stock_level, product.product_code, product.supplier
+        ]);
+      }
+    }
+
+    console.log('✅ Ürün tablosu migration tamamlandı');
+
+    res.json({
+      success: true,
+      message: 'Ürün tablosu başarıyla güncellendi'
+    });
+
+  } catch (error) {
+    console.error('Ürün migration hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
 
 
 
