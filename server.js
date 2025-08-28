@@ -4680,7 +4680,7 @@ app.post("/api/mail/test", async (req, res) => {
     try {
       const nodemailer = require('nodemailer');
       
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: settings.smtp_host,
         port: settings.smtp_port,
         secure: settings.smtp_secure,
@@ -4726,7 +4726,7 @@ app.post("/api/mail/test-connection", async (req, res) => {
     
     const nodemailer = require('nodemailer');
     
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: smtp_host,
       port: smtp_port,
       secure: smtp_secure,
