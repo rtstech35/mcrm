@@ -128,7 +128,7 @@
                 // Sipariş kalemlerini al
                 const orderItems = await apiCall(`/api/order-items/${orderId}`);
 
-                displayOrderData(orderData, customer, orderItems);
+                await displayOrderData(orderData, customer, orderItems);
 
             } catch (error) {
                 console.error('Sipariş verileri yüklenemedi:', error);
@@ -136,7 +136,7 @@
             }
         }
 
-        function displayOrderData(order, customer, items) {
+        async function displayOrderData(order, customer, items) {
             // Başlık ve durum
             document.getElementById('orderTitle').textContent = `Sipariş #${order.order_number}`;
             
@@ -172,37 +172,68 @@
                 <p><strong>Durum:</strong> ${getCustomerStatusText(customer.customer_status)}</p>
             `;
 
-            // Sipariş kalemleri
+            // Sipariş kalemleri - Gerçek ürün bilgileriyle birlikte yükle
             if (items && items.length > 0) {
-                let itemsHtml = '';
-                let totalAmount = 0;
-                
-                items.forEach(item => {
-                    const itemTotal = item.quantity * item.unit_price;
-                    totalAmount += itemTotal;
+                try {
+                    // Her sipariş kalemi için ürün bilgilerini ayrı ayrı getir
+                    const itemsWithProducts = await Promise.all(
+                        items.map(async (item) => {
+                            try {
+                                const productResponse = await apiCall(`/api/products/${item.product_id}`);
+                                const product = productResponse.product || productResponse;
+                                return {
+                                    ...item,
+                                    product_name: product.name,
+                                    product_description: product.description,
+                                    product_unit: product.unit
+                                };
+                            } catch (error) {
+                                console.error(`Ürün ${item.product_id} bilgileri alınamadı:`, error);
+                                return {
+                                    ...item,
+                                    product_name: `Ürün ID: ${item.product_id}`,
+                                    product_description: 'Ürün bilgisi bulunamadı',
+                                    product_unit: 'adet'
+                                };
+                            }
+                        })
+                    );
+                    
+                    let itemsHtml = '';
+                    let totalAmount = 0;
+                    
+                    itemsWithProducts.forEach(item => {
+                        const itemTotal = item.quantity * item.unit_price;
+                        totalAmount += itemTotal;
+                        
+                        itemsHtml += `
+                            <div class="item-row">
+                                <div>
+                                    <strong>${item.product_name}</strong>
+                                    <p style="color: #718096; font-size: 0.875rem;">${item.product_description || ''}</p>
+                                    <p style="color: #718096; font-size: 0.75rem;">Birim: ${item.product_unit || 'adet'} | Birim Fiyat: ${parseFloat(item.unit_price).toFixed(2)} TL</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <p><strong>${item.quantity} ${item.product_unit || 'adet'}</strong></p>
+                                    <p style="color: #48bb78; font-weight: 600;">${itemTotal.toFixed(2)} TL</p>
+                                </div>
+                            </div>
+                        `;
+                    });
                     
                     itemsHtml += `
-                        <div class="item-row">
-                            <div>
-                                <strong>${item.product_name || `Ürün ID: ${item.product_id}`}</strong>
-                                <p style="color: #718096; font-size: 0.875rem;">Birim Fiyat: ${item.unit_price} TL</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <p><strong>${item.quantity} adet</strong></p>
-                                <p style="color: #48bb78; font-weight: 600;">${itemTotal.toFixed(2)} TL</p>
-                            </div>
+                        <div class="item-row" style="background: #f8f9fa; font-weight: 600;">
+                            <div>TOPLAM</div>
+                            <div style="text-align: right; color: #48bb78;">${totalAmount.toFixed(2)} TL</div>
                         </div>
                     `;
-                });
-                
-                itemsHtml += `
-                    <div class="item-row" style="background: #f8f9fa; font-weight: 600;">
-                        <div>TOPLAM</div>
-                        <div style="text-align: right; color: #48bb78;">${totalAmount.toFixed(2)} TL</div>
-                    </div>
-                `;
-                
-                document.getElementById('orderItems').innerHTML = itemsHtml;
+                    
+                    document.getElementById('orderItems').innerHTML = itemsHtml;
+                } catch (error) {
+                    console.error('Ürün bilgileri yüklenirken hata:', error);
+                    document.getElementById('orderItems').innerHTML = 
+                        '<p style="text-align: center; color: #e53e3e; padding: 2rem;">Ürün bilgileri yüklenemedi</p>';
+                }
             } else {
                 document.getElementById('orderItems').innerHTML = 
                     '<p style="text-align: center; color: #718096; padding: 2rem;">Sipariş kalemleri bulunamadı</p>';

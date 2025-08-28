@@ -193,8 +193,34 @@
                     <p style="font-size: 1.2rem; font-weight: 600; color: #155724;"><strong>Toplam: ${order.total_amount} TL</strong></p>
                 `;
 
-                // Sipariş kalemleri
+                // Sipariş kalemleri - Gerçek ürün bilgileriyle birlikte yükle
+                let orderItemsHtml = '';
+                
                 if (items && items.length > 0) {
+                    // Her sipariş kalemi için ürün bilgilerini ayrı ayrı getir
+                    const itemsWithProducts = await Promise.all(
+                        items.map(async (item) => {
+                            try {
+                                const productResponse = await apiCall(`/api/products/${item.product_id}`);
+                                const product = productResponse.product || productResponse;
+                                return {
+                                    ...item,
+                                    product_name: product.name,
+                                    product_description: product.description,
+                                    product_unit: product.unit
+                                };
+                            } catch (error) {
+                                console.error(`Ürün ${item.product_id} bilgileri alınamadı:`, error);
+                                return {
+                                    ...item,
+                                    product_name: `Ürün ID: ${item.product_id}`,
+                                    product_description: 'Ürün bilgisi bulunamadı',
+                                    product_unit: 'adet'
+                                };
+                            }
+                        })
+                    );
+                    
                     let itemsHtml = `
                         <table style="width: 100%; border-collapse: collapse;">
                             <thead>
@@ -210,21 +236,22 @@
                     
                     let totalAmount = 0;
                     
-                    items.forEach(item => {
+                    itemsWithProducts.forEach(item => {
                         const itemTotal = item.quantity * item.unit_price;
                         totalAmount += itemTotal;
                         
                         itemsHtml += `
                             <tr>
                                 <td style="padding: 1rem; border-bottom: 1px solid #e2e8f0;">
-                                    <strong>${item.product_name || `Ürün ID: ${item.product_id}`}</strong>
-                                    <div style="color: #718096; font-size: 0.875rem;">${item.unit || 'adet'}</div>
+                                    <strong>${item.product_name}</strong>
+                                    <div style="color: #718096; font-size: 0.875rem;">${item.product_description || ''}</div>
+                                    <div style="color: #718096; font-size: 0.75rem;">Birim: ${item.product_unit || 'adet'}</div>
                                 </td>
                                 <td style="padding: 1rem; text-align: center; border-bottom: 1px solid #e2e8f0;">
                                     <strong>${item.quantity}</strong>
                                 </td>
                                 <td style="padding: 1rem; text-align: right; border-bottom: 1px solid #e2e8f0;">
-                                    ${item.unit_price} TL
+                                    ${parseFloat(item.unit_price).toFixed(2)} TL
                                 </td>
                                 <td style="padding: 1rem; text-align: right; border-bottom: 1px solid #e2e8f0; font-weight: 600;">
                                     ${itemTotal.toFixed(2)} TL
