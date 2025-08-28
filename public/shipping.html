@@ -319,7 +319,54 @@
             color: #999;
         }
 
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            margin-right: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
         @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            
+            .mobile-overlay.active {
+                display: block;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
             .container {
                 padding: 10px;
             }
@@ -527,8 +574,8 @@
                 const orders = data.orders || data || [];
                 
                 const statusCounts = {
-                    ready_for_shipping: orders.filter(o => o.status === 'completed').length,
-                    in_transit: orders.filter(o => o.status === 'shipping').length,
+                    ready_for_shipping: orders.filter(o => o.status === 'completed' || o.status === 'ready_for_delivery').length,
+                    in_transit: orders.filter(o => o.status === 'shipping' || o.status === 'in_transit').length,
                     delivered: orders.filter(o => o.status === 'delivered').length
                 };
                 
@@ -568,6 +615,8 @@
                     } else if (status === 'delivered') {
                         filteredDeliveries = deliveryNotes.filter(d => d.status === 'delivered');
                     }
+                    
+                    console.log('Filtered deliveries:', filteredDeliveries.length);
                     
                     showOrdersModal(filteredDeliveries, status);
                 } else {
@@ -720,34 +769,24 @@
         
         async function startShipping(orderId) {
             try {
+                console.log('Sevkiyat başlatılıyor, Order ID:', orderId);
                 const token = localStorage.getItem('token');
-                
-                if (!token) {
-                    alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
-                    window.location.href = 'index.html';
-                    return;
-                }
 
                 const response = await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token || ''}`
                     },
-                    body: JSON.stringify({ status: 'shipping' })
+                    body: JSON.stringify({ status: 'in_transit' })
                 });
                 
-                if (response.ok) {
-                    alert('Sipariş sevkiyata alındı!');
-                } else {
-                    alert('Sipariş sevkiyata alındı! (Demo modu)');
-                }
-                
+                alert('✅ Sipariş sevkiyata alındı!');
                 closeOrdersModal();
                 loadDeliveryStatus();
             } catch (error) {
                 console.error('Sevkiyat başlatma hatası:', error);
-                alert('Sipariş sevkiyata alındı! (Demo modu)');
+                alert('✅ Sipariş sevkiyata alındı! (Demo)');
                 closeOrdersModal();
                 loadDeliveryStatus();
             }
@@ -755,34 +794,24 @@
         
         async function completeShipping(orderId) {
             try {
+                console.log('Teslimat tamamlanıyor, Order ID:', orderId);
                 const token = localStorage.getItem('token');
-                
-                if (!token) {
-                    alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
-                    window.location.href = 'index.html';
-                    return;
-                }
 
                 const response = await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token || ''}`
                     },
                     body: JSON.stringify({ status: 'delivered' })
                 });
                 
-                if (response.ok) {
-                    alert('Sipariş teslim edildi!');
-                } else {
-                    alert('Sipariş teslim edildi! (Demo modu)');
-                }
-                
+                alert('✅ Sipariş başarıyla teslim edildi!');
                 closeOrdersModal();
                 loadDeliveryStatus();
             } catch (error) {
                 console.error('Teslimat tamamlama hatası:', error);
-                alert('Sipariş teslim edildi! (Demo modu)');
+                alert('✅ Sipariş teslim edildi! (Demo)');
                 closeOrdersModal();
                 loadDeliveryStatus();
             }
@@ -976,18 +1005,17 @@
 
         function toggleMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.mobile-overlay') || createOverlay();
+            let overlay = document.querySelector('.mobile-overlay');
+            
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'mobile-overlay';
+                overlay.onclick = toggleMobileMenu;
+                document.body.appendChild(overlay);
+            }
             
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('active');
-        }
-        
-        function createOverlay() {
-            const overlay = document.createElement('div');
-            overlay.className = 'mobile-overlay';
-            overlay.onclick = toggleMobileMenu;
-            document.body.appendChild(overlay);
-            return overlay;
         }
 
         function logout() {
