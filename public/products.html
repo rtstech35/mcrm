@@ -85,20 +85,50 @@
                     <a class="nav-link" href="/admin">
                         <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                     </a>
-                    <a class="nav-link" href="/public/customers.html">
+                    <a class="nav-link" href="#" onclick="showCustomers()">
                         <i class="fas fa-users me-2"></i> Müşteriler
                     </a>
-                    <a class="nav-link active" href="/public/products.html">
+                    <a class="nav-link active" href="/products.html">
                         <i class="fas fa-box me-2"></i> Ürünler
                     </a>
-                    <a class="nav-link" href="/public/orders.html">
+                    <a class="nav-link" href="#" onclick="showOrders()">
                         <i class="fas fa-shopping-cart me-2"></i> Siparişler
                     </a>
-                    <a class="nav-link" href="/public/shipping.html">
+                    <a class="nav-link" href="/shipping.html">
                         <i class="fas fa-truck me-2"></i> Sevkiyat
                     </a>
-                    <a class="nav-link" href="/public/users.html">
+                    <a class="nav-link" href="/production.html">
+                        <i class="fas fa-cogs me-2"></i> Üretim
+                    </a>
+                    <a class="nav-link" href="/accounting.html">
+                        <i class="fas fa-calculator me-2"></i> Muhasebe
+                    </a>
+                    <a class="nav-link" href="#" onclick="showUsers()">
                         <i class="fas fa-user-cog me-2"></i> Kullanıcılar
+                    </a>
+                    <a class="nav-link" href="#" onclick="showDepartments()">
+                        <i class="fas fa-building me-2"></i> Departmanlar
+                    </a>
+                    <a class="nav-link" href="#" onclick="showRoles()">
+                        <i class="fas fa-shield-alt me-2"></i> Roller
+                    </a>
+                    <a class="nav-link" href="#" onclick="showTargets()">
+                        <i class="fas fa-bullseye me-2"></i> Hedefler
+                    </a>
+                    <a class="nav-link" href="#" onclick="showDeliveryNotes()">
+                        <i class="fas fa-file-alt me-2"></i> İrsaliyeler
+                    </a>
+                    <a class="nav-link" href="#" onclick="showAppointments()">
+                        <i class="fas fa-calendar-alt me-2"></i> Randevular
+                    </a>
+                    <a class="nav-link" href="/map.html">
+                        <i class="fas fa-map-marker-alt me-2"></i> Harita
+                    </a>
+                    <a class="nav-link" href="/setup.html">
+                        <i class="fas fa-cog me-2"></i> Ayarlar
+                    </a>
+                    <a class="nav-link" href="#" onclick="logout()" style="margin-top: 2rem; opacity: 0.7;">
+                        <i class="fas fa-sign-out-alt me-2"></i> Çıkış
                     </a>
                 </nav>
             </div>
@@ -659,6 +689,45 @@
             document.getElementById('modalTitle').textContent = 'Yeni Ürün Ekle';
             document.getElementById('priceWithVat').value = '';
         });
+
+        // Admin fonksiyonları
+        async function showCustomers() {
+            window.location.href = '/admin#customers';
+        }
+
+        async function showOrders() {
+            window.location.href = '/admin#orders';
+        }
+
+        async function showUsers() {
+            window.location.href = '/admin#users';
+        }
+
+        async function showDepartments() {
+            window.location.href = '/admin#departments';
+        }
+
+        async function showRoles() {
+            window.location.href = '/admin#roles';
+        }
+
+        async function showTargets() {
+            window.location.href = '/admin#targets';
+        }
+
+        async function showDeliveryNotes() {
+            window.location.href = '/admin#delivery-notes';
+        }
+
+        async function showAppointments() {
+            window.location.href = '/admin#appointments';
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/';
+        }
     </script>
 </body>
 </html>

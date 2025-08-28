@@ -11,16 +11,114 @@
         .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin: 10px 0; }
         .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 4px; margin: 10px 0; }
         .loading { color: #666; }
+        .tabs { display: flex; margin: 20px 0; border-bottom: 2px solid #ddd; }
+        .tab-btn { padding: 10px 20px; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { border-bottom-color: #007bff; color: #007bff; font-weight: bold; }
+        .tab-content { display: none; padding: 20px 0; }
+        .tab-content.active { display: block; }
+        .form-group { margin: 15px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
+        .test-section h3 { margin-top: 0; color: #333; }
+        .test-section p { color: #666; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <h1>🔧 Saha CRM Database Setup</h1>
+    <h1>🔧 Saha CRM Sistem Ayarları</h1>
     
-    <div id="status"></div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('database')">📋 Database</button>
+        <button class="tab-btn" onclick="showTab('mail')">📧 Mail Ayarları</button>
+        <button class="tab-btn" onclick="showTab('testdata')">🎯 Test Verileri</button>
+    </div>
     
-    <button class="btn" onclick="setupDatabase()">📋 Database Kur</button>
-    <button class="btn" onclick="checkHealth()">🏥 Sistem Kontrolü</button>
-    <button class="btn" onclick="resetDatabase()">🗑️ Database Sıfırla</button>
+    <!-- Database Tab -->
+    <div id="database-tab" class="tab-content active">
+        <h2>Database Yönetimi</h2>
+        <div id="status"></div>
+        
+        <button class="btn" onclick="setupDatabase()">📋 Database Kur</button>
+        <button class="btn" onclick="checkHealth()">🏥 Sistem Kontrolü</button>
+        <button class="btn" onclick="resetDatabase()">🗑️ Database Sıfırla</button>
+    </div>
+    
+    <!-- Mail Tab -->
+    <div id="mail-tab" class="tab-content">
+        <h2>SMTP Ayarları</h2>
+        <form id="smtpForm">
+            <div class="form-group">
+                <label>SMTP Sunucu:</label>
+                <input type="text" id="smtp_host" placeholder="smtp.gmail.com">
+            </div>
+            <div class="form-group">
+                <label>Port:</label>
+                <input type="number" id="smtp_port" value="587">
+            </div>
+            <div class="form-group">
+                <label>E-posta:</label>
+                <input type="email" id="smtp_user" placeholder="firma@example.com">
+            </div>
+            <div class="form-group">
+                <label>Şifre:</label>
+                <input type="password" id="smtp_pass">
+            </div>
+            <div class="form-group">
+                <label>Gönderen Adı:</label>
+                <input type="text" id="from_name" placeholder="Saha CRM">
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="smtp_secure"> SSL/TLS</label>
+            </div>
+            <button type="button" onclick="testConnection()" class="btn">🔧 Test</button>
+            <button type="submit" class="btn">💾 Kaydet</button>
+        </form>
+        
+        <h3>Test Mail Gönder</h3>
+        <form id="testMailForm">
+            <div class="form-group">
+                <label>Test E-posta:</label>
+                <input type="email" id="test_email" required>
+            </div>
+            <button type="submit" class="btn">📧 Test Gönder</button>
+        </form>
+    </div>
+    
+    <!-- Test Data Tab -->
+    <div id="testdata-tab" class="tab-content">
+        <h2>Test Verileri Yönetimi</h2>
+        <div id="testStatus"></div>
+        
+        <div class="test-section">
+            <h3>👥 Kullanıcı Verileri</h3>
+            <p>Her departmandan test kullanıcısı oluşturur (Sifre: 123456)</p>
+            <button class="btn" onclick="createTestUsers()">👥 Test Kullanıcıları Oluştur</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>🏢 Müşteri Verileri</h3>
+            <p>Farklı sektörlerden örnek müşteriler oluşturur</p>
+            <button class="btn" onclick="createTestCustomers()">🏢 Test Müşterileri Oluştur</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📦 Ürün Verileri</h3>
+            <p>Farklı kategorilerden örnek ürünler oluşturur</p>
+            <button class="btn" onclick="createTestProducts()">📦 Test Ürünleri Oluştur</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Sipariş Verileri</h3>
+            <p>Farklı durumlarda örnek siparişler oluşturur</p>
+            <button class="btn" onclick="createTestOrders()">📋 Test Siparişleri Oluştur</button>
+        </div>
+        
+        <div class="test-section" style="border-top: 2px solid #dc3545; padding-top: 20px; margin-top: 30px;">
+            <h3 style="color: #dc3545;">🗑️ Tüm Test Verilerini Sil</h3>
+            <p style="color: #dc3545;">Dikkat: Bu işlem tüm test verilerini kalici olarak siler!</p>
+            <button class="btn" style="background: #dc3545;" onclick="clearTestData()">🗑️ Test Verilerini Temizle</button>
+        </div>
+    </div>
     
     <hr>
     <p><a href="/admin.html">← Admin Paneline Dön</a></p>
@@ -90,6 +188,161 @@
                 } else {
                     status.innerHTML = `<div class="error">❌ ${result.error}</div>`;
                 }
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        // Tab fonksiyonları
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+        
+        // Mail fonksiyonları
+        document.getElementById('smtpForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const settings = {
+                smtp_host: document.getElementById('smtp_host').value,
+                smtp_port: parseInt(document.getElementById('smtp_port').value),
+                smtp_user: document.getElementById('smtp_user').value,
+                smtp_pass: document.getElementById('smtp_pass').value,
+                from_name: document.getElementById('from_name').value,
+                smtp_secure: document.getElementById('smtp_secure').checked
+            };
+            
+            try {
+                const response = await fetch('/api/mail/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const result = await response.json();
+                alert(result.success ? 'SMTP ayarları kaydedildi!' : 'Hata: ' + result.error);
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        document.getElementById('testMailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const testData = {
+                to_email: document.getElementById('test_email').value,
+                subject: 'Test Mail - Saha CRM',
+                message: 'Bu bir test mailidir.'
+            };
+            
+            try {
+                const response = await fetch('/api/mail/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                const result = await response.json();
+                alert(result.success ? 'Test mail gönderildi!' : 'Hata: ' + result.error);
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+        
+        async function testConnection() {
+            const settings = {
+                smtp_host: document.getElementById('smtp_host').value,
+                smtp_port: parseInt(document.getElementById('smtp_port').value),
+                smtp_user: document.getElementById('smtp_user').value,
+                smtp_pass: document.getElementById('smtp_pass').value,
+                smtp_secure: document.getElementById('smtp_secure').checked
+            };
+            
+            try {
+                const response = await fetch('/api/mail/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const result = await response.json();
+                alert(result.success ? '✅ SMTP bağlantısı başarılı!' : '❌ Bağlantı hatası: ' + result.error);
+            } catch (error) {
+                alert('❌ Test hatası: ' + error.message);
+            }
+        }
+        
+        // Test veri fonksiyonları
+        async function createTestUsers() {
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="loading">⏳ Test kullanıcıları oluşturuluyor...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/create-test-users', { method: 'POST' });
+                const result = await response.json();
+                status.innerHTML = result.success ? 
+                    `<div class="success">✅ ${result.message}</div>` :
+                    `<div class="error">❌ ${result.error}</div>`;
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        async function createTestCustomers() {
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="loading">⏳ Test müşterileri oluşturuluyor...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/create-test-customers', { method: 'POST' });
+                const result = await response.json();
+                status.innerHTML = result.success ? 
+                    `<div class="success">✅ ${result.message}</div>` :
+                    `<div class="error">❌ ${result.error}</div>`;
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        async function createTestProducts() {
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="loading">⏳ Test ürünleri oluşturuluyor...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/create-test-products', { method: 'POST' });
+                const result = await response.json();
+                status.innerHTML = result.success ? 
+                    `<div class="success">✅ ${result.message}</div>` :
+                    `<div class="error">❌ ${result.error}</div>`;
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        async function createTestOrders() {
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="loading">⏳ Test siparişleri oluşturuluyor...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/create-test-orders', { method: 'POST' });
+                const result = await response.json();
+                status.innerHTML = result.success ? 
+                    `<div class="success">✅ ${result.message}</div>` :
+                    `<div class="error">❌ ${result.error}</div>`;
+            } catch (error) {
+                status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
+            }
+        }
+        
+        async function clearTestData() {
+            if (!confirm('Tüm test verileri silinecek! Emin misiniz?')) return;
+            
+            const status = document.getElementById('testStatus');
+            status.innerHTML = '<div class="loading">⏳ Test verileri temizleniyor...</div>';
+            
+            try {
+                const response = await fetch('/api/setup/clear-test-data', { method: 'POST' });
+                const result = await response.json();
+                status.innerHTML = result.success ? 
+                    `<div class="success">✅ ${result.message}</div>` :
+                    `<div class="error">❌ ${result.error}</div>`;
             } catch (error) {
                 status.innerHTML = `<div class="error">❌ Hata: ${error.message}</div>`;
             }
