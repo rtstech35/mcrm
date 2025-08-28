@@ -4582,7 +4582,7 @@ app.get("/api/stats", async (req, res) => {
 
 // ---------------- MAIL SYSTEM ---------------- //
 // Mail ayarları kaydet
-app.post("/api/mail/settings", authenticateToken, async (req, res) => {
+app.post("/api/mail/settings", async (req, res) => {
   try {
     const { smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure } = req.body;
     
@@ -4612,7 +4612,7 @@ app.post("/api/mail/settings", authenticateToken, async (req, res) => {
         from_name = EXCLUDED.from_name,
         smtp_secure = EXCLUDED.smtp_secure,
         updated_at = CURRENT_TIMESTAMP
-    `, [smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure, req.user.userId]);
+    `, [smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure, 1]);
     
     res.json({ success: true, message: 'Mail ayarları kaydedildi' });
   } catch (error) {
@@ -4621,7 +4621,7 @@ app.post("/api/mail/settings", authenticateToken, async (req, res) => {
 });
 
 // Mail ayarlarını getir
-app.get("/api/mail/settings", authenticateToken, async (req, res) => {
+app.get("/api/mail/settings", async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
     res.json({ success: true, settings: result.rows[0] || null });
@@ -4631,7 +4631,7 @@ app.get("/api/mail/settings", authenticateToken, async (req, res) => {
 });
 
 // Gönderilen mailleri listele
-app.get("/api/mail/sent", authenticateToken, async (req, res) => {
+app.get("/api/mail/sent", async (req, res) => {
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS sent_mails (
@@ -4703,14 +4703,14 @@ app.post("/api/mail/test", async (req, res) => {
       await pool.query(`
         INSERT INTO sent_mails (to_email, subject, body, status, sent_by)
         VALUES ($1, $2, $3, 'sent', $4)
-      `, [to_email, subject, message, req.user.userId]);
+      `, [to_email, subject, message, 1]);
       
       res.json({ success: true, message: 'Test mail başarıyla gönderildi' });
     } catch (mailError) {
       await pool.query(`
         INSERT INTO sent_mails (to_email, subject, body, status, error_message, sent_by)
         VALUES ($1, $2, $3, 'failed', $4, $5)
-      `, [to_email, subject, message, mailError.message, req.user.userId]);
+      `, [to_email, subject, message, mailError.message, 1]);
       
       throw mailError;
     }
