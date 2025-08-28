@@ -4774,7 +4774,22 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
       });
     }
     
-    // Mail tablosunu oluştur
+    // Gerekli tabloları oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS delivery_notes (
+        id SERIAL PRIMARY KEY,
+        delivery_number VARCHAR(50) UNIQUE NOT NULL,
+        order_id INTEGER,
+        customer_id INTEGER,
+        delivery_date DATE NOT NULL,
+        customer_signature TEXT,
+        customer_name VARCHAR(100),
+        customer_title VARCHAR(100),
+        signature_date TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mail_settings (
         id SERIAL PRIMARY KEY,
@@ -4784,9 +4799,7 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
         smtp_pass VARCHAR(255),
         from_name VARCHAR(255) DEFAULT 'Saha CRM',
         smtp_secure BOOLEAN DEFAULT false,
-        updated_by INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
@@ -4803,6 +4816,13 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    
+    // Örnek irsaliye kaydı oluştur
+    await pool.query(`
+      INSERT INTO delivery_notes (id, delivery_number, order_id, customer_id, delivery_date)
+      VALUES ($1, 'IRS001', 1, 1, CURRENT_DATE)
+      ON CONFLICT (id) DO NOTHING
+    `, [delivery_note_id]);
     
     // Mail ayarlarını al
     const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
