@@ -208,11 +208,11 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="admin.html" class="nav-link">
+                <a href="production-orders.html" class="nav-link">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Siparişler</span>
                 </a>
-                <a href="admin.html" class="nav-link">
+                <a href="production-customers.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
                     <span class="nav-text">Müşteriler</span>
                 </a>
@@ -462,17 +462,73 @@
         function showSampleOrders(status) {
             const sampleOrders = {
                 pending: [
-                    { id: 1, order_number: 'SIP001', company_name: 'ABC Teknoloji', total_amount: 15000, order_date: '2024-01-15', notes: 'Acil sipariş' },
-                    { id: 2, order_number: 'SIP002', company_name: 'XYZ İnşaat', total_amount: 25000, order_date: '2024-01-16', notes: 'Standart üretim' }
+                    { 
+                        id: 1, 
+                        order_number: 'SIP001', 
+                        company_name: 'ABC Teknoloji', 
+                        total_amount: 15000, 
+                        order_date: '2024-01-15', 
+                        notes: 'Acil sipariş',
+                        products: [
+                            { name: 'Demir Profil 40x40', quantity: 50, unit: 'adet' },
+                            { name: 'Çelik Levha 2mm', quantity: 25, unit: 'm²' }
+                        ]
+                    },
+                    { 
+                        id: 2, 
+                        order_number: 'SIP002', 
+                        company_name: 'XYZ İnşaat', 
+                        total_amount: 25000, 
+                        order_date: '2024-01-16', 
+                        notes: 'Standart üretim',
+                        products: [
+                            { name: 'Beton Blok 20x20x40', quantity: 100, unit: 'adet' },
+                            { name: 'Demir Çubuk 12mm', quantity: 200, unit: 'metre' }
+                        ]
+                    }
                 ],
                 production: [
-                    { id: 3, order_number: 'SIP003', company_name: 'Mavi Deniz', total_amount: 18000, order_date: '2024-01-14', notes: 'Üretimde' }
+                    { 
+                        id: 3, 
+                        order_number: 'SIP003', 
+                        company_name: 'Mavi Deniz', 
+                        total_amount: 18000, 
+                        order_date: '2024-01-14', 
+                        notes: 'Üretimde',
+                        products: [
+                            { name: 'Alüminyum Kasa', quantity: 10, unit: 'adet' },
+                            { name: 'Plastik Kapı', quantity: 15, unit: 'adet' }
+                        ]
+                    }
                 ],
                 completed: [
-                    { id: 4, order_number: 'SIP004', company_name: 'Altın Gıda', total_amount: 12000, order_date: '2024-01-10', notes: 'Tamamlandı' }
+                    { 
+                        id: 4, 
+                        order_number: 'SIP004', 
+                        company_name: 'Altın Gıda', 
+                        total_amount: 12000, 
+                        order_date: '2024-01-10', 
+                        notes: 'Tamamlandı',
+                        products: [
+                            { name: 'Paslanmaz Çelik Tank', quantity: 2, unit: 'adet' },
+                            { name: 'Filtre Sistemi', quantity: 5, unit: 'adet' }
+                        ]
+                    }
                 ],
                 ready_for_delivery: [
-                    { id: 5, order_number: 'SIP005', company_name: 'Yeşil Enerji', total_amount: 30000, order_date: '2024-01-08', notes: 'Teslimat hazır' }
+                    { 
+                        id: 5, 
+                        order_number: 'SIP005', 
+                        company_name: 'Yeşil Enerji', 
+                        total_amount: 30000, 
+                        order_date: '2024-01-08', 
+                        notes: 'Teslimat hazır',
+                        products: [
+                            { name: 'Solar Panel 300W', quantity: 20, unit: 'adet' },
+                            { name: 'Inverter 5kW', quantity: 2, unit: 'adet' },
+                            { name: 'Montaj Malzemesi', quantity: 1, unit: 'set' }
+                        ]
+                    }
                 ]
             };
             
@@ -500,9 +556,20 @@
                             <span class="order-date" style="color: #666; font-size: 14px;">${formatDate(order.order_date)}</span>
                         </div>
                         <div class="order-details" style="margin-bottom: 15px;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                                 <p style="margin: 0; color: #555;"><strong>Müşteri:</strong><br><span style="color: #333;">${order.company_name || 'Bilinmiyor'}</span></p>
                                 <p style="margin: 0; color: #555;"><strong>Tutar:</strong><br><span style="color: #28a745; font-weight: bold;">₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</span></p>
+                            </div>
+                            <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                                <strong style="color: #495057; font-size: 14px;">📦 Ürün Listesi:</strong>
+                                <div style="margin-top: 8px;">
+                                    ${(order.products || []).map(product => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #dee2e6;">
+                                            <span style="color: #333; font-weight: 500;">${product.name}</span>
+                                            <span style="color: #6c757d; font-size: 13px;">${product.quantity} ${product.unit}</span>
+                                        </div>
+                                    `).join('') || '<span style="color: #6c757d; font-style: italic;">Ürün bilgisi yok</span>'}
+                                </div>
                             </div>
                             <p style="margin: 0; color: #555;"><strong>Notlar:</strong><br><span style="color: #666; font-style: italic;">${order.notes || 'Herhangi bir not bulunmuyor'}</span></p>
                         </div>
