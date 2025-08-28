@@ -114,7 +114,6 @@
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authToken}`,
                     ...options.headers
                 }
             });
@@ -300,10 +299,15 @@
             }
 
             try {
-                const result = await apiCall('/api/mail/test-connection', {
+                const response = await fetch('/api/mail/test-connection', {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(settings)
                 });
+
+                const result = await response.json();
 
                 if (result.success) {
                     alert('✅ SMTP bağlantısı başarılı! Ayarları kaydedebilirsiniz.');
