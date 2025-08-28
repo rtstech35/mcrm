@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siparişler - Sevkiyat Paneli</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #0056b3; }
+        .order-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .status { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .status.ready { background: #d4edda; color: #155724; }
+        .status.shipping { background: #fff3cd; color: #856404; }
+        .status.delivered { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sevkiyat Siparişleri</h1>
+            <a href="shipping.html" class="btn">← Geri Dön</a>
+        </div>
+        
+        <div class="order-card">
+            <h3>SIP004 - Altın Gıda</h3>
+            <span class="status ready">Sevkiyat Hazır</span>
+            <p>Ürünler: Paslanmaz Çelik Tank (2 adet), Filtre Sistemi (5 adet)</p>
+            <p>Tarih: 10.01.2024</p>
+        </div>
+        
+        <div class="order-card">
+            <h3>SIP005 - Yeşil Enerji</h3>
+            <span class="status ready">Sevkiyat Hazır</span>
+            <p>Ürünler: Solar Panel 300W (20 adet), Inverter 5kW (2 adet)</p>
+            <p>Tarih: 08.01.2024</p>
+        </div>
+    </div>
+</body>
+</html>

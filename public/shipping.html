@@ -357,17 +357,17 @@
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="delivery-notes.html" class="nav-link">
-                    <span class="nav-icon">📋</span>
-                    <span class="nav-text">İrsaliyeler</span>
-                </a>
-                <a href="orders.html" class="nav-link">
+                <a href="shipping-orders.html" class="nav-link">
                     <span class="nav-icon">📦</span>
                     <span class="nav-text">Siparişler</span>
                 </a>
-                <a href="customers.html" class="nav-link">
+                <a href="shipping-customers.html" class="nav-link">
                     <span class="nav-icon">👥</span>
                     <span class="nav-text">Müşteriler</span>
+                </a>
+                <a href="delivery-notes.html" class="nav-link">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">İrsaliyeler</span>
                 </a>
                 <a href="#" onclick="logout()" class="nav-link">
                     <span class="nav-icon">🚪</span>
@@ -594,15 +594,42 @@
         function showSampleOrders(status) {
             const sampleOrders = {
                 ready_for_shipping: [
-                    { id: 1, order_number: 'SIP001', company_name: 'ABC Teknoloji', total_amount: 15000, order_date: '2024-01-15' },
-                    { id: 2, order_number: 'SIP002', company_name: 'XYZ İnşaat', total_amount: 25000, order_date: '2024-01-16' }
+                    { 
+                        id: 4, 
+                        order_number: 'SIP004', 
+                        company_name: 'Altın Gıda', 
+                        total_amount: 12000, 
+                        order_date: '2024-01-10',
+                        products: 'Paslanmaz Çelik Tank (2 adet), Filtre Sistemi (5 adet)'
+                    },
+                    { 
+                        id: 5, 
+                        order_number: 'SIP005', 
+                        company_name: 'Yeşil Enerji', 
+                        total_amount: 30000, 
+                        order_date: '2024-01-08',
+                        products: 'Solar Panel 300W (20 adet), Inverter 5kW (2 adet)'
+                    }
                 ],
                 in_transit: [
-                    { id: 3, order_number: 'SIP003', company_name: 'Mavi Deniz Lojistik', total_amount: 18000, order_date: '2024-01-14' }
+                    { 
+                        id: 6, 
+                        order_number: 'SIP006', 
+                        company_name: 'Mavi Deniz', 
+                        total_amount: 18000, 
+                        order_date: '2024-01-14',
+                        products: 'Alüminyum Kasa (10 adet)'
+                    }
                 ],
                 delivered: [
-                    { id: 4, order_number: 'SIP004', company_name: 'Altın Gıda', total_amount: 12000, order_date: '2024-01-10' },
-                    { id: 5, order_number: 'SIP005', company_name: 'Yeşil Enerji', total_amount: 30000, order_date: '2024-01-08' }
+                    { 
+                        id: 7, 
+                        order_number: 'SIP007', 
+                        company_name: 'ABC Teknoloji', 
+                        total_amount: 15000, 
+                        order_date: '2024-01-05',
+                        products: 'Demir Profil (50 adet)'
+                    }
                 ]
             };
             
