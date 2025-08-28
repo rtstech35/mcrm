@@ -4817,12 +4817,32 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
       );
     `);
     
+    // Order_items tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER,
+        product_name VARCHAR(200) NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        unit VARCHAR(20) DEFAULT 'adet',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
     // Örnek irsaliye kaydı oluştur
     await pool.query(`
       INSERT INTO delivery_notes (id, delivery_number, order_id, customer_id, delivery_date)
       VALUES ($1, 'IRS001', 1, 1, CURRENT_DATE)
       ON CONFLICT (id) DO NOTHING
     `, [delivery_note_id]);
+    
+    // Örnek order_items ekle
+    await pool.query(`
+      INSERT INTO order_items (order_id, product_name, quantity, unit)
+      VALUES (1, 'Demir Profil 40x40', 10, 'adet'),
+             (1, 'Çelik Levha 2mm', 5, 'm²')
+      ON CONFLICT DO NOTHING
+    `);
     
     // Mail ayarlarını al
     const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
@@ -4856,14 +4876,16 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
     
     // Sipariş kalemlerini al
     let orderItems = [];
-    if (delivery.order_id) {
+    const orderId = req.body.order_id || delivery.order_id;
+    if (orderId) {
       try {
         const itemsResult = await pool.query(`
           SELECT oi.product_name, oi.quantity, oi.unit
           FROM order_items oi
           WHERE oi.order_id = $1
-        `, [delivery.order_id]);
+        `, [orderId]);
         orderItems = itemsResult.rows;
+        console.log('Bulunan ürünler:', orderItems);
       } catch (error) {
         console.log('Sipariş kalemleri alınamadı:', error.message);
       }

@@ -928,6 +928,20 @@
                     signature_ip: 'mobile_device'
                 };
                 
+                // Delivery_notes tablosunu güncelle
+                await fetch(`/api/delivery-notes/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        customer_signature: imageData,
+                        customer_name: customerName,
+                        customer_title: customerTitle,
+                        signature_date: new Date().toISOString()
+                    })
+                });
+                
                 // Sipariş durumunu güncelle
                 const response = await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PUT',
@@ -970,6 +984,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             delivery_note_id: orderId,
+                            order_id: orderId,
                             customer_email: customerEmail
                         })
                     });
