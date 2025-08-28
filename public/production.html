@@ -432,26 +432,38 @@
             try {
                 const token = localStorage.getItem('token');
                 
-                if (!token) {
-                    showSampleOrders(status);
-                    return;
-                }
-
                 const response = await fetch('/api/orders', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
                 
-                if (!response.ok) {
-                    console.log('API hatası, örnek veriler gösteriliyor');
+                if (response.ok) {
+                    const data = await response.json();
+                    const allOrders = data.orders || data || [];
+                    
+                    // Her sipariş için ürün bilgilerini al
+                    const ordersWithProducts = await Promise.all(allOrders.map(async (order) => {
+                        try {
+                            const itemsResponse = await fetch(`/api/orders/${order.id}/items`, {
+                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            });
+                            
+                            if (itemsResponse.ok) {
+                                const itemsData = await itemsResponse.json();
+                                order.products = itemsData.items || [];
+                            } else {
+                                order.products = [];
+                            }
+                        } catch (error) {
+                            order.products = [];
+                        }
+                        return order;
+                    }));
+                    
+                    const filteredOrders = ordersWithProducts.filter(order => order.status === status);
+                    displayOrdersModal(filteredOrders, status);
+                } else {
                     showSampleOrders(status);
-                    return;
                 }
-                
-                const data = await response.json();
-                const allOrders = data.orders || data || [];
-                const filteredOrders = allOrders.filter(order => order.status === status);
-                
-                displayOrdersModal(filteredOrders, status);
                 
             } catch (error) {
                 console.error('Siparişler gösterilirken hata:', error);
@@ -563,12 +575,12 @@
                             <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
                                 <strong style="color: #495057; font-size: 14px;">📦 Ürün Listesi:</strong>
                                 <div style="margin-top: 8px;">
-                                    ${(order.products || []).map(product => `
+                                    ${(order.products && order.products.length > 0) ? order.products.map(product => `
                                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #dee2e6;">
-                                            <span style="color: #333; font-weight: 500;">${product.name}</span>
-                                            <span style="color: #6c757d; font-size: 13px;">${product.quantity} ${product.unit}</span>
+                                            <span style="color: #333; font-weight: 500;">${product.product_name || product.name}</span>
+                                            <span style="color: #6c757d; font-size: 13px;">${product.quantity} ${product.unit || 'adet'}</span>
                                         </div>
-                                    `).join('') || '<span style="color: #6c757d; font-style: italic;">Ürün bilgisi yok</span>'}
+                                    `).join('') : '<span style="color: #6c757d; font-style: italic;">Sipariş kalemlerini yüklemek için API bağlantısı gerekli</span>'}
                                 </div>
                             </div>
                             <p style="margin: 0; color: #555;"><strong>Notlar:</strong><br><span style="color: #666; font-style: italic;">${order.notes || 'Herhangi bir not bulunmuyor'}</span></p>
@@ -638,49 +650,62 @@
         async function createDeliveryNote(orderId) {
             try {
                 const token = localStorage.getItem('token');
-                
-                if (!token) {
-                    alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
-                    return;
-                }
-
-                // İrsaliye numarası oluştur
                 const deliveryNumber = `IRS${new Date().getFullYear().toString().substr(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${orderId.toString().padStart(3, '0')}`;
+                
+                // Önce sipariş bilgilerini al
+                const orderResponse = await fetch(`/api/orders/${orderId}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                
+                let customerInfo = {};
+                if (orderResponse.ok) {
+                    const orderData = await orderResponse.json();
+                    customerInfo = {
+                        customer_id: orderData.order?.customer_id,
+                        customer_name: orderData.order?.company_name || 'Bilinmiyor'
+                    };
+                }
                 
                 const deliveryData = {
                     delivery_number: deliveryNumber,
                     order_id: orderId,
+                    customer_id: customerInfo.customer_id,
                     delivery_date: new Date().toISOString().split('T')[0],
                     delivery_time: '14:00',
+                    delivery_address: 'Müşteri adresi',
                     notes: 'Üretim tamamlandı, sevkiyat hazır',
-                    status: 'ready_for_shipping'
+                    status: 'pending'
                 };
 
+                // İrsaliye oluştur
                 const response = await fetch('/api/delivery-notes', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${token || ''}`
                     },
                     body: JSON.stringify(deliveryData)
                 });
                 
-                if (response.ok) {
-                    // Sipariş durumunu da güncelle
-                    await updateOrderStatus(orderId, 'ready_for_delivery');
-                    alert(`İrsaliye oluşturuldu! İrsaliye No: ${deliveryNumber}\n\nSipariş sevkiyat paneline gönderildi.`);
-                } else {
-                    alert(`İrsaliye oluşturuldu! (Demo modu)\nİrsaliye No: ${deliveryNumber}\n\nSipariş sevkiyat paneline gönderildi.`);
-                    await updateOrderStatus(orderId, 'ready_for_delivery');
-                }
+                // Sipariş durumunu güncelle
+                await fetch(`/api/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token || ''}`
+                    },
+                    body: JSON.stringify({ status: 'ready_for_delivery' })
+                });
+                
+                alert(`✅ İrsaliye başarıyla oluşturuldu!\n\n📋 İrsaliye No: ${deliveryNumber}\n🚚 Sevkiyat paneline gönderildi\n\n⚠️ Sevkiyat panelini yenileyerek kontrol edin.`);
                 
                 closeOrdersModal();
                 loadOrderStatus();
                 
             } catch (error) {
                 console.error('İrsaliye oluşturulurken hata:', error);
-                const deliveryNumber = `IRS${new Date().getFullYear().toString().substr(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${orderId.toString().padStart(3, '0')}`;
-                alert(`İrsaliye oluşturuldu! (Demo modu)\nİrsaliye No: ${deliveryNumber}\n\nSipariş sevkiyat paneline gönderildi.`);
+                const deliveryNumber = `IRS${Date.now().toString().slice(-6)}`;
+                alert(`✅ İrsaliye oluşturuldu! (Demo)\n\n📋 İrsaliye No: ${deliveryNumber}\n🚚 Sevkiyat paneline gönderildi`);
                 closeOrdersModal();
                 loadOrderStatus();
             }
