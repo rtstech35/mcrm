@@ -4761,6 +4761,150 @@ app.post("/api/mail/test-connection", async (req, res) => {
   }
 });
 
+// Teslimat tamamlandığında mail gönder
+app.post("/api/mail/delivery-completed", async (req, res) => {
+  try {
+    console.log('📧 Teslimat tamamlama maili gönderiliyor...');
+    const { delivery_note_id, customer_email } = req.body;
+    
+    if (!delivery_note_id || !customer_email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'İrsaliye ID ve müşteri email adresi gerekli' 
+      });
+    }
+    
+    // Mail ayarlarını al
+    const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
+    if (settingsResult.rows.length === 0) {
+      console.log('⚠️ Mail ayarları bulunamadı');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Mail ayarları yapılmamış' 
+      });
+    }
+    
+    const settings = settingsResult.rows[0];
+    
+    // İrsaliye bilgilerini al
+    const deliveryResult = await pool.query(`
+      SELECT dn.*, c.company_name, c.contact_person, o.order_number
+      FROM delivery_notes dn
+      LEFT JOIN customers c ON dn.customer_id = c.id
+      LEFT JOIN orders o ON dn.order_id = o.id
+      WHERE dn.id = $1
+    `, [delivery_note_id]);
+    
+    if (deliveryResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'İrsaliye bulunamadı' 
+      });
+    }
+    
+    const delivery = deliveryResult.rows[0];
+    
+    try {
+      const nodemailer = require('nodemailer');
+      
+      // Gmail için özel ayarlar
+      const isGmail = settings.smtp_host.includes('gmail');
+      const port = parseInt(settings.smtp_port);
+      const secure = isGmail ? (port === 465) : settings.smtp_secure;
+      
+      const transporter = nodemailer.createTransport({
+        host: settings.smtp_host,
+        port: port,
+        secure: secure,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
+      
+      // Mail içeriği
+      const subject = `Teslimat Tamamlandı - ${delivery.delivery_number}`;
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2c3e50;">Teslimat Tamamlandı</h2>
+          
+          <p>Sayın <strong>${delivery.contact_person || delivery.company_name}</strong>,</p>
+          
+          <p>Aşağıdaki siparişinizin teslimatı başarıyla tamamlanmıştır:</p>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #495057;">Teslimat Bilgileri</h3>
+            <p><strong>İrsaliye No:</strong> ${delivery.delivery_number}</p>
+            <p><strong>Sipariş No:</strong> ${delivery.order_number || 'Belirtilmemiş'}</p>
+            <p><strong>Müşteri:</strong> ${delivery.company_name}</p>
+            <p><strong>Teslimat Tarihi:</strong> ${new Date().toLocaleDateString('tr-TR')}</p>
+            <p><strong>Teslimat Saati:</strong> ${new Date().toLocaleTimeString('tr-TR')}</p>
+            ${delivery.customer_name ? `<p><strong>Teslim Alan:</strong> ${delivery.customer_name}</p>` : ''}
+            ${delivery.customer_title ? `<p><strong>Görevi:</strong> ${delivery.customer_title}</p>` : ''}
+          </div>
+          
+          <p>Teslimat sırasında dijital imza alınmış olup, ürünleriniz güvenli şekilde teslim edilmiştir.</p>
+          
+          <p>Herhangi bir sorunuz olması durumunda bizimle iletişime geçebilirsiniz.</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #dee2e6;">
+          
+          <p style="color: #6c757d; font-size: 14px;">
+            Bu mail otomatik olarak gönderilmiştir.<br>
+            <strong>Saha CRM Sistemi</strong>
+          </p>
+        </div>
+      `;
+      
+      const mailOptions = {
+        from: `${settings.from_name} <${settings.smtp_user}>`,
+        to: customer_email,
+        subject: subject,
+        html: htmlContent
+      };
+      
+      console.log('📧 Mail gönderiliyor:', customer_email);
+      await transporter.sendMail(mailOptions);
+      
+      // Gönderilen mail kaydını tut
+      await pool.query(`
+        INSERT INTO sent_mails (to_email, subject, body, status, delivery_note_id, sent_by)
+        VALUES ($1, $2, $3, 'sent', $4, $5)
+      `, [customer_email, subject, htmlContent, delivery_note_id, 1]);
+      
+      console.log('✅ Teslimat maili başarıyla gönderildi');
+      
+      res.json({ 
+        success: true, 
+        message: 'Teslimat maili başarıyla gönderildi',
+        delivery_number: delivery.delivery_number,
+        customer_email: customer_email
+      });
+      
+    } catch (mailError) {
+      console.error('📧 Mail gönderme hatası:', mailError);
+      
+      // Başarısız mail kaydını tut
+      await pool.query(`
+        INSERT INTO sent_mails (to_email, subject, body, status, error_message, delivery_note_id, sent_by)
+        VALUES ($1, $2, $3, 'failed', $4, $5, $6)
+      `, [customer_email, subject, 'Mail gönderimi başarısız', mailError.message, delivery_note_id, 1]);
+      
+      throw mailError;
+    }
+    
+  } catch (error) {
+    console.error('📧 Teslimat mail API hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 // ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
 app.post("/api/create-admin", async (req, res) => {
   try {

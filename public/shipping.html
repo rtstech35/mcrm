@@ -948,23 +948,51 @@
                 
                 // Otomatik mail gönder
                 try {
+                    console.log('📧 Mail gönderimi başlatılıyor...');
+                    
+                    // Müşteri email adresini al
+                    const customerEmailResponse = await fetch(`/api/orders/${orderId}`);
+                    let customerEmail = 'musteri@example.com';
+                    
+                    if (customerEmailResponse.ok) {
+                        const orderData = await customerEmailResponse.json();
+                        if (orderData.success && orderData.order) {
+                            // Müşteri bilgilerini al
+                            const customerResponse = await fetch(`/api/customers/${orderData.order.customer_id}`);
+                            if (customerResponse.ok) {
+                                const customerData = await customerResponse.json();
+                                if (customerData.success && customerData.customer && customerData.customer.email) {
+                                    customerEmail = customerData.customer.email;
+                                }
+                            }
+                        }
+                    }
+                    
+                    console.log('📧 Mail gönderilecek adres:', customerEmail);
+                    
                     const mailResponse = await fetch('/api/mail/delivery-completed', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             delivery_note_id: orderId,
-                            customer_email: 'musteri@example.com' // Gerçek projede müşteri emaili alınacak
+                            customer_email: customerEmail
                         })
                     });
                     
                     if (mailResponse.ok) {
-                        console.log('📧 İrsaliye maili müşteriye gönderildi');
+                        const mailResult = await mailResponse.json();
+                        console.log('📧 İrsaliye maili başarıyla gönderildi:', mailResult);
+                        alert('✅ Teslimat tamamlandı ve müşteriye bilgilendirme maili gönderildi!');
+                    } else {
+                        const mailError = await mailResponse.json();
+                        console.log('📧 Mail gönderme hatası:', mailError);
+                        alert('✅ Teslimat tamamlandı! (Mail gönderiminde sorun oluştu)');
                     }
                 } catch (mailError) {
                     console.log('📧 Mail gönderme hatası:', mailError.message);
+                    alert('✅ Teslimat tamamlandı! (Mail gönderiminde sorun oluştu)');
                 }
                 
                 closeSignatureModal();
