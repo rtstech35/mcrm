@@ -4666,7 +4666,7 @@ app.get("/api/mail/sent", authenticateToken, async (req, res) => {
 });
 
 // Test mail gönder
-app.post("/api/mail/test", authenticateToken, async (req, res) => {
+app.post("/api/mail/test", async (req, res) => {
   try {
     const { to_email, subject, message } = req.body;
     
