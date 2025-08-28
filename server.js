@@ -1933,8 +1933,44 @@ app.post("/api/migrate-targets", async (req, res) => {
 });
 
 // İrsaliye Yönetimi API'leri
-app.get("/api/delivery-notes", async (req, res) => {
+app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
   try {
+    // Önce delivery_notes tablosunun varlığını kontrol et
+    const tableExists = await checkTableExists('delivery_notes');
+    
+    if (!tableExists) {
+      console.log('⚠️ Delivery_notes tablosu bulunamadı, oluşturuluyor...');
+      
+      // Tabloyu oluştur
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS delivery_notes (
+            id SERIAL PRIMARY KEY,
+            delivery_number VARCHAR(50) UNIQUE NOT NULL,
+            order_id INTEGER REFERENCES orders(id),
+            customer_id INTEGER REFERENCES customers(id),
+            delivery_date DATE NOT NULL,
+            delivery_time TIME,
+            delivered_by INTEGER REFERENCES users(id),
+            delivery_address TEXT,
+            status VARCHAR(20) DEFAULT 'ready_for_shipping',
+            notes TEXT,
+            internal_notes TEXT,
+            total_amount DECIMAL(12,2) DEFAULT 0,
+            is_invoiced BOOLEAN DEFAULT false,
+            customer_signature TEXT,
+            customer_name VARCHAR(100),
+            customer_title VARCHAR(100),
+            signature_date TIMESTAMP,
+            signature_ip VARCHAR(45),
+            created_by INTEGER REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      
+      console.log('✅ Delivery_notes tablosu oluşturuldu');
+    }
+
     const { status } = req.query;
 
     let query = `
@@ -1976,7 +2012,7 @@ app.get("/api/delivery-notes", async (req, res) => {
 });
 
 // Tek irsaliye getir
-app.get("/api/delivery-notes/:id", async (req, res) => {
+app.get("/api/delivery-notes/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -2012,7 +2048,7 @@ app.get("/api/delivery-notes/:id", async (req, res) => {
   }
 });
 
-app.get("/api/delivery-notes/generate-number", async (req, res) => {
+app.get("/api/delivery-notes/generate-number", authenticateToken, async (req, res) => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().substr(-2);
@@ -2036,7 +2072,7 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
   }
 });
 
-app.post("/api/delivery-notes", async (req, res) => {
+app.post("/api/delivery-notes", authenticateToken, async (req, res) => {
   try {
     const {
       delivery_number, order_id, customer_id, delivered_by,
@@ -2062,7 +2098,7 @@ app.post("/api/delivery-notes", async (req, res) => {
     `, [
       delivery_number, order_id || null, customer_id, delivered_by || null,
       delivery_date, delivery_time || null, delivery_address, notes, internal_notes,
-      'pending', 1 // TODO: Gerçek kullanıcı ID'si
+      'ready_for_shipping', req.user.userId
     ]);
 
     res.json({
@@ -2137,8 +2173,43 @@ app.put("/api/delivery-notes/:id", async (req, res) => {
   }
 });
 
+// İrsaliye durumu güncelle
+app.put("/api/delivery-notes/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, delivered_by } = req.body;
+
+    const result = await pool.query(`
+      UPDATE delivery_notes SET
+        status = $1,
+        delivered_by = COALESCE($2, delivered_by),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+      RETURNING *
+    `, [status, delivered_by, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'İrsaliye bulunamadı'
+      });
+    }
+
+    res.json({
+      success: true,
+      delivery_note: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Delivery Note status update hatası:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // İrsaliye sil
-app.delete("/api/delivery-notes/:id", async (req, res) => {
+app.delete("/api/delivery-notes/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
