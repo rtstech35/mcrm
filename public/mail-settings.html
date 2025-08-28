@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mail Ayarları - Saha CRM</title>
+    <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📧 Mail Ayarları</h1>
+            <div class="header-actions">
+                <button onclick="window.location.href='admin.html'" class="btn btn-secondary">Geri</button>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('settings')">SMTP Ayarları</button>
+            <button class="tab-btn" onclick="showTab('sent')">Gönderilen Mailler</button>
+            <button class="tab-btn" onclick="showTab('test')">Test Gönder</button>
+        </div>
+
+        <!-- SMTP Ayarları -->
+        <div id="settings-tab" class="tab-content active">
+            <div class="card">
+                <h3>SMTP Konfigürasyonu</h3>
+                <form id="smtpForm">
+                    <div class="form-group">
+                        <label>SMTP Sunucu:</label>
+                        <input type="text" id="smtp_host" placeholder="smtp.gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Port:</label>
+                        <input type="number" id="smtp_port" value="587" required>
+                    </div>
+                    <div class="form-group">
+                        <label>E-posta Adresi:</label>
+                        <input type="email" id="smtp_user" placeholder="firma@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Şifre/App Password:</label>
+                        <input type="password" id="smtp_pass" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Gönderen Adı:</label>
+                        <input type="text" id="from_name" placeholder="Saha CRM Sistemi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="smtp_secure"> SSL/TLS Kullan
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Ayarları Kaydet</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Gönderilen Mailler -->
+        <div id="sent-tab" class="tab-content">
+            <div class="card">
+                <h3>Gönderilen Mail Geçmişi</h3>
+                <div class="filters">
+                    <select id="statusFilter" onchange="loadSentMails()">
+                        <option value="">Tüm Durumlar</option>
+                        <option value="sent">Gönderildi</option>
+                        <option value="failed">Başarısız</option>
+                        <option value="pending">Bekliyor</option>
+                    </select>
+                    <button onclick="loadSentMails()" class="btn btn-secondary">Yenile</button>
+                </div>
+                <div id="sentMailsList">
+                    <!-- Mail listesi buraya yüklenecek -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Mail -->
+        <div id="test-tab" class="tab-content">
+            <div class="card">
+                <h3>Test Mail Gönder</h3>
+                <form id="testMailForm">
+                    <div class="form-group">
+                        <label>Alıcı E-posta:</label>
+                        <input type="email" id="test_email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Konu:</label>
+                        <input type="text" id="test_subject" value="Test Mail - Saha CRM" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mesaj:</label>
+                        <textarea id="test_message" rows="5" required>Bu bir test mailidir. SMTP ayarları çalışıyor.</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">Test Mail Gönder</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem('authToken');
+
+        if (!authToken) {
+            alert('Giriş yapmanız gerekiyor!');
+            window.location.href = 'admin.html';
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'API hatası');
+            }
+            
+            return response.json();
+        }
+
+        function showTab(tabName) {
+            // Tab butonları
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Tab içerikleri
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            if (tabName === 'sent') {
+                loadSentMails();
+            } else if (tabName === 'settings') {
+                loadSmtpSettings();
+            }
+        }
+
+        async function loadSmtpSettings() {
+            try {
+                const settings = await apiCall('/api/mail/settings');
+                if (settings.success && settings.settings) {
+                    document.getElementById('smtp_host').value = settings.settings.smtp_host || '';
+                    document.getElementById('smtp_port').value = settings.settings.smtp_port || 587;
+                    document.getElementById('smtp_user').value = settings.settings.smtp_user || '';
+                    document.getElementById('smtp_pass').value = settings.settings.smtp_pass || '';
+                    document.getElementById('from_name').value = settings.settings.from_name || '';
+                    document.getElementById('smtp_secure').checked = settings.settings.smtp_secure || false;
+                }
+            } catch (error) {
+                console.log('SMTP ayarları yüklenemedi:', error.message);
+            }
+        }
+
+        async function loadSentMails() {
+            try {
+                const status = document.getElementById('statusFilter').value;
+                let url = '/api/mail/sent';
+                if (status) url += `?status=${status}`;
+
+                const response = await apiCall(url);
+                const mails = response.mails || [];
+
+                let html = '';
+                if (mails.length === 0) {
+                    html = '<p class="no-data">Gönderilen mail bulunamadı</p>';
+                } else {
+                    html = `
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Alıcı</th>
+                                    <th>Konu</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    mails.forEach(mail => {
+                        const statusColor = mail.status === 'sent' ? '#28a745' : 
+                                          mail.status === 'failed' ? '#dc3545' : '#ffc107';
+                        const statusText = mail.status === 'sent' ? 'Gönderildi' :
+                                         mail.status === 'failed' ? 'Başarısız' : 'Bekliyor';
+
+                        html += `
+                            <tr>
+                                <td>${new Date(mail.created_at).toLocaleString('tr-TR')}</td>
+                                <td>${mail.to_email}</td>
+                                <td>${mail.subject}</td>
+                                <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+                                <td>
+                                    <button onclick="viewMail(${mail.id})" class="btn btn-sm btn-primary">Görüntüle</button>
+                                    ${mail.status === 'failed' ? `<button onclick="resendMail(${mail.id})" class="btn btn-sm btn-warning">Tekrar Gönder</button>` : ''}
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                }
+
+                document.getElementById('sentMailsList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('sentMailsList').innerHTML = `<p class="error">Mail geçmişi yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        document.getElementById('smtpForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const settings = {
+                smtp_host: document.getElementById('smtp_host').value,
+                smtp_port: parseInt(document.getElementById('smtp_port').value),
+                smtp_user: document.getElementById('smtp_user').value,
+                smtp_pass: document.getElementById('smtp_pass').value,
+                from_name: document.getElementById('from_name').value,
+                smtp_secure: document.getElementById('smtp_secure').checked
+            };
+
+            try {
+                await apiCall('/api/mail/settings', {
+                    method: 'POST',
+                    body: JSON.stringify(settings)
+                });
+
+                alert('SMTP ayarları başarıyla kaydedildi!');
+            } catch (error) {
+                alert('Ayarlar kaydedilemedi: ' + error.message);
+            }
+        });
+
+        document.getElementById('testMailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const testData = {
+                to_email: document.getElementById('test_email').value,
+                subject: document.getElementById('test_subject').value,
+                message: document.getElementById('test_message').value
+            };
+
+            try {
+                const result = await apiCall('/api/mail/test', {
+                    method: 'POST',
+                    body: JSON.stringify(testData)
+                });
+
+                if (result.success) {
+                    alert('Test mail başarıyla gönderildi!');
+                } else {
+                    alert('Test mail gönderilemedi: ' + result.error);
+                }
+            } catch (error) {
+                alert('Test mail hatası: ' + error.message);
+            }
+        });
+
+        async function viewMail(mailId) {
+            try {
+                const mail = await apiCall(`/api/mail/${mailId}`);
+                alert(`Mail Detayı:\n\nKonu: ${mail.mail.subject}\nAlıcı: ${mail.mail.to_email}\nDurum: ${mail.mail.status}\nTarih: ${new Date(mail.mail.created_at).toLocaleString('tr-TR')}\n\nİçerik:\n${mail.mail.body}`);
+            } catch (error) {
+                alert('Mail detayı yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function resendMail(mailId) {
+            if (confirm('Mail tekrar gönderilsin mi?')) {
+                try {
+                    await apiCall(`/api/mail/${mailId}/resend`, { method: 'POST' });
+                    alert('Mail tekrar gönderildi!');
+                    loadSentMails();
+                } catch (error) {
+                    alert('Mail tekrar gönderilemedi: ' + error.message);
+                }
+            }
+        }
+
+        // Sayfa yüklendiğinde SMTP ayarlarını yükle
+        loadSmtpSettings();
+    </script>
+
+    <style>
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 2rem;
+        }
+
+        .tab-btn {
+            padding: 1rem 2rem;
+            border: none;
+            background: #f8f9fa;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            background: white;
+            border-bottom-color: #007bff;
+            color: #007bff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .filters {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .table th, .table td {
+            border: 1px solid #ddd;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        .error {
+            color: #dc3545;
+            text-align: center;
+            padding: 1rem;
+        }
+    </style>
+</body>
+</html>

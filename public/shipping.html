@@ -946,6 +946,27 @@
                     alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
                 }
                 
+                // Otomatik mail gönder
+                try {
+                    const mailResponse = await fetch('/api/mail/delivery-completed', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            delivery_note_id: orderId,
+                            customer_email: 'musteri@example.com' // Gerçek projede müşteri emaili alınacak
+                        })
+                    });
+                    
+                    if (mailResponse.ok) {
+                        console.log('📧 İrsaliye maili müşteriye gönderildi');
+                    }
+                } catch (mailError) {
+                    console.log('📧 Mail gönderme hatası:', mailError.message);
+                }
+                
                 closeSignatureModal();
                 closeOrdersModal();
                 loadDeliveryStatus();

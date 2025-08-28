@@ -861,13 +861,14 @@
                 `;
                 
                 myOrders.forEach(order => {
+                    const statusText = getOrderStatusText(order.status);
                     html += `
                         <tr onclick="viewOrderDetail(${order.id})" style="cursor: pointer;">
                             <td>#${order.order_number}</td>
                             <td>${order.company_name || 'Bilinmiyor'}</td>
                             <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
                             <td>${order.total_amount} TL</td>
-                            <td>${order.status}</td>
+                            <td>${statusText}</td>
                         </tr>
                     `;
                 });
@@ -2911,7 +2912,7 @@
                                 <p><strong>Teslimat:</strong> 
                                     ${canEditPrice ? `<input type="date" id="delivery_date" value="${order.delivery_date || ''}" style="border: 1px solid #ddd; padding: 0.25rem;">` : new Date(order.delivery_date).toLocaleDateString('tr-TR')}
                                 </p>
-                                <p><strong>Durum:</strong> ${order.status}</p>
+                                <p><strong>Durum:</strong> ${getOrderStatusText(order.status)}</p>
                                 ${canEditPrice ? `<p><strong>Toplam:</strong> ${order.total_amount} TL</p>` : ''}
                             </div>
                             <div>
@@ -3026,6 +3027,19 @@
             }
         }
         
+        function getOrderStatusText(status) {
+            const statusMap = {
+                'pending': 'Bekliyor',
+                'confirmed': 'Onaylandı',
+                'production': 'Üretimde',
+                'completed': 'Tamamlandı',
+                'ready_for_delivery': 'Teslimat Hazır',
+                'delivered': 'Teslim Edildi',
+                'cancelled': 'İptal Edildi'
+            };
+            return statusMap[status] || status;
+        }
+
         function logout() {
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');

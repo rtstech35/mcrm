@@ -152,9 +152,11 @@
 
         function getStatusText(status) {
             const statusMap = {
+                'pending': 'Bekliyor',
                 'ready_for_shipping': 'Sevkiyata Hazır',
                 'in_transit': 'Yolda',
-                'delivered': 'Teslim Edildi'
+                'delivered': 'Teslim Edildi',
+                'cancelled': 'İptal Edildi'
             };
             return statusMap[status] || status;
         }

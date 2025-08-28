@@ -2195,6 +2195,44 @@ app.put("/api/delivery-notes/:id/status", authenticateToken, async (req, res) =>
       });
     }
 
+    // Eğer durum 'delivered' ise, ilgili siparişin durumunu da güncelle ve mail gönder
+    if (status === 'delivered' && result.rows[0].order_id) {
+      try {
+        await pool.query(`
+          UPDATE orders SET status = 'delivered' WHERE id = $1
+        `, [result.rows[0].order_id]);
+        console.log('Sipariş durumu delivered olarak güncellendi:', result.rows[0].order_id);
+        
+        // Müşteri email adresini al ve mail gönder
+        const customerResult = await pool.query(`
+          SELECT c.email FROM customers c
+          JOIN delivery_notes dn ON c.id = dn.customer_id
+          WHERE dn.id = $1
+        `, [id]);
+        
+        if (customerResult.rows.length > 0 && customerResult.rows[0].email) {
+          try {
+            await fetch('/api/mail/delivery-completed', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers.authorization
+              },
+              body: JSON.stringify({
+                delivery_note_id: id,
+                customer_email: customerResult.rows[0].email
+              })
+            });
+            console.log('İrsaliye teslim maili gönderildi');
+          } catch (mailError) {
+            console.error('İrsaliye mail gönderme hatası:', mailError.message);
+          }
+        }
+      } catch (orderUpdateError) {
+        console.error('Sipariş durumu güncellenemedi:', orderUpdateError.message);
+      }
+    }
+
     res.json({
       success: true,
       delivery_note: result.rows[0]
@@ -4539,6 +4577,145 @@ app.get("/api/stats", async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ---------------- MAIL SYSTEM ---------------- //
+// Mail ayarları kaydet
+app.post("/api/mail/settings", authenticateToken, async (req, res) => {
+  try {
+    const { smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure } = req.body;
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mail_settings (
+        id SERIAL PRIMARY KEY,
+        smtp_host VARCHAR(255),
+        smtp_port INTEGER DEFAULT 587,
+        smtp_user VARCHAR(255),
+        smtp_pass VARCHAR(255),
+        from_name VARCHAR(255) DEFAULT 'Saha CRM',
+        smtp_secure BOOLEAN DEFAULT false,
+        updated_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await pool.query(`
+      INSERT INTO mail_settings (smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure, updated_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (id) DO UPDATE SET
+        smtp_host = EXCLUDED.smtp_host,
+        smtp_port = EXCLUDED.smtp_port,
+        smtp_user = EXCLUDED.smtp_user,
+        smtp_pass = EXCLUDED.smtp_pass,
+        from_name = EXCLUDED.from_name,
+        smtp_secure = EXCLUDED.smtp_secure,
+        updated_at = CURRENT_TIMESTAMP
+    `, [smtp_host, smtp_port, smtp_user, smtp_pass, from_name, smtp_secure, req.user.userId]);
+    
+    res.json({ success: true, message: 'Mail ayarları kaydedildi' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Mail ayarlarını getir
+app.get("/api/mail/settings", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
+    res.json({ success: true, settings: result.rows[0] || null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Gönderilen mailleri listele
+app.get("/api/mail/sent", authenticateToken, async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sent_mails (
+        id SERIAL PRIMARY KEY,
+        to_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(500) NOT NULL,
+        body TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        error_message TEXT,
+        delivery_note_id INTEGER,
+        sent_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    const { status } = req.query;
+    let query = 'SELECT * FROM sent_mails';
+    let params = [];
+    
+    if (status) {
+      query += ' WHERE status = $1';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC LIMIT 100';
+    
+    const result = await pool.query(query, params);
+    res.json({ success: true, mails: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Test mail gönder
+app.post("/api/mail/test", authenticateToken, async (req, res) => {
+  try {
+    const { to_email, subject, message } = req.body;
+    
+    const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
+    if (settingsResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'Mail ayarları yapılmamış' });
+    }
+    
+    const settings = settingsResult.rows[0];
+    
+    try {
+      const nodemailer = require('nodemailer');
+      
+      const transporter = nodemailer.createTransporter({
+        host: settings.smtp_host,
+        port: settings.smtp_port,
+        secure: settings.smtp_secure,
+        auth: {
+          user: settings.smtp_user,
+          pass: settings.smtp_pass
+        }
+      });
+      
+      const mailOptions = {
+        from: `${settings.from_name} <${settings.smtp_user}>`,
+        to: to_email,
+        subject: subject,
+        text: message,
+        html: `<p>${message.replace(/\n/g, '<br>')}</p>`
+      };
+      
+      await transporter.sendMail(mailOptions);
+      
+      await pool.query(`
+        INSERT INTO sent_mails (to_email, subject, body, status, sent_by)
+        VALUES ($1, $2, $3, 'sent', $4)
+      `, [to_email, subject, message, req.user.userId]);
+      
+      res.json({ success: true, message: 'Test mail başarıyla gönderildi' });
+    } catch (mailError) {
+      await pool.query(`
+        INSERT INTO sent_mails (to_email, subject, body, status, error_message, sent_by)
+        VALUES ($1, $2, $3, 'failed', $4, $5)
+      `, [to_email, subject, message, mailError.message, req.user.userId]);
+      
+      throw mailError;
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

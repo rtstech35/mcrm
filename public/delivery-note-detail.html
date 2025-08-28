@@ -179,11 +179,13 @@
                 // İmza ve notlar bölümü
                 let signatureHtml = '';
                 
-                if (deliveryNote.signature_data) {
+                if (deliveryNote.customer_signature) {
                     signatureHtml += `
                         <div style="margin-bottom: 1rem;">
                             <h4>Müşteri İmzası:</h4>
-                            <img src="${deliveryNote.signature_data}" style="border: 1px solid #ddd; border-radius: 8px; max-width: 400px; max-height: 200px;">
+                            <img src="${deliveryNote.customer_signature}" style="border: 1px solid #ddd; border-radius: 8px; max-width: 400px; max-height: 200px;">
+                            ${deliveryNote.customer_name ? `<p><strong>İmzalayan:</strong> ${deliveryNote.customer_name}</p>` : ''}
+                            ${deliveryNote.signature_date ? `<p><strong>İmza Tarihi:</strong> ${new Date(deliveryNote.signature_date).toLocaleString('tr-TR')}</p>` : ''}
                         </div>
                     `;
                 }
@@ -199,7 +201,7 @@
                     `;
                 }
 
-                if (!deliveryNote.signature_data && !deliveryNote.notes) {
+                if (!deliveryNote.customer_signature && !deliveryNote.notes) {
                     signatureHtml = `
                         <p style="color: #666; text-align: center; padding: 2rem;">
                             İmza veya not bulunmuyor
