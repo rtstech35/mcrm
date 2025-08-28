@@ -4829,20 +4829,12 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
       );
     `);
     
-    // Örnek irsaliye kaydı oluştur
+    // Örnek irsaliye kaydı oluştur (sadece yoksa)
     await pool.query(`
       INSERT INTO delivery_notes (id, delivery_number, order_id, customer_id, delivery_date)
-      VALUES ($1, 'IRS001', 1, 1, CURRENT_DATE)
-      ON CONFLICT (id) DO NOTHING
+      SELECT $1, 'IRS001', 1, 1, CURRENT_DATE
+      WHERE NOT EXISTS (SELECT 1 FROM delivery_notes WHERE id = $1)
     `, [delivery_note_id]);
-    
-    // Örnek order_items ekle
-    await pool.query(`
-      INSERT INTO order_items (order_id, product_name, quantity, unit)
-      VALUES (1, 'Demir Profil 40x40', 10, 'adet'),
-             (1, 'Çelik Levha 2mm', 5, 'm²')
-      ON CONFLICT DO NOTHING
-    `);
     
     // Mail ayarlarını al
     const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
