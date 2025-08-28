@@ -7,15 +7,13 @@
     <link rel="stylesheet" href="theme.css">
 </head>
 <body>
-    <div class="container">
-        <header>
+    <div class="content">
+        <div class="header">
             <h1>📧 Mail Ayarları</h1>
-            <div class="header-actions">
-                <button onclick="window.location.href='admin.html'" class="btn btn-secondary">Geri</button>
-            </div>
-        </header>
+            <button onclick="window.location.href='admin.html'" class="btn btn-secondary">← Geri</button>
+        </div>
 
-        <div class="tabs">
+        <div class="mail-tabs">
             <button class="tab-btn active" onclick="showTab('settings')">SMTP Ayarları</button>
             <button class="tab-btn" onclick="showTab('sent')">Gönderilen Mailler</button>
             <button class="tab-btn" onclick="showTab('test')">Test Gönder</button>
@@ -24,7 +22,7 @@
         <!-- SMTP Ayarları -->
         <div id="settings-tab" class="tab-content active">
             <div class="card">
-                <h3>SMTP Konfigürasyonu</h3>
+                <h2>SMTP Konfigürasyonu</h2>
                 <form id="smtpForm">
                     <div class="form-group">
                         <label>SMTP Sunucu:</label>
@@ -51,7 +49,7 @@
                             <input type="checkbox" id="smtp_secure"> SSL/TLS Kullan
                         </label>
                     </div>
-                    <button type="submit" class="btn btn-primary">Ayarları Kaydet</button>
+                    <button type="submit" class="btn btn-primary">💾 Ayarları Kaydet</button>
                 </form>
             </div>
         </div>
@@ -59,15 +57,17 @@
         <!-- Gönderilen Mailler -->
         <div id="sent-tab" class="tab-content">
             <div class="card">
-                <h3>Gönderilen Mail Geçmişi</h3>
-                <div class="filters">
-                    <select id="statusFilter" onchange="loadSentMails()">
-                        <option value="">Tüm Durumlar</option>
-                        <option value="sent">Gönderildi</option>
-                        <option value="failed">Başarısız</option>
-                        <option value="pending">Bekliyor</option>
-                    </select>
-                    <button onclick="loadSentMails()" class="btn btn-secondary">Yenile</button>
+                <h2>Gönderilen Mail Geçmişi</h2>
+                <div class="mail-filters">
+                    <div class="form-group">
+                        <select id="statusFilter" onchange="loadSentMails()">
+                            <option value="">Tüm Durumlar</option>
+                            <option value="sent">Gönderildi</option>
+                            <option value="failed">Başarısız</option>
+                            <option value="pending">Bekliyor</option>
+                        </select>
+                    </div>
+                    <button onclick="loadSentMails()" class="btn btn-secondary">🔄 Yenile</button>
                 </div>
                 <div id="sentMailsList">
                     <!-- Mail listesi buraya yüklenecek -->
@@ -78,7 +78,7 @@
         <!-- Test Mail -->
         <div id="test-tab" class="tab-content">
             <div class="card">
-                <h3>Test Mail Gönder</h3>
+                <h2>Test Mail Gönder</h2>
                 <form id="testMailForm">
                     <div class="form-group">
                         <label>Alıcı E-posta:</label>
@@ -92,7 +92,7 @@
                         <label>Mesaj:</label>
                         <textarea id="test_message" rows="5" required>Bu bir test mailidir. SMTP ayarları çalışıyor.</textarea>
                     </div>
-                    <button type="submit" class="btn btn-success">Test Mail Gönder</button>
+                    <button type="submit" class="btn btn-success">📧 Test Mail Gönder</button>
                 </form>
             </div>
         </div>
@@ -184,8 +184,8 @@
                     `;
 
                     mails.forEach(mail => {
-                        const statusColor = mail.status === 'sent' ? '#28a745' : 
-                                          mail.status === 'failed' ? '#dc3545' : '#ffc107';
+                        const statusBadge = mail.status === 'sent' ? 'success' : 
+                                          mail.status === 'failed' ? 'danger' : 'warning';
                         const statusText = mail.status === 'sent' ? 'Gönderildi' :
                                          mail.status === 'failed' ? 'Başarısız' : 'Bekliyor';
 
@@ -194,10 +194,10 @@
                                 <td>${new Date(mail.created_at).toLocaleString('tr-TR')}</td>
                                 <td>${mail.to_email}</td>
                                 <td>${mail.subject}</td>
-                                <td><span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></td>
+                                <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
                                 <td>
-                                    <button onclick="viewMail(${mail.id})" class="btn btn-sm btn-primary">Görüntüle</button>
-                                    ${mail.status === 'failed' ? `<button onclick="resendMail(${mail.id})" class="btn btn-sm btn-warning">Tekrar Gönder</button>` : ''}
+                                    <button onclick="viewMail(${mail.id})" class="btn btn-sm btn-primary">👁️ Görüntüle</button>
+                                    ${mail.status === 'failed' ? `<button onclick="resendMail(${mail.id})" class="btn btn-sm btn-warning">🔄 Tekrar Gönder</button>` : ''}
                                 </td>
                             </tr>
                         `;
@@ -287,24 +287,44 @@
     </script>
 
     <style>
-        .tabs {
+        .header {
             display: flex;
-            border-bottom: 1px solid #ddd;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 2rem;
         }
 
+        .mail-tabs {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            padding: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
         .tab-btn {
-            padding: 1rem 2rem;
+            flex: 1;
+            padding: 0.75rem 1.5rem;
             border: none;
-            background: #f8f9fa;
+            background: transparent;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
+            border-radius: 8px;
+            font-weight: 500;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: var(--secondary);
+            color: var(--primary);
         }
 
         .tab-btn.active {
-            background: white;
-            border-bottom-color: #007bff;
-            color: #007bff;
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow);
         }
 
         .tab-content {
@@ -315,41 +335,60 @@
             display: block;
         }
 
-        .filters {
-            margin: 1rem 0;
+        .mail-filters {
             display: flex;
             gap: 1rem;
-            align-items: center;
+            align-items: end;
+            margin-bottom: 1.5rem;
         }
 
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        .table th, .table td {
-            border: 1px solid #ddd;
-            padding: 0.75rem;
-            text-align: left;
-        }
-
-        .table th {
-            background: #f8f9fa;
-            font-weight: 600;
+        .mail-filters .form-group {
+            margin-bottom: 0;
+            min-width: 200px;
         }
 
         .no-data {
             text-align: center;
-            color: #666;
-            padding: 2rem;
+            color: var(--text-light);
+            padding: 3rem;
             font-style: italic;
+            background: var(--light);
+            border-radius: 8px;
+            margin: 1rem 0;
         }
 
         .error {
-            color: #dc3545;
+            color: var(--danger);
             text-align: center;
             padding: 1rem;
+            background: rgb(239 68 68 / 0.1);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .mail-tabs {
+                flex-direction: column;
+            }
+
+            .tab-btn {
+                text-align: center;
+            }
+
+            .mail-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .mail-filters .form-group {
+                min-width: auto;
+            }
         }
     </style>
 </body>
