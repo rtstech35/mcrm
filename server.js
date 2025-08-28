@@ -4880,8 +4880,12 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
     if (orderId) {
       try {
         const itemsResult = await pool.query(`
-          SELECT oi.product_name, oi.quantity, oi.unit
+          SELECT 
+            COALESCE(p.name, 'Ürün') as product_name,
+            oi.quantity,
+            COALESCE(oi.unit, 'adet') as unit
           FROM order_items oi
+          LEFT JOIN products p ON oi.product_id = p.id
           WHERE oi.order_id = $1
         `, [orderId]);
         orderItems = itemsResult.rows;
