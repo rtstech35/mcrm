@@ -719,7 +719,7 @@
                                         </div>
                                         <div style="display: flex; flex-direction: column; gap: 5px;">
                                             ${status === 'ready_for_shipping' ? `<button onclick="startShipping(${order.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
-                                            ${status === 'in_transit' ? `<button onclick="completeShipping(${order.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">Teslim Et</button>` : ''}
+                                            ${status === 'in_transit' ? `<button onclick="completeShipping(${order.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -754,9 +754,14 @@
         
         // Modal dışına tıklandığında kapat
         document.addEventListener('click', function(event) {
-            const modal = document.getElementById('ordersModal');
-            if (modal && event.target === modal) {
+            const ordersModal = document.getElementById('ordersModal');
+            const signatureModal = document.getElementById('signatureModal');
+            
+            if (ordersModal && event.target === ordersModal) {
                 closeOrdersModal();
+            }
+            if (signatureModal && event.target === signatureModal) {
+                closeSignatureModal();
             }
         });
         
@@ -764,6 +769,7 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeOrdersModal();
+                closeSignatureModal();
             }
         });
         
@@ -793,27 +799,163 @@
         }
         
         async function completeShipping(orderId) {
+            showSignatureModal(orderId);
+        }
+        
+        function showSignatureModal(orderId) {
+            const signatureHtml = `
+                <div id="signatureModal" class="modal-overlay">
+                    <div class="modal-content" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h3>Müşteri İmzası</h3>
+                            <button class="close-btn" onclick="closeSignatureModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="margin-bottom: 15px;">
+                                <label>Müşteri Adı:</label>
+                                <input type="text" id="customerName" placeholder="Müşteri adını girin" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label>Görevi:</label>
+                                <input type="text" id="customerTitle" placeholder="Müşteri görevini girin" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label>İmza:</label>
+                                <canvas id="signatureCanvas" width="400" height="150" style="border: 2px solid #ddd; border-radius: 4px; background: white; cursor: crosshair; display: block; margin-top: 5px;"></canvas>
+                                <div style="margin-top: 10px; text-align: center;">
+                                    <button onclick="clearSignature()" style="background: #6c757d; color: white; border: none; padding: 5px 15px; border-radius: 4px; margin-right: 10px;">Temizle</button>
+                                    <small style="color: #666;">Parmak veya kalemle imza atabilirsiniz</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px; text-align: right;">
+                            <button onclick="closeSignatureModal()" class="btn btn-secondary" style="margin-right: 10px;">İptal</button>
+                            <button onclick="saveSignatureAndComplete(${orderId})" class="btn" style="background: #28a745;">Teslim Et</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', signatureHtml);
+            initSignaturePad();
+        }
+        
+        let isDrawing = false;
+        let canvas, ctx;
+        
+        function initSignaturePad() {
+            canvas = document.getElementById('signatureCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000';
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+        
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        async function saveSignatureAndComplete(orderId) {
+            const customerName = document.getElementById('customerName').value;
+            const customerTitle = document.getElementById('customerTitle').value;
+            
+            if (!customerName.trim()) {
+                alert('Lütfen müşteri adını girin');
+                return;
+            }
+            
+            // İmza kontrolü
+            const imageData = canvas.toDataURL();
+            const isBlank = !ctx.getImageData(0, 0, canvas.width, canvas.height).data.some(channel => channel !== 0);
+            
+            if (isBlank) {
+                alert('Lütfen imza atın');
+                return;
+            }
+            
             try {
-                console.log('Teslimat tamamlanıyor, Order ID:', orderId);
                 const token = localStorage.getItem('token');
-
-                const response = await fetch(`/api/orders/${orderId}/status`, {
+                
+                // İmza verilerini kaydet
+                const signatureData = {
+                    customer_signature: imageData,
+                    customer_name: customerName,
+                    customer_title: customerTitle,
+                    signature_date: new Date().toISOString(),
+                    signature_ip: 'mobile_device'
+                };
+                
+                // Sipariş durumunu güncelle
+                await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token || ''}`
                     },
-                    body: JSON.stringify({ status: 'delivered' })
+                    body: JSON.stringify({ 
+                        status: 'delivered',
+                        signature_data: signatureData
+                    })
                 });
                 
-                alert('✅ Sipariş başarıyla teslim edildi!');
+                alert(`✅ Teslimat başarıyla tamamlandı!\n\n📝 İmza: ${customerName}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
+                
+                closeSignatureModal();
                 closeOrdersModal();
                 loadDeliveryStatus();
+                
             } catch (error) {
-                console.error('Teslimat tamamlama hatası:', error);
-                alert('✅ Sipariş teslim edildi! (Demo)');
+                console.error('Teslimat kaydetme hatası:', error);
+                alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
+                closeSignatureModal();
                 closeOrdersModal();
                 loadDeliveryStatus();
+            }
+        }
+        
+        function closeSignatureModal() {
+            const modal = document.getElementById('signatureModal');
+            if (modal) {
+                modal.remove();
             }
         }
         
