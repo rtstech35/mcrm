@@ -3808,6 +3808,25 @@ app.get("/api/orders/:id", async (req, res) => {
   }
 });
 
+// Sipariş kalemlerini getir
+app.get("/api/orders/:id/items", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT oi.*, p.name as product_name, p.unit
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = $1
+      ORDER BY oi.id
+    `, [id]);
+
+    res.json({ success: true, items: result.rows });
+  } catch (error) {
+    console.error('Order items API hatası:', error);
+    res.status(500).json({ success: false, error: error.message, items: [] });
+  }
+});
+
 // Sipariş durumu güncelle
 app.put("/api/orders/:id/status", async (req, res) => {
   try {

@@ -427,7 +427,7 @@
             <div class="status-card" onclick="showDeliveries('delivered')" title="Tamamlanan sevkiyatları görüntüle">
                 <div class="status-icon">✅</div>
                 <div class="status-info">
-                    <h4>Tamamlanan Sevkiyatlar</h4>
+                    <h4>Sevkiyatı Tamamlanan Ürünler</h4>
                     <span class="status-count" id="deliveredCount">0</span>
                     <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
                 </div>
@@ -617,7 +617,26 @@
                         company_name: 'ABC Teknoloji', 
                         total_amount: 15000, 
                         order_date: '2024-01-05',
+                        delivery_date: '2024-01-20',
                         products: 'Demir Profil (50 adet)'
+                    },
+                    { 
+                        id: 8, 
+                        order_number: 'SIP008', 
+                        company_name: 'Teknoloji A.Ş.', 
+                        total_amount: 22000, 
+                        order_date: '2024-01-03',
+                        delivery_date: '2024-01-18',
+                        products: 'Bilgisayar Kasası (15 adet), Güç Kaynağı (15 adet)'
+                    },
+                    { 
+                        id: 9, 
+                        order_number: 'SIP009', 
+                        company_name: 'İnşaat Ltd.', 
+                        total_amount: 18500, 
+                        order_date: '2024-01-01',
+                        delivery_date: '2024-01-15',
+                        products: 'Çelik Konstrüksiyon (8 adet), Bağlantı Elemanları (50 adet)'
                     }
                 ]
             };
@@ -629,7 +648,7 @@
             const statusTitles = {
                 ready_for_shipping: 'Sevkiyat Bekleyen Siparişler',
                 in_transit: 'Sevkiyatını Aldığı Siparişler', 
-                delivered: 'Tamamlanan Sevkiyatlar'
+                delivered: 'Sevkiyatı Tamamlanan Ürünler'
             };
             
             const modalHtml = `

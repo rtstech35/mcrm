@@ -292,6 +292,14 @@
                     <span class="status-count" id="deliveryCount">0</span>
                 </div>
             </div>
+            
+            <div class="status-card" onclick="showOrders('delivered')">
+                <div class="status-icon">✅</div>
+                <div class="status-info">
+                    <h4>Müşteriye Teslim Edilen</h4>
+                    <span class="status-count" id="deliveredCount">0</span>
+                </div>
+            </div>
         </div>
 
         <!-- Müşteri Haritası -->
@@ -407,13 +415,15 @@
                     pending: orders.filter(o => o.status === 'pending').length,
                     production: orders.filter(o => o.status === 'production').length,
                     completed: orders.filter(o => o.status === 'completed').length,
-                    ready_for_delivery: orders.filter(o => o.status === 'ready_for_delivery').length
+                    ready_for_delivery: orders.filter(o => o.status === 'ready_for_delivery').length,
+                    delivered: orders.filter(o => o.status === 'delivered').length
                 };
                 
                 document.getElementById('pendingCount').textContent = statusCounts.pending;
                 document.getElementById('productionCount').textContent = statusCounts.production;
                 document.getElementById('completedCount').textContent = statusCounts.completed;
                 document.getElementById('deliveryCount').textContent = statusCounts.ready_for_delivery;
+                document.getElementById('deliveredCount').textContent = statusCounts.delivered;
                 
             } catch (error) {
                 console.error('Sipariş durumları yüklenirken hata:', error);
@@ -426,6 +436,7 @@
             document.getElementById('productionCount').textContent = '5';
             document.getElementById('completedCount').textContent = '12';
             document.getElementById('deliveryCount').textContent = '3';
+            document.getElementById('deliveredCount').textContent = '7';
         }
 
         async function showOrders(status) {
@@ -541,6 +552,34 @@
                             { name: 'Montaj Malzemesi', quantity: 1, unit: 'set' }
                         ]
                     }
+                ],
+                delivered: [
+                    { 
+                        id: 6, 
+                        order_number: 'SIP006', 
+                        company_name: 'Teknoloji A.Ş.', 
+                        total_amount: 22000, 
+                        order_date: '2024-01-05', 
+                        notes: 'Müşteriye teslim edildi',
+                        delivery_date: '2024-01-20',
+                        products: [
+                            { name: 'Bilgisayar Kasası', quantity: 15, unit: 'adet' },
+                            { name: 'Güç Kaynağı', quantity: 15, unit: 'adet' }
+                        ]
+                    },
+                    { 
+                        id: 7, 
+                        order_number: 'SIP007', 
+                        company_name: 'İnşaat Ltd.', 
+                        total_amount: 18500, 
+                        order_date: '2024-01-03', 
+                        notes: 'Başarıyla teslim edildi',
+                        delivery_date: '2024-01-18',
+                        products: [
+                            { name: 'Çelik Konstrüksiyon', quantity: 8, unit: 'adet' },
+                            { name: 'Bağlantı Elemanları', quantity: 50, unit: 'adet' }
+                        ]
+                    }
                 ]
             };
             
@@ -552,7 +591,8 @@
                 pending: 'Bekleyen Siparişler',
                 production: 'Üretimdeki Siparişler',
                 completed: 'Tamamlanan Siparişler',
-                ready_for_delivery: 'Teslimat Bekleyen Siparişler'
+                ready_for_delivery: 'Teslimat Bekleyen Siparişler',
+                delivered: 'Müşteriye Teslim Edilen Ürünler'
             };
             
             document.getElementById('modalTitle').textContent = statusTitles[status];
@@ -607,6 +647,8 @@
                     return `<button onclick="createDeliveryNote(${order.id})" style="${buttonStyle} background: #ffc107; color: #212529;">📋 İrsaliye Oluştur</button>`;
                 case 'ready_for_delivery':
                     return `<span style="background: #17a2b8; color: white; padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: bold;">🚚 Teslimat Bekliyor</span>`;
+                case 'delivered':
+                    return `<span style="background: #28a745; color: white; padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: bold;">✅ Teslim Edildi</span>`;
                 default:
                     return '';
             }
