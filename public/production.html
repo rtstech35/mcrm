@@ -373,9 +373,9 @@
                 const currentMonth = new Date().getMonth() + 1;
                 const currentYear = new Date().getFullYear();
                 
-                // Örnek hedef verileri
-                const productionTarget = 100;
-                const productionAchieved = 75;
+                // Hedef verileri sıfırla
+                const productionTarget = 0;
+                const productionAchieved = 0;
                 
                 document.getElementById('productionTarget').textContent = productionTarget;
                 document.getElementById('productionAchieved').textContent = productionAchieved;
@@ -432,11 +432,11 @@
         }
 
         function setDefaultCounts() {
-            document.getElementById('pendingCount').textContent = '8';
-            document.getElementById('productionCount').textContent = '5';
-            document.getElementById('completedCount').textContent = '12';
-            document.getElementById('deliveryCount').textContent = '3';
-            document.getElementById('deliveredCount').textContent = '7';
+            document.getElementById('pendingCount').textContent = '0';
+            document.getElementById('productionCount').textContent = '0';
+            document.getElementById('completedCount').textContent = '0';
+            document.getElementById('deliveryCount').textContent = '0';
+            document.getElementById('deliveredCount').textContent = '0';
         }
 
         async function showOrders(status) {
@@ -473,118 +473,16 @@
                     const filteredOrders = ordersWithProducts.filter(order => order.status === status);
                     displayOrdersModal(filteredOrders, status);
                 } else {
-                    showSampleOrders(status);
+                    displayOrdersModal([], status);
                 }
                 
             } catch (error) {
                 console.error('Siparişler gösterilirken hata:', error);
-                showSampleOrders(status);
+                displayOrdersModal([], status);
             }
         }
 
-        function showSampleOrders(status) {
-            const sampleOrders = {
-                pending: [
-                    { 
-                        id: 1, 
-                        order_number: 'SIP001', 
-                        company_name: 'ABC Teknoloji', 
-                        total_amount: 15000, 
-                        order_date: '2024-01-15', 
-                        notes: 'Acil sipariş',
-                        products: [
-                            { name: 'Demir Profil 40x40', quantity: 50, unit: 'adet' },
-                            { name: 'Çelik Levha 2mm', quantity: 25, unit: 'm²' }
-                        ]
-                    },
-                    { 
-                        id: 2, 
-                        order_number: 'SIP002', 
-                        company_name: 'XYZ İnşaat', 
-                        total_amount: 25000, 
-                        order_date: '2024-01-16', 
-                        notes: 'Standart üretim',
-                        products: [
-                            { name: 'Beton Blok 20x20x40', quantity: 100, unit: 'adet' },
-                            { name: 'Demir Çubuk 12mm', quantity: 200, unit: 'metre' }
-                        ]
-                    }
-                ],
-                production: [
-                    { 
-                        id: 3, 
-                        order_number: 'SIP003', 
-                        company_name: 'Mavi Deniz', 
-                        total_amount: 18000, 
-                        order_date: '2024-01-14', 
-                        notes: 'Üretimde',
-                        products: [
-                            { name: 'Alüminyum Kasa', quantity: 10, unit: 'adet' },
-                            { name: 'Plastik Kapı', quantity: 15, unit: 'adet' }
-                        ]
-                    }
-                ],
-                completed: [
-                    { 
-                        id: 4, 
-                        order_number: 'SIP004', 
-                        company_name: 'Altın Gıda', 
-                        total_amount: 12000, 
-                        order_date: '2024-01-10', 
-                        notes: 'Tamamlandı',
-                        products: [
-                            { name: 'Paslanmaz Çelik Tank', quantity: 2, unit: 'adet' },
-                            { name: 'Filtre Sistemi', quantity: 5, unit: 'adet' }
-                        ]
-                    }
-                ],
-                ready_for_delivery: [
-                    { 
-                        id: 5, 
-                        order_number: 'SIP005', 
-                        company_name: 'Yeşil Enerji', 
-                        total_amount: 30000, 
-                        order_date: '2024-01-08', 
-                        notes: 'Teslimat hazır',
-                        products: [
-                            { name: 'Solar Panel 300W', quantity: 20, unit: 'adet' },
-                            { name: 'Inverter 5kW', quantity: 2, unit: 'adet' },
-                            { name: 'Montaj Malzemesi', quantity: 1, unit: 'set' }
-                        ]
-                    }
-                ],
-                delivered: [
-                    { 
-                        id: 6, 
-                        order_number: 'SIP006', 
-                        company_name: 'Teknoloji A.Ş.', 
-                        total_amount: 22000, 
-                        order_date: '2024-01-05', 
-                        notes: 'Müşteriye teslim edildi',
-                        delivery_date: '2024-01-20',
-                        products: [
-                            { name: 'Bilgisayar Kasası', quantity: 15, unit: 'adet' },
-                            { name: 'Güç Kaynağı', quantity: 15, unit: 'adet' }
-                        ]
-                    },
-                    { 
-                        id: 7, 
-                        order_number: 'SIP007', 
-                        company_name: 'İnşaat Ltd.', 
-                        total_amount: 18500, 
-                        order_date: '2024-01-03', 
-                        notes: 'Başarıyla teslim edildi',
-                        delivery_date: '2024-01-18',
-                        products: [
-                            { name: 'Çelik Konstrüksiyon', quantity: 8, unit: 'adet' },
-                            { name: 'Bağlantı Elemanları', quantity: 50, unit: 'adet' }
-                        ]
-                    }
-                ]
-            };
-            
-            displayOrdersModal(sampleOrders[status] || [], status);
-        }
+
 
         function displayOrdersModal(orders, status) {
             const statusTitles = {

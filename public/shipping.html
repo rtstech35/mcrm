@@ -553,7 +553,7 @@
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    console.log('Token bulunamadı, varsayılan değerler kullanılıyor');
+                    console.log('Token bulunamadı, sıfır değerler ayarlanıyor');
                     setDefaultCounts();
                     return;
                 }
@@ -590,9 +590,9 @@
         }
 
         function setDefaultCounts() {
-            document.getElementById('readyCount').textContent = '5';
-            document.getElementById('transitCount').textContent = '8';
-            document.getElementById('deliveredCount').textContent = '23';
+            document.getElementById('readyCount').textContent = '0';
+            document.getElementById('transitCount').textContent = '0';
+            document.getElementById('deliveredCount').textContent = '0';
         }
 
         async function showDeliveries(status) {
@@ -620,78 +620,16 @@
                     
                     showOrdersModal(filteredDeliveries, status);
                 } else {
-                    showSampleOrders(status);
+                    showOrdersModal([], status);
                 }
                 
             } catch (error) {
                 console.error('İrsaliye durumları yüklenirken hata:', error);
-                showSampleOrders(status);
+                showOrdersModal([], status);
             }
         }
 
-        function showSampleOrders(status) {
-            const sampleOrders = {
-                ready_for_shipping: [
-                    { 
-                        id: 4, 
-                        order_number: 'SIP004', 
-                        company_name: 'Altın Gıda', 
-                        total_amount: 12000, 
-                        order_date: '2024-01-10',
-                        products: 'Paslanmaz Çelik Tank (2 adet), Filtre Sistemi (5 adet)'
-                    },
-                    { 
-                        id: 5, 
-                        order_number: 'SIP005', 
-                        company_name: 'Yeşil Enerji', 
-                        total_amount: 30000, 
-                        order_date: '2024-01-08',
-                        products: 'Solar Panel 300W (20 adet), Inverter 5kW (2 adet)'
-                    }
-                ],
-                in_transit: [
-                    { 
-                        id: 6, 
-                        order_number: 'SIP006', 
-                        company_name: 'Mavi Deniz', 
-                        total_amount: 18000, 
-                        order_date: '2024-01-14',
-                        products: 'Alüminyum Kasa (10 adet)'
-                    }
-                ],
-                delivered: [
-                    { 
-                        id: 7, 
-                        order_number: 'SIP007', 
-                        company_name: 'ABC Teknoloji', 
-                        total_amount: 15000, 
-                        order_date: '2024-01-05',
-                        delivery_date: '2024-01-20',
-                        products: 'Demir Profil (50 adet)'
-                    },
-                    { 
-                        id: 8, 
-                        order_number: 'SIP008', 
-                        company_name: 'Teknoloji A.Ş.', 
-                        total_amount: 22000, 
-                        order_date: '2024-01-03',
-                        delivery_date: '2024-01-18',
-                        products: 'Bilgisayar Kasası (15 adet), Güç Kaynağı (15 adet)'
-                    },
-                    { 
-                        id: 9, 
-                        order_number: 'SIP009', 
-                        company_name: 'İnşaat Ltd.', 
-                        total_amount: 18500, 
-                        order_date: '2024-01-01',
-                        delivery_date: '2024-01-15',
-                        products: 'Çelik Konstrüksiyon (8 adet), Bağlantı Elemanları (50 adet)'
-                    }
-                ]
-            };
-            
-            showOrdersModal(sampleOrders[status] || [], status);
-        }
+
         
         function showOrdersModal(orders, status) {
             const statusTitles = {
@@ -708,7 +646,7 @@
                             <button class="close-btn" onclick="closeOrdersModal()">&times;</button>
                         </div>
                         <div class="modal-body">
-                            ${orders.length > 0 ? orders.map(order => `
+                            ${orders && orders.length > 0 ? orders.map(order => `
                                 <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                                         <div>
@@ -723,7 +661,7 @@
                                         </div>
                                     </div>
                                 </div>
-                            `).join('') : '<div class="error-message">Bu durumda sipariş bulunmuyor.</div>'}
+                            `).join('') : '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda sipariş bulunmuyor.</div>'}
                         </div>
                         <div style="margin-top: 20px; text-align: right;">
                             <button onclick="closeOrdersModal()" class="btn btn-secondary">Kapat</button>
