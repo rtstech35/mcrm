@@ -4719,6 +4719,32 @@ app.post("/api/mail/test", async (req, res) => {
   }
 });
 
+// SMTP bağlantı testi
+app.post("/api/mail/test-connection", async (req, res) => {
+  try {
+    const { smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+    
+    const nodemailer = require('nodemailer');
+    
+    const transporter = nodemailer.createTransporter({
+      host: smtp_host,
+      port: smtp_port,
+      secure: smtp_secure,
+      auth: {
+        user: smtp_user,
+        pass: smtp_pass
+      }
+    });
+    
+    // Bağlantıyı test et
+    await transporter.verify();
+    
+    res.json({ success: true, message: 'SMTP bağlantısı başarılı' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
 app.post("/api/create-admin", async (req, res) => {
   try {
