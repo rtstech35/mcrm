@@ -647,22 +647,74 @@
                 }
                 
                 console.log('Filtrelenmiş siparişler:', filteredOrders.length);
-                showOrdersModal(filteredOrders, status);
+                await showOrdersModal(filteredOrders, status);
                 
             } catch (error) {
                 console.error('Sevkiyat detayları yüklenirken hata:', error);
-                showOrdersModal([], status);
+                await showOrdersModal([], status);
             }
         }
 
 
         
-        function showOrdersModal(orders, status) {
+        async function showOrdersModal(orders, status) {
             const statusTitles = {
                 ready_for_shipping: 'Sevkiyat Bekleyen Siparişler',
                 in_transit: 'Sevkiyatını Aldığı Siparişler', 
                 delivered: 'Sevkiyatı Tamamlanan Ürünler'
             };
+            
+            let modalBody = '';
+            
+            if (orders && orders.length > 0) {
+                const orderDetails = await Promise.all(orders.map(async order => {
+                    // Sipariş kalemlerini al
+                    let orderItems = [];
+                    try {
+                        const itemsResponse = await fetch(`/api/orders/${order.id}/items`);
+                        if (itemsResponse.ok) {
+                            const itemsData = await itemsResponse.json();
+                            orderItems = itemsData.items || [];
+                        }
+                    } catch (error) {
+                        console.log('Sipariş kalemleri alınamadı:', error);
+                    }
+                    
+                    return `
+                        <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <strong style="color: #333; font-size: 16px;">${order.order_number || 'SIP' + order.id}</strong><br>
+                                    <span style="color: #666; font-size: 14px;">${formatDate(order.order_date)}</span><br>
+                                    <span style="color: #666;">Müşteri:</span><br>
+                                    <strong style="color: #333;">${order.company_name || 'Bilinmiyor'}</strong><br><br>
+                                    <span style="color: #666;">Tutar:</span><br>
+                                    <strong style="color: #007bff; font-size: 16px;">₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</strong><br><br>
+                                    
+                                    <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                                        <strong style="color: #333;">📦 Ürün Listesi:</strong><br>
+                                        ${orderItems.length > 0 ? orderItems.map(item => 
+                                            `<span style="color: #666; display: block; margin: 2px 0;">${item.product_name || 'Ürün'}<br><span style="color: #999; font-size: 12px;">${item.quantity || 1} ${item.unit || 'adet'}</span>`
+                                        ).join('<br>') : '<span style="color: #999;">Ürün bilgisi yok</span>'}
+                                    </div>
+                                    
+                                    <div style="margin-top: 10px;">
+                                        <strong style="color: #666;">Notlar:</strong><br>
+                                        <span style="color: #888; font-style: italic;">${order.notes || 'Herhangi bir not bulunmuyor'}</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
+                                    ${status === 'ready_for_shipping' ? `<button onclick="startShipping(${order.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
+                                    ${status === 'in_transit' ? `<button onclick="completeShipping(${order.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }));
+                modalBody = orderDetails.join('');
+            } else {
+                modalBody = '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda sipariş bulunmuyor.</div>';
+            }
             
             const modalHtml = `
                 <div id="ordersModal" class="modal-overlay">
@@ -672,22 +724,7 @@
                             <button class="close-btn" onclick="closeOrdersModal()">&times;</button>
                         </div>
                         <div class="modal-body">
-                            ${orders && orders.length > 0 ? orders.map(order => `
-                                <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                                        <div>
-                                            <strong style="color: #333; font-size: 16px;">Sipariş: ${order.order_number || 'SIP' + order.id}</strong><br>
-                                            <span style="color: #666;">Müşteri: ${order.company_name || 'Bilinmiyor'}</span><br>
-                                            <span style="color: #666;">Tutar: <strong>₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</strong></span><br>
-                                            <span style="color: #666;">Tarih: ${formatDate(order.order_date)}</span>
-                                        </div>
-                                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                                            ${status === 'ready_for_shipping' ? `<button onclick="startShipping(${order.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
-                                            ${status === 'in_transit' ? `<button onclick="completeShipping(${order.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('') : '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda sipariş bulunmuyor.</div>'}
+                            ${modalBody}
                         </div>
                         <div style="margin-top: 20px; text-align: right;">
                             <button onclick="closeOrdersModal()" class="btn btn-secondary">Kapat</button>
