@@ -4774,6 +4774,36 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
       });
     }
     
+    // Mail tablosunu oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mail_settings (
+        id SERIAL PRIMARY KEY,
+        smtp_host VARCHAR(255),
+        smtp_port INTEGER DEFAULT 587,
+        smtp_user VARCHAR(255),
+        smtp_pass VARCHAR(255),
+        from_name VARCHAR(255) DEFAULT 'Saha CRM',
+        smtp_secure BOOLEAN DEFAULT false,
+        updated_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sent_mails (
+        id SERIAL PRIMARY KEY,
+        to_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(500) NOT NULL,
+        body TEXT,
+        status VARCHAR(20) DEFAULT 'pending',
+        error_message TEXT,
+        delivery_note_id INTEGER,
+        sent_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
     // Mail ayarlarını al
     const settingsResult = await pool.query('SELECT * FROM mail_settings ORDER BY id DESC LIMIT 1');
     if (settingsResult.rows.length === 0) {

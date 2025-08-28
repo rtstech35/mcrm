@@ -947,53 +947,31 @@
                 }
                 
                 // Otomatik mail gönder
-                try {
-                    console.log('📧 Mail gönderimi başlatılıyor...');
-                    
-                    // Müşteri email adresini al
-                    const customerEmailResponse = await fetch(`/api/orders/${orderId}`);
-                    let customerEmail = 'musteri@example.com';
-                    
-                    if (customerEmailResponse.ok) {
-                        const orderData = await customerEmailResponse.json();
-                        if (orderData.success && orderData.order) {
-                            // Müşteri bilgilerini al
-                            const customerResponse = await fetch(`/api/customers/${orderData.order.customer_id}`);
-                            if (customerResponse.ok) {
-                                const customerData = await customerResponse.json();
-                                if (customerData.success && customerData.customer && customerData.customer.email) {
-                                    customerEmail = customerData.customer.email;
-                                }
-                            }
-                        }
-                    }
-                    
-                    console.log('📧 Mail gönderilecek adres:', customerEmail);
-                    
-                    const mailResponse = await fetch('/api/mail/delivery-completed', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            delivery_note_id: orderId,
-                            customer_email: customerEmail
-                        })
-                    });
-                    
-                    if (mailResponse.ok) {
-                        const mailResult = await mailResponse.json();
-                        console.log('📧 İrsaliye maili başarıyla gönderildi:', mailResult);
-                        alert('✅ Teslimat tamamlandı ve müşteriye bilgilendirme maili gönderildi!');
+                console.log('📧 Mail gönderimi başlatılıyor...');
+                
+                fetch('/api/mail/delivery-completed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        delivery_note_id: orderId,
+                        customer_email: 'test@example.com'
+                    })
+                })
+                .then(response => {
+                    console.log('📧 Mail API response status:', response.status);
+                    return response.json();
+                })
+                .then(result => {
+                    console.log('📧 Mail API result:', result);
+                    if (result.success) {
+                        console.log('✅ Mail başarıyla gönderildi');
                     } else {
-                        const mailError = await mailResponse.json();
-                        console.log('📧 Mail gönderme hatası:', mailError);
-                        alert('✅ Teslimat tamamlandı! (Mail gönderiminde sorun oluştu)');
+                        console.error('❌ Mail hatası:', result.error);
                     }
-                } catch (mailError) {
-                    console.log('📧 Mail gönderme hatası:', mailError.message);
-                    alert('✅ Teslimat tamamlandı! (Mail gönderiminde sorun oluştu)');
-                }
+                })
+                .catch(error => {
+                    console.error('❌ Mail API hatası:', error);
+                });
                 
                 closeSignatureModal();
                 closeOrdersModal();
