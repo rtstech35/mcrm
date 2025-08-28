@@ -4680,13 +4680,21 @@ app.post("/api/mail/test", async (req, res) => {
     try {
       const nodemailer = require('nodemailer');
       
+      // Gmail için özel ayarlar
+      const isGmail = settings.smtp_host.includes('gmail');
+      const port = parseInt(settings.smtp_port);
+      const secure = isGmail ? (port === 465) : settings.smtp_secure;
+      
       const transporter = nodemailer.createTransport({
         host: settings.smtp_host,
-        port: settings.smtp_port,
-        secure: settings.smtp_secure,
+        port: port,
+        secure: secure,
         auth: {
           user: settings.smtp_user,
           pass: settings.smtp_pass
+        },
+        tls: {
+          rejectUnauthorized: false
         }
       });
       
