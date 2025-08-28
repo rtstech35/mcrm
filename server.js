@@ -4854,6 +4854,21 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
     
     const delivery = deliveryResult.rows[0];
     
+    // Sipariş kalemlerini al
+    let orderItems = [];
+    if (delivery.order_id) {
+      try {
+        const itemsResult = await pool.query(`
+          SELECT oi.product_name, oi.quantity, oi.unit
+          FROM order_items oi
+          WHERE oi.order_id = $1
+        `, [delivery.order_id]);
+        orderItems = itemsResult.rows;
+      } catch (error) {
+        console.log('Sipariş kalemleri alınamadı:', error.message);
+      }
+    }
+    
     try {
       const nodemailer = require('nodemailer');
       
@@ -4877,6 +4892,23 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
       
       // Mail içeriği
       const subject = `Teslimat Tamamlandı - ${delivery.delivery_number}`;
+      
+      let productsHtml = '';
+      if (orderItems.length > 0) {
+        productsHtml = `
+          <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <h4 style="margin-top: 0; color: #2d5016;">📦 Teslim Edilen Ürünler</h4>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              ${orderItems.map(item => 
+                `<li style="margin: 5px 0; color: #333;">
+                  <strong>${item.product_name}</strong> - ${item.quantity} ${item.unit || 'adet'}
+                </li>`
+              ).join('')}
+            </ul>
+          </div>
+        `;
+      }
+      
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2c3e50;">Teslimat Tamamlandı</h2>
@@ -4892,9 +4924,10 @@ app.post("/api/mail/delivery-completed", async (req, res) => {
             <p><strong>Müşteri:</strong> ${delivery.company_name}</p>
             <p><strong>Teslimat Tarihi:</strong> ${new Date().toLocaleDateString('tr-TR')}</p>
             <p><strong>Teslimat Saati:</strong> ${new Date().toLocaleTimeString('tr-TR')}</p>
-            ${delivery.customer_name ? `<p><strong>Teslim Alan:</strong> ${delivery.customer_name}</p>` : ''}
-            ${delivery.customer_title ? `<p><strong>Görevi:</strong> ${delivery.customer_title}</p>` : ''}
+            ${delivery.customer_name ? `<p><strong>Teslim Alan:</strong> ${delivery.customer_name} ${delivery.customer_title ? `(${delivery.customer_title})` : ''}</p>` : ''}
           </div>
+          
+          ${productsHtml}
           
           <p>Teslimat sırasında dijital imza alınmış olup, ürünleriniz güvenli şekilde teslim edilmiştir.</p>
           
