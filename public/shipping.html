@@ -946,16 +946,33 @@
                     alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
                 }
                 
-                // Otomatik mail gönder
+                // Otomatik mail gönder - müşteri emailini al
                 console.log('📧 Mail gönderimi başlatılıyor...');
                 
-                fetch('/api/mail/delivery-completed', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        delivery_note_id: orderId,
-                        customer_email: 'test@example.com'
-                    })
+                fetch(`/api/orders/${orderId}`)
+                .then(response => response.json())
+                .then(orderData => {
+                    if (orderData.success && orderData.order && orderData.order.customer_id) {
+                        return fetch(`/api/customers/${orderData.order.customer_id}`);
+                    }
+                    throw new Error('Sipariş bulunamadı');
+                })
+                .then(response => response.json())
+                .then(customerData => {
+                    const customerEmail = customerData.success && customerData.customer && customerData.customer.email 
+                        ? customerData.customer.email 
+                        : 'test@example.com';
+                    
+                    console.log('📧 Müşteri email:', customerEmail);
+                    
+                    return fetch('/api/mail/delivery-completed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            delivery_note_id: orderId,
+                            customer_email: customerEmail
+                        })
+                    });
                 })
                 .then(response => {
                     console.log('📧 Mail API response status:', response.status);
