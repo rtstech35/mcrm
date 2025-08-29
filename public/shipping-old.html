@@ -385,29 +385,11 @@
             window.location.href = '/';
         }
 
-        function updateUserInfo() {
-            const userInfo = document.getElementById('userInfo');
-            if (userInfo) {
-                userInfo.innerHTML = `
-                    <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;">Sevkiyat Dashboard</div>
-                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Hoş geldiniz, ${currentUser.full_name}</div>
-                    <div style="font-size: 0.75rem; opacity: 0.8;">
-                        ${new Date().toLocaleDateString('tr-TR')} - ${new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}
-                    </div>
-                `;
-            }
-        }
-        
         showDashboard();
         
         setTimeout(() => {
-            updateUserInfo();
         }, 100);
         
-        setInterval(updateUserInfo, 60000);
     </script>
-    <div id="userInfo" style="position: fixed; bottom: 1rem; left: 1rem; background: rgba(111, 66, 193, 0.9); padding: 1rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 200px;">
-        <!-- JavaScript ile doldurulacak -->
-    </div>
 </body>
 </html>
