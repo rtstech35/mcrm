@@ -1261,36 +1261,34 @@
                 const departmentSelect = document.getElementById('department_id');
                 const roleSelect = document.getElementById('role_id');
 
-                departmentSelect.innerHTML = '<option value="">Seçiniz</option>';
+                departmentSelect.innerHTML = '';
+                departmentSelect.add(new Option('Seçiniz', ''));
 
                 if (window.departmentsData && window.departmentsData.length > 0) {
                     window.departmentsData.forEach(dept => {
-                        departmentSelect.innerHTML += `<option value="${dept.id}">${dept.name}</option>`;
+                        departmentSelect.add(new Option(dept.name, dept.id));
                     });
                 } else {
-                    departmentSelect.innerHTML += `
-                        <option value="1">Satış Departmanı</option>
-                        <option value="2">Üretim Departmanı</option>
-                        <option value="3">Sevkiyat Departmanı</option>
-                        <option value="4">Muhasebe Departmanı</option>
-                        <option value="5">IT Departmanı</option>
-                    `;
+                    departmentSelect.add(new Option('Satış Departmanı', '1'));
+                    departmentSelect.add(new Option('Üretim Departmanı', '2'));
+                    departmentSelect.add(new Option('Sevkiyat Departmanı', '3'));
+                    departmentSelect.add(new Option('Muhasebe Departmanı', '4'));
+                    departmentSelect.add(new Option('IT Departmanı', '5'));
                 }
 
-                roleSelect.innerHTML = '<option value="">Seçiniz</option>';
+                roleSelect.innerHTML = '';
+                roleSelect.add(new Option('Seçiniz', ''));
 
                 if (window.rolesData && window.rolesData.length > 0) {
                     window.rolesData.forEach(role => {
-                        roleSelect.innerHTML += `<option value="${role.id}">${role.name}</option>`;
+                        roleSelect.add(new Option(role.name, role.id));
                     });
                 } else {
-                    roleSelect.innerHTML += `
-                        <option value="1">Yönetici</option>
-                        <option value="2">Satış Temsilcisi</option>
-                        <option value="3">Üretim Personeli</option>
-                        <option value="4">Sevkiyat Personeli</option>
-                        <option value="5">Muhasebe Personeli</option>
-                    `;
+                    roleSelect.add(new Option('Yönetici', '1'));
+                    roleSelect.add(new Option('Satış Temsilcisi', '2'));
+                    roleSelect.add(new Option('Üretim Personeli', '3'));
+                    roleSelect.add(new Option('Sevkiyat Personeli', '4'));
+                    roleSelect.add(new Option('Muhasebe Personeli', '5'));
                 }
 
                 document.getElementById('userModal').style.display = 'block';
@@ -2113,10 +2111,11 @@
                 const users = usersResponse.users || [];
                 
                 const salesRepSelect = document.getElementById('customer_sales_rep');
-                salesRepSelect.innerHTML = '<option value="">Satış Temsilcisi Seçiniz</option>';
+                salesRepSelect.innerHTML = '';
+                salesRepSelect.add(new Option('Satış Temsilcisi Seçiniz', ''));
                 
                 users.forEach(user => {
-                    salesRepSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                    salesRepSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
                 });
                 
                 // Form'u doldur
@@ -2162,10 +2161,11 @@
                 const users = usersResponse.users || [];
                 
                 const salesRepSelect = document.getElementById('customer_sales_rep');
-                salesRepSelect.innerHTML = '<option value="">Satış Temsilcisi Seçiniz</option>';
+                salesRepSelect.innerHTML = '';
+                salesRepSelect.add(new Option('Satış Temsilcisi Seçiniz', ''));
                 
                 users.forEach(user => {
-                    salesRepSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                    salesRepSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
                 });
                 
                 document.getElementById('customerModal').style.display = 'block';
@@ -3141,7 +3141,8 @@
                 const users = usersResponse.users || [];
                 const managerSelect = document.getElementById('dept_manager_id');
 
-                managerSelect.innerHTML = '<option value="">Yönetici Seçiniz (Opsiyonel)</option>';
+                managerSelect.innerHTML = '';
+                managerSelect.add(new Option('Yönetici Seçiniz (Opsiyonel)', ''));
 
                 // Sadece Manager ve Admin rolündeki kullanıcıları göster
                 const managers = users.filter(user =>
@@ -3149,7 +3150,7 @@
                 );
 
                 managers.forEach(user => {
-                    managerSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name})</option>`;
+                    managerSelect.add(new Option(`${user.full_name} (${user.role_name})`, user.id));
                 });
             } catch (error) {
                 console.error('Yönetici listesi yüklenemedi:', error);
@@ -3639,10 +3640,11 @@
                 const users = usersResponse.users || [];
                 const userSelect = document.getElementById('target_user_id');
 
-                userSelect.innerHTML = '<option value="">Kullanıcı Seçiniz</option>';
+                userSelect.innerHTML = '';
+                userSelect.add(new Option('Kullanıcı Seçiniz', ''));
 
                 users.forEach(user => {
-                    userSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                    userSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
                 });
             } catch (error) {
                 console.error('Kullanıcı listesi yüklenemedi:', error);
@@ -3913,9 +3915,10 @@
                 const customers = customersResponse.customers || [];
                 const customerSelect = document.getElementById('delivery_customer_id');
 
-                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz</option>';
+                customerSelect.innerHTML = '';
+                customerSelect.add(new Option('Müşteri Seçiniz', ''));
                 customers.forEach(customer => {
-                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                    customerSelect.add(new Option(customer.company_name, customer.id));
                 });
 
                 // Siparişleri yükle
@@ -3923,9 +3926,10 @@
                 const orders = ordersResponse.orders || [];
                 const orderSelect = document.getElementById('delivery_order_id');
 
-                orderSelect.innerHTML = '<option value="">Sipariş Seçiniz (Opsiyonel)</option>';
+                orderSelect.innerHTML = '';
+                orderSelect.add(new Option('Sipariş Seçiniz (Opsiyonel)', ''));
                 orders.filter(order => order.status !== 'cancelled').forEach(order => {
-                    orderSelect.innerHTML += `<option value="${order.id}">Sipariş #${order.id} - ${order.customer_name}</option>`;
+                    orderSelect.add(new Option(`Sipariş #${order.id} - ${order.customer_name}`, order.id));
                 });
 
                 // Sevkiyat personelini yükle
@@ -3933,15 +3937,16 @@
                 const users = usersResponse.users || [];
                 const deliveryPersonSelect = document.getElementById('delivery_delivered_by');
 
-                deliveryPersonSelect.innerHTML = '<option value="">Personel Seçiniz</option>';
+                deliveryPersonSelect.innerHTML = '';
+                deliveryPersonSelect.add(new Option('Personel Seçiniz', ''));
                 users.filter(user => user.role_name && (user.role_name.includes('Shipping') || user.role_name.includes('Sevkiyat'))).forEach(user => {
-                    deliveryPersonSelect.innerHTML += `<option value="${user.id}">${user.full_name}</option>`;
+                    deliveryPersonSelect.add(new Option(user.full_name, user.id));
                 });
 
                 // Eğer sevkiyat personeli yoksa tüm kullanıcıları göster
                 if (deliveryPersonSelect.children.length === 1) {
                     users.forEach(user => {
-                        deliveryPersonSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                        deliveryPersonSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
                     });
                 }
 
@@ -4318,9 +4323,10 @@
                 const users = usersResponse.users || [];
                 const userSelect = document.getElementById('appointment_assigned_to');
 
-                userSelect.innerHTML = '<option value="">Kişi Seçiniz</option>';
+                userSelect.innerHTML = '';
+                userSelect.add(new Option('Kişi Seçiniz', ''));
                 users.forEach(user => {
-                    userSelect.innerHTML += `<option value="${user.id}">${user.full_name} (${user.role_name || 'Rol Yok'})</option>`;
+                    userSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
                 });
 
                 // Müşterileri yükle
@@ -4328,9 +4334,10 @@
                 const customers = customersResponse.customers || [];
                 const customerSelect = document.getElementById('appointment_customer_id');
 
-                customerSelect.innerHTML = '<option value="">Müşteri Seçiniz (Opsiyonel)</option>';
+                customerSelect.innerHTML = '';
+                customerSelect.add(new Option('Müşteri Seçiniz (Opsiyonel)', ''));
                 customers.forEach(customer => {
-                    customerSelect.innerHTML += `<option value="${customer.id}">${customer.company_name}</option>`;
+                    customerSelect.add(new Option(customer.company_name, customer.id));
                 });
 
             } catch (error) {
