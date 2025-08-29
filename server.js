@@ -275,7 +275,7 @@ app.post("/api/login", async (req, res) => {
       
       // JWT token oluştur
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: 'admin' },
+        { userId: user.id, username: user.username, role: user.role_name },
         process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
         { expiresIn: "24h" }
       );
@@ -304,7 +304,7 @@ app.post("/api/login", async (req, res) => {
         console.log("✅ bcrypt şifre eşleşti!");
         
         const token = jwt.sign(
-          { userId: user.id, username: user.username, role: 'admin' },
+          { userId: user.id, username: user.username, role: user.role_name },
           process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
           { expiresIn: "24h" }
         );
@@ -2370,7 +2370,7 @@ app.get("/api/cash-registers", async (req, res) => {
 });
 
 // İrsaliye Yönetimi API'leri
-app.get("/api/delivery-notes", async (req, res) => {
+app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
   try {
     // Önce delivery_notes tablosunun varlığını kontrol et
     const tableExists = await checkTableExists('delivery_notes');
@@ -2409,7 +2409,8 @@ app.get("/api/delivery-notes", async (req, res) => {
     }
 
     const { status, customer_id } = req.query;
-
+    const { userId, role } = req.user;
+ 
     let query = `
       SELECT dn.*,
              c.company_name as customer_name,
@@ -2420,22 +2421,25 @@ app.get("/api/delivery-notes", async (req, res) => {
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN users u ON dn.delivered_by = u.id
       LEFT JOIN orders o ON dn.order_id = o.id
-      WHERE 1=1
     `;
 
     const params = [];
-    let paramIndex = 1;
+    const whereClauses = [];
 
     if (status) {
-      query += ` AND dn.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
+      whereClauses.push(`dn.status = $${params.push(status)}`);
     }
     
     if (customer_id) {
-      query += ` AND dn.customer_id = $${paramIndex}`;
-      params.push(customer_id);
-      paramIndex++;
+      whereClauses.push(`dn.customer_id = $${params.push(customer_id)}`);
+    }
+
+    if (role !== 'Yönetici' && role !== 'Admin') {
+        whereClauses.push(`c.assigned_sales_rep = $${params.push(userId)}`);
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
     query += ` ORDER BY dn.created_at DESC`;
@@ -2852,12 +2856,14 @@ app.post("/api/migrate-delivery-notes", async (req, res) => {
 });
 
 // Randevu/Görev Yönetimi API'leri
-app.get("/api/appointments", async (req, res) => {
+app.get("/api/appointments", authenticateToken, async (req, res) => {
   try {
-    const { type, status, assigned_to, customer_id } = req.query;
+    const { type, status, assigned_to, customer_id, start_date } = req.query;
+    const { userId, role } = req.user;
 
     let query = `
       SELECT a.*,
+             u.id as user_id,
              u.full_name as assigned_to_name,
              r.name as assigned_to_role,
              c.company_name as customer_name
@@ -2865,39 +2871,47 @@ app.get("/api/appointments", async (req, res) => {
       LEFT JOIN users u ON a.assigned_to = u.id
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN customers c ON a.customer_id = c.id
-      WHERE 1=1
     `;
 
     const params = [];
-    let paramIndex = 1;
+    const whereClauses = [];
 
     if (type) {
-      query += ` AND a.type = $${paramIndex}`;
-      params.push(type);
-      paramIndex++;
+      whereClauses.push(`a.type = $${params.push(type)}`);
     }
 
     if (status) {
-      query += ` AND a.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-
-    if (assigned_to) {
-      query += ` AND a.assigned_to = $${paramIndex}`;
-      params.push(parseInt(assigned_to));
-      paramIndex++;
+      whereClauses.push(`a.status = $${params.push(status)}`);
     }
 
     if (customer_id) {
-      query += ` AND a.customer_id = $${paramIndex}`;
-      params.push(parseInt(customer_id));
-      paramIndex++;
+      whereClauses.push(`a.customer_id = $${params.push(parseInt(customer_id))}`);
+    }
+
+    if (start_date) {
+      whereClauses.push(`a.start_date = $${params.push(start_date)}`);
+    }
+
+    // Admin tüm randevuları görebilir, diğerleri sadece kendininkini
+    if (role !== 'Yönetici' && role !== 'Admin') {
+      whereClauses.push(`a.assigned_to = $${params.push(userId)}`);
+    } else if (assigned_to) { // Admin ise ve belirli bir kullanıcıyı filtrelemek istiyorsa
+      whereClauses.push(`a.assigned_to = $${params.push(parseInt(assigned_to))}`);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
     query += ` ORDER BY a.start_date ASC, a.start_time ASC`;
 
     const result = await pool.query(query, params);
+
+    // Eğer whereClauses boşsa ve rol admin değilse, yine de filtrele
+    if (whereClauses.length === 0 && role !== 'Yönetici' && role !== 'Admin') {
+        const filteredResults = result.rows.filter(apt => apt.user_id === userId);
+        return res.json({ success: true, appointments: filteredResults });
+    }
 
     console.log('Appointments API - Bulunan randevu sayısı:', result.rows.length);
 
@@ -3812,7 +3826,7 @@ app.delete("/api/users/:id", async (req, res) => {
 });
 
 // Müşteriler API
-app.get("/api/customers", async (req, res) => {
+app.get("/api/customers", authenticateToken, async (req, res) => {
   try {
     console.log('🏢 Customers API çağrıldı');
 
@@ -3834,13 +3848,25 @@ app.get("/api/customers", async (req, res) => {
       });
     }
 
-    const result = await pool.query(`
+    const { userId, role } = req.user;
+
+    let query = `
       SELECT c.*,
              COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
       FROM customers c
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
-      ORDER BY c.created_at DESC
-    `);
+    `;
+    const params = [];
+
+    // Admin tüm müşterileri görebilir, diğerleri sadece kendininkini
+    if (role !== 'Yönetici' && role !== 'Admin') {
+        params.push(userId);
+        query += ` WHERE c.assigned_sales_rep = $1`;
+    }
+
+    query += ` ORDER BY c.created_at DESC`;
+
+    const result = await pool.query(query, params);
 
     console.log('✅ Customers API - Bulunan müşteri sayısı:', result.rows.length);
 
@@ -4581,7 +4607,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
 });
 
 // Siparişler API
-app.get("/api/orders", async (req, res) => {
+app.get("/api/orders", authenticateToken, async (req, res) => {
   try {
     console.log('📦 Orders API çağrıldı');
 
@@ -4649,11 +4675,12 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", authenticateToken, async (req, res) => {
   try {
     console.log('📦 Sipariş oluşturma isteği:', req.body);
     
     const { customer_id, order_date, delivery_date, total_amount, notes, items } = req.body;
+    const sales_rep_id = req.user.userId; // Token'dan gelen kullanıcı ID'sini al
     
     // Sipariş numarası oluştur
     const orderNum = `SIP${Date.now()}`;
@@ -4662,7 +4689,7 @@ app.post("/api/orders", async (req, res) => {
       INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, delivery_date, total_amount, notes, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
       RETURNING *
-    `, [orderNum, customer_id, 1, order_date, delivery_date, parseFloat(total_amount), notes]);
+    `, [orderNum, customer_id, sales_rep_id, order_date, delivery_date, parseFloat(total_amount), notes]);
     
     const orderId = result.rows[0].id;
     console.log(`📦 Sipariş oluşturuldu, ID: ${orderId}`);
