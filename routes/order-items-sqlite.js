@@ -31,7 +31,7 @@ router.get('/', (req, res) => {
   }
   
   db.all(
-    `SELECT oi.*, p.name as product_name, p.unit 
+    `SELECT oi.*, p.name as product_name, p.description as product_description, p.unit as product_unit 
      FROM order_items oi 
      LEFT JOIN products p ON oi.product_id = p.id 
      WHERE oi.order_id = ?`,
@@ -46,7 +46,7 @@ router.get('/', (req, res) => {
 // Sipariş kalemlerini getir (eski format)
 router.get('/:order_id', (req, res) => {
   db.all(
-    `SELECT oi.*, p.name as product_name, p.unit 
+    `SELECT oi.*, p.name as product_name, p.description as product_description, p.unit as product_unit 
      FROM order_items oi 
      LEFT JOIN products p ON oi.product_id = p.id 
      WHERE oi.order_id = ?`,
