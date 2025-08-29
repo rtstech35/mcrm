@@ -896,12 +896,6 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
   }
 });
 
-const setupRoutes = require('./routes/setup');
-app.use('/api/setup', setupRoutes);
-
-
-
-
 // Database durumu kontrolü
 app.get("/api/database-status", async (req, res) => {
   try {
@@ -2492,7 +2486,7 @@ app.post("/api/delivery-notes", async (req, res) => {
     `, [
       delivery_number, order_id || null, customer_id, delivered_by || null,
       delivery_date, delivery_time || null, delivery_address, notes, internal_notes,
-      'ready_for_shipping', req.user.userId
+      'pending', req.user.userId
     ]);
 
     res.json({

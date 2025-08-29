@@ -220,10 +220,6 @@
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">İrsaliyeler</span>
                 </a>
-                <a href="#" onclick="logout()" class="nav-link">
-                    <span class="nav-icon">🚪</span>
-                    <span class="nav-text">Çıkış</span>
-                </a>
             </nav>
         </div>
 
@@ -850,11 +846,13 @@
             document.body.appendChild(overlay);
             return overlay;
         }
-
+ 
         function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+                window.location.href = '/';
+            }
         }
 
         // Modal dışına tıklandığında kapat
