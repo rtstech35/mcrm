@@ -154,9 +154,12 @@
         async function loadOrderData() {
             try {
                 // Sipariş bilgilerini al
-                const order = await apiCall(`/api/orders/${orderId}`);
-                const customer = await apiCall(`/api/customers/${order.customer_id}`);
-                const items = await apiCall(`/api/orders/${orderId}/items`);
+                const orderResponse = await apiCall(`/api/orders/${orderId}`);
+                const order = orderResponse.order || orderResponse;
+                const customerResponse = await apiCall(`/api/customers/${order.customer_id}`);
+                const customer = customerResponse.customer || customerResponse;
+                const itemsResponse = await apiCall(`/api/orders/${orderId}/items`);
+                const items = itemsResponse.items || [];
 
                 // Form alanlarını doldur
                 document.getElementById('orderNumber').value = `#${order.order_number}`;
