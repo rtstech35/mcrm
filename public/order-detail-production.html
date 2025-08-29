@@ -110,23 +110,20 @@
         async function loadOrderData() {
             try {
                 // Sipariş bilgilerini al
-                const orders = await apiCall('/api/orders');
-                orderData = orders.find(o => o.id == orderId);
+                const orderResponse = await apiCall(`/api/orders/${orderId}`);
+                orderData = orderResponse.order || orderResponse;
                 
                 if (!orderData) {
                     throw new Error('Sipariş bulunamadı');
                 }
 
-                // Müşteri bilgilerini al - tüm müşterilerden bul
-                const customers = await apiCall('/api/customers');
-                const customer = customers.find(c => c.id == orderData.customer_id);
-                
-                if (!customer) {
-                    throw new Error('Müşteri bulunamadı');
-                }
+                // Müşteri bilgilerini al
+                const customerResponse = await apiCall(`/api/customers/${orderData.customer_id}`);
+                const customer = customerResponse.customer || customerResponse;
                 
                 // Sipariş kalemlerini al
-                const orderItems = await apiCall(`/api/order-items/${orderId}`);
+                const itemsResponse = await apiCall(`/api/orders/${orderId}/items`);
+                const orderItems = itemsResponse.items || [];
 
                 await displayOrderData(orderData, customer, orderItems);
 
