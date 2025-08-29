@@ -4143,13 +4143,16 @@ app.post("/api/invoices/:id/payment", async (req, res) => {
 });
 
 // Tek sipariş getir
-app.get("/api/orders/:id", async (req, res) => {
+app.get("/api/orders/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT o.*, c.company_name
+      SELECT o.*, 
+             c.company_name,
+             u.full_name as sales_rep_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users u ON o.sales_rep_id = u.id
       WHERE o.id = $1
     `, [id]);
 
@@ -4164,7 +4167,7 @@ app.get("/api/orders/:id", async (req, res) => {
 });
 
 // Sipariş kalemlerini getir
-app.get("/api/orders/:id/items", async (req, res) => {
+app.get("/api/orders/:id/items", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 Sipariş ${id} için kalemler isteniyor...`);
@@ -4225,14 +4228,41 @@ app.get("/api/orders/:id/items", async (req, res) => {
 });
 
 // Sipariş durumu güncelle
-app.put("/api/orders/:id/status", async (req, res) => {
+app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, order_date, delivery_date, notes } = req.body;
+
+    const fieldsToUpdate = [];
+    const values = [];
+    let queryIndex = 1;
+
+    if (status) {
+      fieldsToUpdate.push(`status = $${queryIndex++}`);
+      values.push(status);
+    }
+    if (order_date) {
+      fieldsToUpdate.push(`order_date = $${queryIndex++}`);
+      values.push(order_date);
+    }
+    if (delivery_date) {
+      fieldsToUpdate.push(`delivery_date = $${queryIndex++}`);
+      values.push(delivery_date);
+    }
+    // Notlar boş bir string olabilir, bu yüzden undefined kontrolü yapıyoruz.
+    if (notes !== undefined) {
+      fieldsToUpdate.push(`notes = $${queryIndex++}`);
+      values.push(notes);
+    }
+
+    if (fieldsToUpdate.length === 0) {
+      return res.status(400).json({ success: false, error: 'Güncellenecek bir alan belirtilmedi.' });
+    }
+
+    const updateQuery = `UPDATE orders SET ${fieldsToUpdate.join(', ')} WHERE id = $${queryIndex} RETURNING *`;
+    values.push(id);
     
-    const result = await pool.query(`
-      UPDATE orders SET status = $1 WHERE id = $2 RETURNING *
-    `, [status, id]);
+    const result = await pool.query(updateQuery, values);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
@@ -4245,7 +4275,7 @@ app.put("/api/orders/:id/status", async (req, res) => {
 });
 
 // Tek müşteri getir
-app.get("/api/customers/:id", async (req, res) => {
+app.get("/api/customers/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
