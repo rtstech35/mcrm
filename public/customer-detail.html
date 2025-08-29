@@ -123,6 +123,7 @@
             try {
                 // Müşteri bilgileri
                 const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                console.log('Müşteri API response:', customerResponse);
                 customerData = customerResponse.customer || customerResponse;
                 displayCustomerInfo();
 

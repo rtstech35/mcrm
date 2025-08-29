@@ -205,8 +205,9 @@
             try {
                 console.log('Müşteri bilgileri isteniyor...');
                 // Müşteri bilgilerini al
-                const customer = await apiCall(`/api/customers/${customerId}`);
-                console.log('Müşteri verisi:', customer);
+                const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                console.log('Müşteri verisi:', customerResponse);
+                const customer = customerResponse.customer || customerResponse;
                 
                 // Müşteri bilgilerini göster
                 document.getElementById('customerInfo').innerHTML = `
