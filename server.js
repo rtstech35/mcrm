@@ -645,88 +645,6 @@ app.post("/api/migrate-products", async (req, res) => {
       WHERE price_with_vat IS NULL
     `);
 
-    // Örnek ürünler ekle (eğer tablo boşsa)
-    const productCount = await pool.query('SELECT COUNT(*) as count FROM products');
-    if (parseInt(productCount.rows[0].count) === 0) {
-      const sampleProducts = [
-        {
-          name: 'Laptop Bilgisayar',
-          description: 'Intel i5 işlemci, 8GB RAM, 256GB SSD',
-          unit_price: 15000.00,
-          vat_rate: 20,
-          unit: 'adet',
-          category: 'Elektronik',
-          stock_quantity: 25,
-          min_stock_level: 5,
-          product_code: 'ELK001',
-          supplier: 'Teknoloji A.Ş.'
-        },
-        {
-          name: 'Ofis Masası',
-          description: 'Ahşap ofis masası 120x80 cm',
-          unit_price: 2500.00,
-          vat_rate: 20,
-          unit: 'adet',
-          category: 'Mobilya',
-          stock_quantity: 15,
-          min_stock_level: 3,
-          product_code: 'MOB001',
-          supplier: 'Mobilya Ltd.'
-        },
-        {
-          name: 'A4 Kağıt',
-          description: '80 gr/m² beyaz fotokopi kağıdı',
-          unit_price: 45.00,
-          vat_rate: 20,
-          unit: 'paket',
-          category: 'Kırtasiye',
-          stock_quantity: 100,
-          min_stock_level: 20,
-          product_code: 'KRT001',
-          supplier: 'Kağıt San. Tic.'
-        },
-        {
-          name: 'Endüstriyel Vida M8x20',
-          description: 'Paslanmaz çelik vida M8x20mm',
-          unit_price: 2.50,
-          vat_rate: 20,
-          unit: 'adet',
-          category: 'Makine',
-          stock_quantity: 500,
-          min_stock_level: 100,
-          product_code: 'MAK001',
-          supplier: 'Demir Çelik A.Ş.'
-        },
-        {
-          name: 'Temizlik Deterjanı',
-          description: 'Çok amaçlı yüzey temizleyici 5L',
-          unit_price: 85.00,
-          vat_rate: 20,
-          unit: 'litre',
-          category: 'Kimyasal',
-          stock_quantity: 30,
-          min_stock_level: 10,
-          product_code: 'KIM001',
-          supplier: 'Temizlik Ürünleri Ltd.'
-        }
-      ];
-
-      for (const product of sampleProducts) {
-        const priceWithVat = product.unit_price * (1 + product.vat_rate / 100);
-        
-        await pool.query(`
-          INSERT INTO products (
-            name, description, unit_price, vat_rate, price_with_vat, unit, 
-            category, stock_quantity, min_stock_level, product_code, supplier, is_active
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
-        `, [
-          product.name, product.description, product.unit_price, product.vat_rate,
-          priceWithVat, product.unit, product.category, product.stock_quantity,
-          product.min_stock_level, product.product_code, product.supplier
-        ]);
-      }
-    }
-
     console.log('✅ Ürün tablosu migration tamamlandı');
 
     res.json({
@@ -1080,15 +998,6 @@ app.post("/api/add-sample-data", async (req, res) => {
       ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
       ON CONFLICT (username) DO NOTHING
     `, [hashedPassword]);
-
-    // Örnek ürünler
-    await pool.query(`
-      INSERT INTO products (name, description, unit_price, unit) VALUES 
-      ('Ürün A', 'Örnek ürün açıklaması', 100.00, 'adet'),
-      ('Ürün B', 'İkinci örnek ürün', 150.00, 'kg'),
-      ('Ürün C', 'Üçüncü örnek ürün', 75.50, 'metre')
-      ON CONFLICT DO NOTHING
-    `);
 
     res.json({
       success: true,

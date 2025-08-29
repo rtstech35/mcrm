@@ -85,15 +85,6 @@ async function setupDatabase() {
       ON CONFLICT (username) DO NOTHING
     `, [hashedPassword]);
 
-    // Örnek ürünler
-    await pool.query(`
-      INSERT INTO products (name, description, unit_price, unit) VALUES 
-      ('Ürün A', 'Örnek ürün açıklaması', 100.00, 'adet'),
-      ('Ürün B', 'İkinci örnek ürün', 150.00, 'kg'),
-      ('Ürün C', 'Üçüncü örnek ürün', 75.50, 'metre')
-      ON CONFLICT DO NOTHING
-    `);
-
     console.log("✅ Temel veriler başarıyla eklendi");
     console.log("🎉 Database setup tamamlandı!");
     console.log("📧 Admin kullanıcısı: admin / admin123");

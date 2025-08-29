@@ -2526,8 +2526,6 @@
                     <div class="card">
                         <h2>Ürün Yönetimi</h2>
                         <button class="btn" onclick="openProductModal()">Yeni Ürün</button>
-                        <button class="btn" onclick="clearDemoProducts()" style="background: #dc3545; margin-left: 0.5rem;">🗑️ Demo Ürünleri Temizle</button>
-                        <button class="btn" onclick="clearDemoProducts()" style="background: #dc3545; margin-left: 0.5rem;">🗑️ Demo Ürünleri Temizle</button>
                         <table class="table">
                             <thead>
                                 <tr>
@@ -2582,28 +2580,6 @@
             }
         }
         
-        async function clearDemoProducts() {
-            if (confirm('Tüm demo ürünleri (Ürün A, B, C ve örnek ürünleri) silmek istediğinizden emin misiniz?')) {
-                try {
-                    const products = await apiCall('/api/products');
-                    const demoProducts = products.products.filter(p => 
-                        p.name.includes('Ürün A') || p.name.includes('Ürün B') || p.name.includes('Ürün C') ||
-                        p.description.includes('Örnek') || p.description.includes('örnek') ||
-                        p.description.includes('İkinci örnek') || p.description.includes('Üçüncü örnek')
-                    );
-                    
-                    for (const product of demoProducts) {
-                        await apiCall(`/api/products/${product.id}`, { method: 'DELETE' });
-                    }
-                    
-                    alert(`${demoProducts.length} demo ürün silindi!`);
-                    showProducts();
-                } catch (error) {
-                    alert('Temizleme hatası: ' + error.message);
-                }
-            }
-        }
-        
         async function deleteProduct(id) {
             if (confirm('Bu ürünü silmek istediğinizden emin misiniz?')) {
                 try {
@@ -2616,27 +2592,6 @@
             }
         }
         
-        async function clearDemoProducts() {
-            if (confirm('Tüm demo ürünleri (Ürün A, B, C) silmek istediğinizden emin misiniz?')) {
-                try {
-                    const products = await apiCall('/api/products');
-                    const demoProducts = products.products.filter(p => 
-                        p.name.includes('Ürün A') || p.name.includes('Ürün B') || p.name.includes('Ürün C') ||
-                        p.description.includes('Örnek') || p.description.includes('örnek')
-                    );
-                    
-                    for (const product of demoProducts) {
-                        await apiCall(`/api/products/${product.id}`, { method: 'DELETE' });
-                    }
-                    
-                    alert(`${demoProducts.length} demo ürün silindi!`);
-                    showProducts();
-                } catch (error) {
-                    alert('Temizleme hatası: ' + error.message);
-                }
-            }
-        }
-
         async function showOrders() {
             try {
                 const ordersResponse = await apiCall('/api/orders');
