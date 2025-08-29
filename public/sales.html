@@ -565,8 +565,8 @@
                     ...options.headers
                 };
                 
-                // Sadece gerçek token varsa Authorization header'ı ekle
-                if (authToken && authToken !== 'dummy-token') {
+                // Authorization header'ı her zaman ekle
+                if (authToken) {
                     headers['Authorization'] = `Bearer ${authToken}`;
                 }
                 

@@ -398,7 +398,7 @@
                 }
 
                 const response = await fetch('/api/orders', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
                 
                 if (!response.ok) {
