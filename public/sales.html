@@ -1018,7 +1018,7 @@
                 return `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: white; border-radius: 4px; margin-bottom: 0.5rem;">
                         <div>
-                            <strong>${product.name}</strong><br>
+                            <strong>${product.name || 'İsimsiz Ürün'}</strong><br>
                             <small>${product.quantity} x ${product.price} TL = ${subtotal.toFixed(2)} TL</small>
                         </div>
                         <button type="button" onclick="removeProductFromOrder(${index})" class="btn" style="background: #dc3545; padding: 0.25rem 0.5rem; font-size: 0.75rem;">Sil</button>

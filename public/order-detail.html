@@ -201,7 +201,7 @@
                     return `
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; margin: 0.5rem 0; background: #f8f9fa;">
                             <div>
-                                <strong>${product.name}</strong><br>
+                            <strong>${product.name || 'İsimsiz Ürün'}</strong><br>
                                 <span>${item.quantity} ${product.unit} x ${item.unit_price} TL = ${item.total.toFixed(2)} TL</span>
                             </div>
                             <button class="btn btn-danger" onclick="removeProduct(${item.product_id})" style="background: #dc3545; padding: 0.25rem 0.5rem;">Kaldır</button>
