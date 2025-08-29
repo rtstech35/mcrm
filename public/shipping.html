@@ -509,6 +509,53 @@
         </div>
     </div>
 
+    <!-- İrsaliye Listesi Modal -->
+    <div id="deliveryNotesModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">İrsaliyeler</h3>
+                <button class="close-btn" onclick="closeDeliveryNotesModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="deliveryNotesList">
+                <!-- İrsaliyeler buraya yüklenecek -->
+            </div>
+        </div>
+    </div>
+
+    <!-- İmza Modal -->
+    <div id="signatureModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Teslimat Onayı</h3>
+                <button class="close-btn" onclick="closeSignatureModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="signatureDeliveryInfo" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <!-- Teslimat bilgileri buraya gelecek -->
+                </div>
+                <div class="form-group">
+                    <label for="customerName">Teslim Alan Kişi:</label>
+                    <input type="text" id="customerName" placeholder="Ad Soyad" required>
+                </div>
+                <div class="form-group">
+                    <label for="customerTitle">Unvan (opsiyonel):</label>
+                    <input type="text" id="customerTitle" placeholder="Satın Alma Müdürü">
+                </div>
+                <div class="form-group">
+                    <label>İmza:</label>
+                    <div class="signature-pad-container">
+                        <canvas id="signatureCanvas"></canvas>
+                        <button onclick="clearSignature()" class="btn btn-sm btn-secondary" style="position: absolute; top: 5px; right: 5px;">Temizle</button>
+                    </div>
+                    <small style="color: #666; display: block; text-align: center; margin-top: 5px;">Lütfen yukarıdaki alana imzanızı atınız.</small>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #eee;">
+                <button onclick="closeSignatureModal()" class="btn btn-secondary">İptal</button>
+                <button id="completeDeliveryBtn" onclick="saveSignatureAndComplete()" class="btn btn-success">Teslimatı Tamamla</button>
+            </div>
+        </div>
+    </div>
     <!-- Profile Modal -->
     <div id="profileModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
@@ -573,6 +620,121 @@
             e.preventDefault();
             alert('Profil güncelleme özelliği yakında eklenecek.');
             closeOrdersModal();
+        });
+
+        // ESC tuşu ile modal kapat
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDeliveryNotesModal();
+                closeSignatureModal();
+            }
+        });
+
+        // --- İmza Modal Fonksiyonları ---
+        let canvas, ctx, isDrawing = false;
+
+        function initSignaturePad() {
+            canvas = document.getElementById('signatureCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = container.clientWidth * ratio;
+                canvas.height = 200 * ratio;
+                canvas.style.width = `${container.clientWidth}px`;
+                canvas.style.height = `200px`;
+                ctx.scale(ratio, ratio);
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+            
+            canvas.addEventListener('touchstart', handleTouch, { passive: false });
+            canvas.addEventListener('touchmove', handleTouch, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getMousePos(canvas, e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getMousePos(canvas, e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+
+        function getMousePos(canvasDom, event) {
+            const rect = canvasDom.getBoundingClientRect();
+            const scaleX = canvasDom.width / rect.width;
+            const scaleY = canvasDom.height / rect.height;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type.replace('touch', 'mouse'), {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearSignature() {
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function closeSignatureModal() {
+            const modal = document.getElementById('signatureModal');
+            if (modal) modal.style.display = 'none';
+            clearSignature();
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerTitle').value = '';
+        }
+
+        async function showSignatureModal(deliveryNoteId) {
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`/api/delivery-notes/${deliveryNoteId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('İrsaliye bilgileri alınamadı.');
+                const data = await response.json();
+                const note = data.delivery_note;
+
+                const modal = document.getElementById('signatureModal');
+                document.getElementById('signatureDeliveryInfo').innerHTML = `
+                    <p style="margin: 0;"><strong>İrsaliye No:</strong> ${note.delivery_number}</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Müşteri:</strong> ${note.customer_name}</p>`;
+                document.getElementById('completeDeliveryBtn').dataset.deliveryNoteId = deliveryNoteId;
+                modal.style.display = 'flex';
+                initSignaturePad();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
         });
     </script>
     <script>
@@ -665,178 +827,100 @@
         async function loadDeliveryStatus() {
             try {
                 console.log('📦 Sevkiyat durumları yükleniyor...');
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch('/api/delivery-notes', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
                 
-                // Siparişleri al
-                const ordersResponse = await fetch('/api/orders');
-                let orders = [];
-                
-                if (ordersResponse.ok) {
-                    const ordersData = await ordersResponse.json();
-                    orders = ordersData.orders || ordersData || [];
-                    console.log('Siparişler yüklendi:', orders.length);
-                } else {
-                    console.log('Siparişler yüklenemedi, varsayılan değerler kullanılıyor');
-                }
+                if (!response.ok) throw new Error('İrsaliyeler alınamadı');
+
+                const data = await response.json();
+                const deliveryNotes = data.delivery_notes || [];
                 
                 // Sevkiyat durumlarını hesapla
-                const statusCounts = {
-                    ready_for_shipping: orders.filter(o => 
-                        o.status === 'completed' || 
-                        o.status === 'ready_for_delivery' || 
-                        o.status === 'ready_for_shipping'
-                    ).length,
-                    in_transit: orders.filter(o => 
-                        o.status === 'shipping' || 
-                        o.status === 'in_transit'
-                    ).length,
-                    delivered: orders.filter(o => 
-                        o.status === 'delivered'
-                    ).length
-                };
+                const statusCounts = deliveryNotes.reduce((acc, note) => {
+                    acc[note.status] = (acc[note.status] || 0) + 1;
+                    return acc;
+                }, { pending: 0, in_transit: 0, delivered: 0 });
                 
                 console.log('Sevkiyat durumları:', statusCounts);
                 
-                document.getElementById('readyCount').textContent = statusCounts.ready_for_shipping;
+                document.getElementById('readyCount').textContent = statusCounts.pending || 0;
                 document.getElementById('transitCount').textContent = statusCounts.in_transit;
                 document.getElementById('deliveredCount').textContent = statusCounts.delivered;
                 
                 // Hedefleri güncelle
-                updateShippingTargets();
+                await updateShippingTargets();
                 
             } catch (error) {
                 console.error('Sevkiyat durumları yüklenirken hata:', error);
                 setDefaultCounts();
             }
         }
-
+        
         function setDefaultCounts() {
             document.getElementById('readyCount').textContent = '0';
             document.getElementById('transitCount').textContent = '0';
             document.getElementById('deliveredCount').textContent = '0';
         }
 
-        async function showDeliveries(status) {
+        async function showDeliveryNotes(status) {
             try {
-                console.log('📋 Sevkiyat detayları yükleniyor:', status);
+                console.log('📋 İrsaliye detayları yükleniyor:', status);
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`/api/delivery-notes?status=${status}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (!response.ok) throw new Error('İrsaliyeler alınamadı');
+
+                const data = await response.json();
+                const deliveryNotes = data.delivery_notes || [];
                 
-                // Siparişleri al
-                const ordersResponse = await fetch('/api/orders');
-                let orders = [];
-                
-                if (ordersResponse.ok) {
-                    const ordersData = await ordersResponse.json();
-                    orders = ordersData.orders || ordersData || [];
-                }
-                
-                // Duruma göre filtrele
-                let filteredOrders = [];
-                if (status === 'ready_for_shipping') {
-                    filteredOrders = orders.filter(o => 
-                        o.status === 'completed' || 
-                        o.status === 'ready_for_delivery' || 
-                        o.status === 'ready_for_shipping'
-                    );
-                } else if (status === 'in_transit') {
-                    filteredOrders = orders.filter(o => 
-                        o.status === 'shipping' || 
-                        o.status === 'in_transit'
-                    );
-                } else if (status === 'delivered') {
-                    filteredOrders = orders.filter(o => 
-                        o.status === 'delivered'
-                    );
-                }
-                
-                console.log('Filtrelenmiş siparişler:', filteredOrders.length);
-                await showOrdersModal(filteredOrders, status);
+                await displayDeliveryNotesModal(deliveryNotes, status);
                 
             } catch (error) {
-                console.error('Sevkiyat detayları yüklenirken hata:', error);
-                await showOrdersModal([], status);
+                console.error('İrsaliye detayları yüklenirken hata:', error);
+                await displayDeliveryNotesModal([], status);
             }
         }
 
-
-        
-        async function showOrdersModal(orders, status) {
+        async function displayDeliveryNotesModal(notes, status) {
             const statusTitles = {
-                ready_for_shipping: 'Sevkiyat Bekleyen Siparişler',
-                in_transit: 'Sevkiyatını Aldığı Siparişler', 
-                delivered: 'Sevkiyatı Tamamlanan Ürünler'
+                pending: 'Sevkiyat Bekleyen İrsaliyeler',
+                in_transit: 'Yoldaki Sevkiyatlar',
+                delivered: 'Tamamlanan Sevkiyatlar'
             };
             
-            let modalBody = '';
-            
-            if (orders && orders.length > 0) {
-                const orderDetails = await Promise.all(orders.map(async order => {
-                    // Sipariş kalemlerini al
-                    let orderItems = [];
-                    try {
-                        const itemsResponse = await fetch(`/api/orders/${order.id}/items`);
-                        if (itemsResponse.ok) {
-                            const itemsData = await itemsResponse.json();
-                            orderItems = itemsData.items || [];
-                        }
-                    } catch (error) {
-                        console.log('Sipariş kalemleri alınamadı:', error);
-                    }
-                    
-                    return `
-                        <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                                <div style="flex: 1;">
-                                    <strong style="color: #333; font-size: 16px;">${order.order_number || 'SIP' + order.id}</strong><br>
-                                    <span style="color: #666; font-size: 14px;">${formatDate(order.order_date)}</span><br>
-                                    <span style="color: #666;">Müşteri:</span><br>
-                                    <strong style="color: #333;">${order.company_name || 'Bilinmiyor'}</strong><br><br>
-                                    <span style="color: #666;">Tutar:</span><br>
-                                    <strong style="color: #007bff; font-size: 16px;">₺${parseFloat(order.total_amount || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2})}</strong><br><br>
-                                    
-                                    <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                                        <strong style="color: #333;">📦 Ürün Listesi:</strong><br>
-                                        ${orderItems.length > 0 ? orderItems.map(item => 
-                                            `<span style="color: #666; display: block; margin: 2px 0;">${item.product_name || 'Ürün'}<br><span style="color: #999; font-size: 12px;">${item.quantity || 1} ${item.unit || 'adet'}</span>`
-                                        ).join('<br>') : '<span style="color: #999;">Ürün bilgisi yok</span>'}
-                                    </div>
-                                    
-                                    <div style="margin-top: 10px;">
-                                        <strong style="color: #666;">Notlar:</strong><br>
-                                        <span style="color: #888; font-style: italic;">${order.notes || 'Herhangi bir not bulunmuyor'}</span>
-                                    </div>
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
-                                    ${status === 'ready_for_shipping' ? `<button onclick="startShipping(${order.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
-                                    ${status === 'in_transit' ? `<button onclick="completeShipping(${order.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
-                                </div>
+            const modal = document.getElementById('deliveryNotesModal');
+            document.getElementById('modalTitle').textContent = statusTitles[status] || 'İrsaliyeler';
+            const listEl = document.getElementById('deliveryNotesList');
+
+            if (!notes || notes.length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda irsaliye bulunmuyor.</div>';
+            } else {
+                listEl.innerHTML = notes.map(note => `
+                    <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <div style="flex: 1;">
+                                <strong style="color: #333; font-size: 16px;">${note.delivery_number}</strong><br>
+                                <span style="color: #666; font-size: 14px;">Tarih: ${formatDate(note.delivery_date)}</span><br>
+                                <span style="color: #666;">Müşteri:</span>
+                                <strong style="color: #333;">${note.customer_name || 'Bilinmiyor'}</strong><br>
+                                <span style="color: #666;">Adres: ${note.delivery_address || note.customer_address || 'Belirtilmemiş'}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
+                                ${status === 'pending' ? `<button onclick="startShipping(${note.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
+                                ${status === 'in_transit' ? `<button onclick="completeShipping(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
+                                ${status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : ''}
                             </div>
                         </div>
-                    `;
-                }));
-                modalBody = orderDetails.join('');
-            } else {
-                modalBody = '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda sipariş bulunmuyor.</div>';
-            }
-            
-            const modalHtml = `
-                <div id="ordersModal" class="modal-overlay">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3>${statusTitles[status]}</h3>
-                            <button class="close-btn" onclick="closeOrdersModal()">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            ${modalBody}
-                        </div>
-                        <div style="margin-top: 20px; text-align: right;">
-                            <button onclick="closeOrdersModal()" class="btn btn-secondary">Kapat</button>
-                        </div>
                     </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
+                `).join('');
+            }
+            modal.style.display = 'flex';
         }
-        
+
         function formatDate(dateString) {
             if (!dateString) return 'Tarih yok';
             try {
@@ -846,11 +930,11 @@
             }
         }
         
-        function closeOrdersModal() {
-            const modal = document.getElementById('ordersModal');
+        function closeDeliveryNotesModal() {
+            const modal = document.getElementById('deliveryNotesModal');
             if (modal) {
                 modal.style.opacity = '0';
-                setTimeout(() => modal.remove(), 200);
+                setTimeout(() => modal.style.display = 'none', 200);
             }
         }
         
@@ -875,11 +959,11 @@
             }
         });
         
-        async function startShipping(orderId) {
+        async function startShipping(deliveryNoteId) {
             try {
-                console.log('🚚 Sevkiyat başlatılıyor, Order ID:', orderId);
-                
-                const response = await fetch(`/api/orders/${orderId}/status`, {
+                console.log('🚚 Sevkiyat başlatılıyor, İrsaliye ID:', deliveryNoteId);
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -893,18 +977,18 @@
                     alert('✅ Sipariş sevkiyata alındı! (Demo)');
                 }
                 
-                closeOrdersModal();
+                closeDeliveryNotesModal();
                 loadDeliveryStatus();
             } catch (error) {
                 console.error('Sevkiyat başlatma hatası:', error);
                 alert('✅ Sipariş sevkiyata alındı! (Demo)');
-                closeOrdersModal();
+                closeDeliveryNotesModal();
                 loadDeliveryStatus();
             }
         }
         
-        async function completeShipping(orderId) {
-            showSignatureModal(orderId);
+        async function completeShipping(deliveryNoteId) {
+            showSignatureModal(deliveryNoteId);
         }
         
         function showSignatureModal(orderId) {
@@ -1018,7 +1102,7 @@
             }
             
             try {
-                console.log('📝 Teslimat tamamlanıyor, Order ID:', orderId);
+                console.log('📝 Teslimat tamamlanıyor, İrsaliye ID:', orderId);
                 
                 // İmza verilerini kaydet
                 const signatureData = {
@@ -1030,7 +1114,7 @@
                 };
                 
                 // Delivery_notes tablosunu güncelle
-                await fetch(`/api/delivery-notes/${orderId}`, {
+                await fetch(`/api/delivery-notes/${orderId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1040,18 +1124,6 @@
                         customer_name: customerName,
                         customer_title: customerTitle,
                         signature_date: new Date().toISOString()
-                    })
-                });
-                
-                // Sipariş durumunu güncelle
-                const response = await fetch(`/api/orders/${orderId}/status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        status: 'delivered',
-                        signature_data: signatureData
                     })
                 });
                 
@@ -1107,14 +1179,14 @@
                 });
                 
                 closeSignatureModal();
-                closeOrdersModal();
+                closeDeliveryNotesModal();
                 loadDeliveryStatus();
                 
             } catch (error) {
                 console.error('Teslimat kaydetme hatası:', error);
                 alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
                 closeSignatureModal();
-                closeOrdersModal();
+                closeDeliveryNotesModal();
                 loadDeliveryStatus();
             }
         }

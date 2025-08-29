@@ -226,8 +226,8 @@
 
         async function showInvoices() {
             try {
-                const orders = await apiCall('/api/orders');
-                const deliveredOrders = orders.filter(o => o.status === 'delivered');
+                const ordersResponse = await apiCall('/api/orders');
+                const deliveredOrders = (ordersResponse.orders || []).filter(o => o.status === 'delivered');
                 
                 let html = `
                     <div class="card">
@@ -313,8 +313,8 @@
 
         async function showDeliveries() {
             try {
-                const orders = await apiCall('/api/orders');
-                const deliveredOrders = orders.filter(o => o.status === 'delivered');
+                const ordersResponse = await apiCall('/api/orders');
+                const deliveredOrders = (ordersResponse.orders || []).filter(o => o.status === 'delivered');
                 
                 let html = `
                     <div class="card">
