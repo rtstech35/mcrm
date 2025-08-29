@@ -99,10 +99,9 @@
 
         async function loadDeliveryNoteData() {
             try {
-                // İrsaliye bilgilerini al
-                const deliveryNotes = await apiCall('/api/cari/delivery-notes');
-                const deliveryNote = deliveryNotes.find(dn => dn.id == deliveryNoteId);
-                
+                // İrsaliye bilgilerini doğrudan ID ile al
+                const deliveryNote = await apiCall(`/api/cari/delivery-notes/${deliveryNoteId}`);
+
                 if (!deliveryNote) {
                     throw new Error('İrsaliye bulunamadı');
                 }

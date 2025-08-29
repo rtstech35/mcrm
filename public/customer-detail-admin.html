@@ -247,7 +247,8 @@
                 await loadSummaryData();
                 
                 // Sekme verilerini yükle
-                await loadTabData();
+                // Diğer sekmeler tıklandığında yüklenecek (lazy loading)
+                await loadOrders();
 
             } catch (error) {
                 console.error('Müşteri verileri yüklenemedi:', error);
@@ -300,12 +301,17 @@
             }
         }
 
-        async function loadTabData() {
+        // Her sekme için ayrı yükleme fonksiyonları
+        async function loadOrders() {
+            const listEl = document.getElementById('ordersList');
+            listEl.innerHTML = '<p style="text-align:center; padding: 2rem;">Yükleniyor...</p>';
             try {
-                // Siparişleri yükle
                 const ordersResponse = await apiCall(`/api/orders?customer_id=${customerId}`);
                 const orders = ordersResponse.orders || ordersResponse || [];
-                document.getElementById('ordersList').innerHTML = orders.map(order => `
+                if (orders.length === 0) {
+                    listEl.innerHTML = '<p style="text-align:center; padding: 2rem; color: #718096;">Sipariş bulunamadı.</p>'; return;
+                }
+                listEl.innerHTML = orders.map(order => `
                     <div class="list-item" onclick="viewOrder(${order.id})">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
@@ -319,12 +325,22 @@
                         </div>
                     </div>
                 `).join('');
+            } catch (error) {
+                console.error('Siparişler yüklenemedi:', error);
+                listEl.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">Siparişler yüklenemedi: ${error.message}</p>`;
+            }
+        }
 
-                // İrsaliyeleri yükle
-                try {
+        async function loadDeliveryNotes() {
+            const listEl = document.getElementById('deliveryNotesList');
+            listEl.innerHTML = '<p style="text-align:center; padding: 2rem;">Yükleniyor...</p>';
+             try {
                     const deliveryNotesResponse = await apiCall(`/api/delivery-notes?customer_id=${customerId}`);
                     const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
-                    document.getElementById('deliveryNotesList').innerHTML = deliveryNotes.map(dn => `
+                    if (deliveryNotes.length === 0) {
+                        listEl.innerHTML = '<p style="text-align:center; padding: 2rem; color: #718096;">İrsaliye bulunamadı.</p>'; return;
+                    }
+                    listEl.innerHTML = deliveryNotes.map(dn => `
                         <div class="list-item" onclick="viewDeliveryNote(${dn.id})">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -338,16 +354,22 @@
                             </div>
                         </div>
                     `).join('');
-                } catch (error) {
-                    console.log('İrsaliyeler yüklenemedi:', error.message);
-                    document.getElementById('deliveryNotesList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">İrsaliye bulunamadı</div>';
-                }
-                
-                // Faturaları yükle
-                try {
+            } catch (error) {
+                console.error('İrsaliyeler yüklenemedi:', error);
+                listEl.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">İrsaliyeler yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        async function loadInvoices() {
+            const listEl = document.getElementById('invoicesList');
+            listEl.innerHTML = '<p style="text-align:center; padding: 2rem;">Yükleniyor...</p>';
+            try {
                     const invoicesResponse = await apiCall(`/api/invoices?customer_id=${customerId}`);
                     const invoices = invoicesResponse.invoices || [];
-                    document.getElementById('invoicesList').innerHTML = invoices.map(inv => `
+                    if (invoices.length === 0) {
+                        listEl.innerHTML = '<p style="text-align:center; padding: 2rem; color: #718096;">Fatura bulunamadı.</p>'; return;
+                    }
+                    listEl.innerHTML = invoices.map(inv => `
                         <div class="list-item" onclick="viewInvoice(${inv.id})">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -362,16 +384,22 @@
                             </div>
                         </div>
                     `).join('');
-                } catch (error) {
-                    console.log('Faturalar yüklenemedi:', error.message);
-                    document.getElementById('invoicesList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Fatura bulunamadı</div>';
-                }
-                
-                // Tahsilatları yükle
-                try {
+            } catch (error) {
+                console.error('Faturalar yüklenemedi:', error);
+                listEl.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">Faturalar yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        async function loadPayments() {
+            const listEl = document.getElementById('paymentsList');
+            listEl.innerHTML = '<p style="text-align:center; padding: 2rem;">Yükleniyor...</p>';
+            try {
                     const paymentsResponse = await apiCall(`/api/account-transactions?customer_id=${customerId}&transaction_type=credit`);
                     const payments = paymentsResponse.transactions || [];
-                    document.getElementById('paymentsList').innerHTML = payments.map(payment => `
+                    if (payments.length === 0) {
+                        listEl.innerHTML = '<p style="text-align:center; padding: 2rem; color: #718096;">Tahsilat bulunamadı.</p>'; return;
+                    }
+                    listEl.innerHTML = payments.map(payment => `
                         <div class="list-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -385,16 +413,22 @@
                             </div>
                         </div>
                     `).join('');
-                } catch (error) {
-                    console.log('Tahsilatlar yüklenemedi:', error.message);
-                    document.getElementById('paymentsList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Tahsilat bulunamadı</div>';
-                }
-                
-                // Cari hesap hareketlerini yükle
-                try {
+            } catch (error) {
+                console.error('Tahsilatlar yüklenemedi:', error);
+                listEl.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">Tahsilatlar yüklenemedi: ${error.message}</p>`;
+            }
+        }
+
+        async function loadAccountMovements() {
+            const listEl = document.getElementById('accountMovements');
+            listEl.innerHTML = '<p style="text-align:center; padding: 2rem;">Yükleniyor...</p>';
+            try {
                     const movementsResponse = await apiCall(`/api/account-transactions?customer_id=${customerId}`);
                     const movements = movementsResponse.transactions || [];
-                    document.getElementById('accountMovements').innerHTML = movements.map(movement => `
+                    if (movements.length === 0) {
+                        listEl.innerHTML = '<p style="text-align:center; padding: 2rem; color: #718096;">Cari hareket bulunamadı.</p>'; return;
+                    }
+                    listEl.innerHTML = movements.map(movement => `
                         <div class="list-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -409,17 +443,13 @@
                             </div>
                         </div>
                     `).join('');
-                } catch (error) {
-                    console.log('Cari hareketler yüklenemedi:', error.message);
-                    document.getElementById('accountMovements').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Cari hareket bulunamadı</div>';
-                }
-
             } catch (error) {
-                console.error('Sekme verileri yüklenemedi:', error);
+                console.error('Cari hareketler yüklenemedi:', error);
+                listEl.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">Cari hareketler yüklenemedi: ${error.message}</p>`;
             }
         }
 
-        function showTab(tabName) {
+        function showTab(tabName, clickedTab) {
             // Tüm sekmeleri gizle
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -430,7 +460,20 @@
 
             // Seçili sekmeyi göster
             document.getElementById(tabName + '-tab').classList.add('active');
-            event.target.classList.add('active');
+            clickedTab.classList.add('active');
+
+            // Veri daha önce yüklenmemişse yükle
+            if (!clickedTab.dataset.loaded) {
+                switch (tabName) {
+                    case 'orders': loadOrders(); break;
+                    case 'delivery-notes': loadDeliveryNotes(); break;
+                    case 'invoices': loadInvoices(); break;
+                    case 'payments': loadPayments(); break;
+                    case 'account': loadAccountMovements(); break;
+                    // Ekstre sekmesi zaten kendi butonuyla çalışıyor
+                }
+                clickedTab.dataset.loaded = "true";
+            }
         }
 
         function viewOrder(orderId) {
@@ -450,7 +493,8 @@
         }
 
         function createInvoiceFromDeliveryNotes() {
-            alert('İrsaliyelerden fatura oluşturma özelliği yakında eklenecek!');
+            // Müşteri ID'sini kullanarak ilgili sayfaya yönlendir.
+            window.location.href = `/invoice-from-delivery.html?customer_id=${customerId}`;
         }
 
         async function addPayment() {
@@ -582,7 +626,7 @@
                 
                 // Verileri yenile
                 await loadSummaryData();
-                await loadTabData();
+                await loadPayments(); // Sadece ilgili sekmeyi yenile
             } catch (error) {
                 alert('Tahsilat eklenemedi: ' + error.message);
             }

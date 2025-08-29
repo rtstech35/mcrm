@@ -151,8 +151,8 @@
                     group.notes.forEach(dn => {
                         html += `
                             <div class="delivery-item" onclick="toggleDelivery(${dn.id})" id="delivery-${dn.id}">
-                                <div style="display: flex; align-items: center;">
-                                    <input type="checkbox" class="checkbox" id="cb-${dn.id}" onchange="toggleDelivery(${dn.id})">
+                                <div style="display: flex; align-items: center; pointer-events: none;">
+                                    <input type="checkbox" class="checkbox" id="cb-${dn.id}">
                                     <div style="flex: 1;">
                                         <div style="font-weight: 600;">${dn.delivery_note_number}</div>
                                         <div style="font-size: 0.875rem; color: #666;">
@@ -182,7 +182,11 @@
             }
         }
 
-        function toggleDelivery(deliveryId) {
+        function toggleDelivery(deliveryId, event) {
+            // Checkbox'a tıklandığında event'in iki kez tetiklenmesini engelle
+            if (event && event.target.type === 'checkbox') {
+                event.stopPropagation();
+            }
             const checkbox = document.getElementById(`cb-${deliveryId}`);
             const item = document.getElementById(`delivery-${deliveryId}`);
             
@@ -213,23 +217,22 @@
             }
 
             try {
-                // Seçilen irsaliyelerin kalemlerini al
+                // Seçilen irsaliyelerin temel bilgilerini al
                 const selectedNotes = deliveryNotes.filter(dn => selectedDeliveries.includes(dn.id));
                 const customerName = selectedNotes[0].customer_name;
                 
-                console.log('Seçilen irsaliyeler:', selectedNotes);
-                
-                // Tüm kalemleri topla
-                let allItems = [];
-                for (const note of selectedNotes) {
-                    console.log(`İrsaliye ${note.id} kalemlerini alıyor...`);
-                    const items = await apiCall(`/api/cari/delivery-notes/${note.id}/items`);
-                    console.log(`İrsaliye ${note.id} kalemleri:`, items);
-                    items.forEach(item => {
-                        item.delivery_note_number = note.delivery_note_number;
-                        allItems.push(item);
-                    });
-                }
+                // --- PERFORMANS İYİLEŞTİRMESİ ---
+                // N+1 problemini çözmek için, backend'e seçilen tüm irsaliye ID'lerini
+                // tek bir istekte gönderip tüm kalemleri toplu olarak alın.
+                // Örnek: /api/cari/delivery-notes/items?ids=1,2,3
+                const deliveryIds = selectedDeliveries.join(',');
+                const allItems = await apiCall(`/api/cari/delivery-notes/items?ids=${deliveryIds}`);
+
+                // Gelen kalemlere irsaliye numarasını eklemek için bir map oluşturalım
+                const noteNumberMap = selectedNotes.reduce((acc, note) => {
+                    acc[note.id] = note.delivery_note_number;
+                    return acc;
+                }, {});
                 
                 console.log('Tüm kalemler:', allItems);
 
@@ -250,8 +253,8 @@
                     groupedItems[key].total_price += parseFloat(item.total_price);
                     
                     // İrsaliye numarasını sadece bir kez ekle
-                    if (!groupedItems[key].delivery_notes.includes(item.delivery_note_number)) {
-                        groupedItems[key].delivery_notes.push(item.delivery_note_number);
+                    if (!groupedItems[key].delivery_notes.includes(noteNumberMap[item.delivery_note_id])) {
+                        groupedItems[key].delivery_notes.push(noteNumberMap[item.delivery_note_id]);
                     }
                 });
                 

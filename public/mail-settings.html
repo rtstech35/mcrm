@@ -114,6 +114,7 @@
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
                     ...options.headers
                 }
             });
@@ -302,7 +303,8 @@
                 const response = await fetch('/api/mail/test-connection', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify(settings)
                 });
