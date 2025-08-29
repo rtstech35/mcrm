@@ -469,9 +469,6 @@
                 console.log('İlk fatura detayı:', invoices[0]);
                 console.log('remaining_amount var mı?', invoices[0] ? invoices[0].remaining_amount : 'Fatura yok');
             
-                const unpaidInvoices = invoices.filter(inv => inv.remaining_amount > 0);
-                console.log('Ödenmemiş faturalar:', unpaidInvoices);
-                
                 const cashRegistersList = cashRegisters.cash_registers || cashRegisters || [];
                 const cashRegisterOptions = cashRegistersList.map(cr => 
                     `<option value="${cr.id}">${cr.name} (${cr.balance || 0} TL)</option>`
@@ -480,6 +477,7 @@
                 
                 const invoicesList = invoices.invoices || invoices || [];
                 const unpaidInvoices = invoicesList.filter(inv => (inv.remaining_amount || inv.total_amount) > 0);
+                console.log('Ödenmemiş faturalar:', unpaidInvoices);
                 const invoiceOptions = unpaidInvoices.map(inv => 
                     `<option value="${inv.id}">${inv.invoice_number} - Kalan: ${inv.remaining_amount || inv.total_amount} TL</option>`
                 ).join('');
