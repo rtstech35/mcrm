@@ -734,6 +734,7 @@
         });
     </script>
     <script>
+        let currentUser = {};
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚚 Sevkiyat paneli yükleniyor...');
             checkAuth();
@@ -1396,12 +1397,11 @@
         }
 
         function logout() {
-            if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                return;
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+                window.location.href = '/';
             }
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            window.location.href = '/';
         }
     </script>
 

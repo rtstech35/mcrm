@@ -436,7 +436,7 @@
         });
     </script>
     <script>
-        let currentUser = null;
+        let currentUser = {};
 
         // Sayfa yüklendiğinde
         document.addEventListener('DOMContentLoaded', () => {
@@ -504,15 +504,18 @@
         }
 
         function checkAuth() {
-            const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('currentUser');
             
             if (!token || !user) {
-                window.location.href = 'index.html';
+                window.location.href = '/';
                 return;
             }
-            
-            currentUser = JSON.parse(user);
+            try {
+                currentUser = JSON.parse(user);
+            } catch(e) {
+                window.location.href = '/';
+            }
         }
 
         async function loadDashboardData() {
