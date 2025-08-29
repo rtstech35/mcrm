@@ -463,6 +463,14 @@
             }
         };
         
+        // Global profile functions
+        window.toggleProfileMenu = function() {
+            const menu = document.getElementById('profileMenu');
+            if (menu) {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            }
+        };
+        
         window.updateDateTime = function() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('tr-TR');
@@ -473,6 +481,17 @@
             
             if (userNameEl) userNameEl.textContent = currentUser.full_name || 'Kullanıcı';
             if (dateTimeEl) dateTimeEl.textContent = `${dateStr} - ${timeStr}`;
+        };
+        
+        window.openProfile = function() {
+            const modal = document.getElementById('profileModal');
+            if (modal) {
+                document.getElementById('profile_full_name').value = currentUser.full_name || '';
+                document.getElementById('profile_email').value = currentUser.email || '';
+                document.getElementById('profile_phone').value = currentUser.phone || '';
+                modal.style.display = 'block';
+            }
+            toggleProfileMenu();
         };
         
         window.openProfile = function() {
@@ -602,11 +621,23 @@
 
         async function showDashboard() {
             try {
-                const stats = await apiCall('/api/dashboard/stats');
-                const targetsResponse = await apiCall(`/api/targets/user/${currentUser.id}`);
-                const targets = targetsResponse.targets || [];
-                const salesTarget = null;
-                const visitsTarget = null;
+                const statsResponse = await apiCall(`/api/sales/dashboard/${currentUser.id}`);
+                const stats = statsResponse.stats || {};
+
+                const today = new Date().toISOString().split('T')[0];
+                const appointmentsResponse = await apiCall(`/api/appointments?assigned_to=${currentUser.id}&start_date=${today}`);
+                const todayAppointments = appointmentsResponse.appointments || [];
+
+                const ordersResponse = await apiCall(`/api/orders?sales_rep_id=${currentUser.id}`);
+                const userOrders = ordersResponse.orders || [];
+                const orderStatuses = userOrders.reduce((acc, order) => {
+                    acc[order.status] = (acc[order.status] || 0) + 1;
+                    return acc;
+                }, {});
+
+                const salesPercentage = stats.monthlySalesTarget > 0 ? Math.round((stats.currentMonthlySales / stats.monthlySalesTarget) * 100) : 0;
+                const visitPercentage = stats.monthlyVisitTarget > 0 ? Math.round((stats.currentMonthlyVisits / stats.monthlyVisitTarget) * 100) : 0;
+                const collectionPercentage = stats.monthlyCollectionTarget > 0 ? Math.round((stats.currentMonthlyCollection / stats.monthlyCollectionTarget) * 100) : 0;
                 
                 document.getElementById('content').innerHTML = `
                     <!-- Hedefler ve Gerçekleşmeler -->
@@ -616,20 +647,20 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Satış Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: 0 TL</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${stats.monthlySalesTarget.toLocaleString('tr-TR')} TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💰</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 0 TL</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">0%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${stats.currentMonthlySales.toLocaleString('tr-TR')} TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${salesPercentage}%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
+                                    <div style="width: ${salesPercentage}%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: 0 TL</div>
+                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: ${(stats.monthlySalesTarget - stats.currentMonthlySales).toLocaleString('tr-TR')} TL</div>
                         </div>
                         
                         <!-- Aylık Ziyaret Hedefi -->
@@ -637,20 +668,20 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Ziyaret Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: 0 ziyaret</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${stats.monthlyVisitTarget} ziyaret</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #48bb78, #38a169); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🎯</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 22 ziyaret</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">73%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${stats.currentMonthlyVisits} ziyaret</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${visitPercentage}%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 73%; height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease;"></div>
+                                    <div style="width: ${visitPercentage}%; height: 100%; background: linear-gradient(90deg, #48bb78, #38a169); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: 8 ziyaret</div>
+                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: ${stats.monthlyVisitTarget - stats.currentMonthlyVisits} ziyaret</div>
                         </div>
                         
                         <!-- Aylık Tahsilat Hedefi -->
@@ -658,48 +689,36 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Tahsilat Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: 0 TL</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${stats.monthlyCollectionTarget.toLocaleString('tr-TR')} TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ed8936, #dd6b20); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💳</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: 68,000 TL</span>
-                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">76%</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${stats.currentMonthlyCollection.toLocaleString('tr-TR')} TL</span>
+                                    <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${collectionPercentage}%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                    <div style="width: 76%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
+                                    <div style="width: ${collectionPercentage}%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #ed8936;">Kalan: 22,000 TL</div>
+                            <div style="font-size: 0.875rem; color: #ed8936;">Kalan: ${(stats.monthlyCollectionTarget - stats.currentMonthlyCollection).toLocaleString('tr-TR')} TL</div>
                         </div>
                     </div>
                     
                     <!-- Bugünkü Randevular -->
                     <div class="card" style="margin-bottom: 1rem;">
                         <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📅 Bugünkü Randevular</h3>
-                        <div style="display: grid; gap: 0.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #48bb78; flex-wrap: wrap; gap: 0.5rem;">
-                                <div>
-                                    <strong>09:00 - ABC Restaurant</strong>
-                                    <div style="font-size: 0.875rem; color: #666;">Sipariş takibi ve yeni ürün tanıtımı</div>
+                        <div id="todayAppointments" style="display: grid; gap: 0.5rem;">
+                            ${todayAppointments.length > 0 ? todayAppointments.map(apt => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #48bb78; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div>
+                                        <strong>${apt.start_time || 'Tüm Gün'} - ${apt.customer_name || apt.title}</strong>
+                                        <div style="font-size: 0.875rem; color: #666;">${apt.description || 'Açıklama yok'}</div>
+                                    </div>
+                                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeActivity('appointment', ${apt.id})">✓ Tamamla</button>
                                 </div>
-                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(1)">✓ Tamamla</button>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #ed8936; flex-wrap: wrap; gap: 0.5rem;">
-                                <div>
-                                    <strong>14:00 - XYZ Cafe</strong>
-                                    <div style="font-size: 0.875rem; color: #666;">Aylık sipariş planlanması</div>
-                                </div>
-                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(2)">✓ Tamamla</button>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #9f7aea; flex-wrap: wrap; gap: 0.5rem;">
-                                <div>
-                                    <strong>16:30 - DEF Otel</strong>
-                                    <div style="font-size: 0.875rem; color: #666;">Tahsilat takibi</div>
-                                </div>
-                                <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;" onclick="completeAppointment(3)">✓ Tamamla</button>
-                            </div>
+                            `).join('') : '<p style="color: #666; text-align: center;">Bugün için randevu yok.</p>'}
                         </div>
                     </div>
                     
@@ -712,20 +731,20 @@
                             <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">📋 Sipariş Durumu</h3>
                             <div style="display: grid; gap: 0.5rem;">
                                 <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #e8f5e8; border-radius: 4px;">
-                                    <span>Onaylandı</span>
-                                    <strong style="color: #48bb78;">8 sipariş</strong>
+                                    <span>Bekleyen</span>
+                                    <strong style="color: #48bb78;">${orderStatuses.pending || 0} sipariş</strong>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #fff3cd; border-radius: 4px;">
-                                    <span>Hazırlanıyor</span>
-                                    <strong style="color: #ed8936;">5 sipariş</strong>
+                                    <span>Üretimde</span>
+                                    <strong style="color: #ed8936;">${orderStatuses.production || 0} sipariş</strong>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #d4edda; border-radius: 4px;">
                                     <span>Teslim Edildi</span>
-                                    <strong style="color: #155724;">12 sipariş</strong>
+                                    <strong style="color: #155724;">${orderStatuses.delivered || 0} sipariş</strong>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8d7da; border-radius: 4px;">
                                     <span>İptal</span>
-                                    <strong style="color: #721c24;">2 sipariş</strong>
+                                    <strong style="color: #721c24;">${orderStatuses.cancelled || 0} sipariş</strong>
                                 </div>
                             </div>
                             <button class="btn" onclick="showOrders()" style="width: 100%; margin-top: 1rem;">Tüm Siparişleri Görüntüle</button>
@@ -734,13 +753,7 @@
                         <!-- Müşteri Haritası -->
                         <div class="card" style="margin-bottom: 0;">
                             <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 1rem;">🗺️ Müşteri Haritası</h3>
-                            <div style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                                <div style="text-align: center; color: #666;">
-                                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🗺️</div>
-                                    <div>Yakındaki müşteriler</div>
-                                    <div style="font-size: 0.875rem;">5 km çevrede 12 müşteri</div>
-                                </div>
-                            </div>
+                            <div id="customerMap" style="height: 200px; background: #f8f9fa; border-radius: 8px; margin-bottom: 1rem;"></div>
                             <button class="btn" onclick="window.location.href='/map.html'" style="width: 100%;">Haritayı Aç</button>
                         </div>
                     </div>
@@ -748,8 +761,7 @@
                 
                 // Grafikleri çiz
                 setTimeout(() => {
-                    drawSalesChart();
-                    drawVisitChart();
+                    initCustomerMap();
                 }, 100);
                 
             } catch (error) {
@@ -768,6 +780,29 @@
                     </div>
                 </div>
             `;
+        }
+
+        async function initCustomerMap() {
+            const mapElement = document.getElementById('customerMap');
+            if (!mapElement) return;
+
+            try {
+                const customersResponse = await apiCall(`/api/customers?sales_rep_id=${currentUser.id}`);
+                const customers = customersResponse.customers || [];
+
+                // Basit bir liste olarak göster
+                if (customers.length > 0) {
+                    mapElement.innerHTML = `
+                        <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
+                            ${customers.slice(0, 5).map(c => `<li style="padding: 0.25rem 0; border-bottom: 1px solid #f1f5f9;">📍 ${c.company_name}</li>`).join('')}
+                        </ul>
+                    `;
+                } else {
+                    mapElement.innerHTML = '<p style="text-align: center; color: #666;">Müşteri bulunamadı.</p>';
+                }
+            } catch (error) {
+                mapElement.innerHTML = '<p style="text-align: center; color: red;">Harita yüklenemedi.</p>';
+            }
         }
 
         async function showVisit() {
@@ -839,9 +874,9 @@
 
         async function showOrders() {
             try {
-                const ordersResponse = await apiCall('/api/orders');
-                const orders = ordersResponse.orders || [];
-                const myOrders = orders; // Tüm siparişleri göster
+                // Sadece mevcut kullanıcıya ait siparişleri getir
+                const ordersResponse = await apiCall(`/api/orders?sales_rep_id=${currentUser.id}`);
+                const myOrders = ordersResponse.orders || [];
                 
                 let html = `
                     <div class="card">

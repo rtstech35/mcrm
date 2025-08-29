@@ -261,6 +261,29 @@
 
         <!-- Sipariş Durumları -->
         <div class="orders-status">
+            <!-- ... (mevcut status-card'lar) ... -->
+        </div>
+        <!-- Aylık Hedef ve Gerçekleşme -->
+        <div class="targets-section">
+            <div class="target-card">
+                <h3>Aylık Üretim Hedefi</h3>
+                <div class="target-progress">
+                    <div class="target-numbers">
+                        <span class="achieved" id="productionAchieved">0</span>
+                        <span class="separator">/</span>
+                        <span class="target" id="productionTarget">0</span>
+                        <span class="unit">adet</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="productionProgress"></div>
+                    </div>
+                    <div class="progress-text" id="productionPercentage">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sipariş Durumları -->
+        <div class="orders-status">
             <div class="status-card" onclick="showOrders('pending')">
                 <div class="status-icon">⏳</div>
                 <div class="status-info">
@@ -340,6 +363,51 @@
             loadDashboardData();
         });
 
+        async function loadTargets() {
+            try {
+                const token = localStorage.getItem('token');
+                const user = JSON.parse(localStorage.getItem('user'));
+                const currentMonth = new Date().getMonth() + 1;
+                const currentYear = new Date().getFullYear();
+                
+                const response = await fetch(`/api/user-targets/${user.id}?year=${currentYear}&month=${currentMonth}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                let productionTarget = 0;
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.target) {
+                        productionTarget = data.target.production_target || 0;
+                    }
+                }
+                
+                const ordersResponse = await fetch('/api/orders', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                let productionAchieved = 0;
+                if (ordersResponse.ok) {
+                    const ordersData = await ordersResponse.json();
+                    const orders = ordersData.orders || ordersData || [];
+                    productionAchieved = orders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
+                }
+
+                document.getElementById('productionTarget').textContent = productionTarget;
+                document.getElementById('productionAchieved').textContent = productionAchieved;
+                
+                const percentage = productionTarget > 0 ? Math.round((productionAchieved / productionTarget) * 100) : 0;
+                document.getElementById('productionPercentage').textContent = percentage + '%';
+                document.getElementById('productionProgress').style.width = percentage + '%';
+                
+            } catch (error) {
+                console.error('Hedefler yüklenirken hata:', error);
+                document.getElementById('productionTarget').textContent = 0;
+                document.getElementById('productionAchieved').textContent = 0;
+                document.getElementById('productionPercentage').textContent = '0%';
+                document.getElementById('productionProgress').style.width = '0%';
+            }
+        }
+
         function checkAuth() {
             const token = localStorage.getItem('token');
             const user = localStorage.getItem('user');
@@ -355,11 +423,7 @@
 
         async function loadDashboardData() {
             try {
-                const token = localStorage.getItem('token');
-                
-                // Hedefleri yükle
                 await loadTargets();
-                
                 // Sipariş durumlarını yükle
                 await loadOrderStatus();
                 
@@ -367,35 +431,6 @@
                 console.error('Dashboard verileri yüklenirken hata:', error);
             }
         }
-
-        async function loadTargets() {
-            try {
-                const currentMonth = new Date().getMonth() + 1;
-                const currentYear = new Date().getFullYear();
-                
-                // Hedef verileri sıfırla
-                const productionTarget = 0;
-                const productionAchieved = 0;
-                
-                document.getElementById('productionTarget').textContent = productionTarget;
-                document.getElementById('productionAchieved').textContent = productionAchieved;
-                
-                const percentage = Math.round((productionAchieved / productionTarget) * 100);
-                document.getElementById('productionPercentage').textContent = percentage + '%';
-                document.getElementById('productionProgress').style.width = percentage + '%';
-                
-            } catch (error) {
-                console.error('Hedefler yüklenirken hata:', error);
-            }
-        }
-
-        async function loadOrderStatus() {
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    setDefaultCounts();
-                    return;
-                }
 
                 const response = await fetch('/api/orders', {
                     headers: token ? { 'Authorization': `Bearer ${token}` } : {}

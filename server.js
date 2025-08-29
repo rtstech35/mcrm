@@ -3361,81 +3361,6 @@ app.get("/api/dashboard/monthly-sales", async (req, res) => {
   }
 });
 
-// Sales.html için dashboard stats endpoint
-app.get("/api/dashboard/stats", async (req, res) => {
-  try {
-    console.log('📊 Sales Dashboard stats isteği geldi');
-    
-    // Temel istatistikleri topla
-    const stats = {
-      totalOrders: 0,
-      totalCustomers: 0,
-      totalProducts: 0,
-      monthlyOrders: 0,
-      totalRevenue: 0,
-      monthlySalesTarget: 500000,
-      currentMonthlySales: 375000,
-      monthlyVisitTarget: 200,
-      currentMonthlyVisits: 164,
-      monthlyCollectionTarget: 450000,
-      currentMonthlyCollection: 401000
-    };
-
-    try {
-      // Toplam sipariş sayısı
-      const ordersResult = await pool.query('SELECT COUNT(*) as count FROM orders');
-      stats.totalOrders = parseInt(ordersResult.rows[0].count) || 0;
-
-      // Toplam müşteri sayısı
-      const customersResult = await pool.query('SELECT COUNT(*) as count FROM customers');
-      stats.totalCustomers = parseInt(customersResult.rows[0].count) || 0;
-
-      // Toplam ürün sayısı
-      const productsResult = await pool.query('SELECT COUNT(*) as count FROM products');
-      stats.totalProducts = parseInt(productsResult.rows[0].count) || 0;
-
-      // Bu ay sipariş sayısı
-      const monthlyOrdersResult = await pool.query(`
-        SELECT COUNT(*) as count FROM orders 
-        WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-        AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-      `);
-      stats.monthlyOrders = parseInt(monthlyOrdersResult.rows[0].count) || 0;
-
-      // Toplam gelir
-      const revenueResult = await pool.query('SELECT COALESCE(SUM(total_amount), 0) as total FROM orders');
-      stats.totalRevenue = parseFloat(revenueResult.rows[0].total) || 0;
-
-    } catch (dbError) {
-      console.log('Database sorgusu hatası, varsayılan değerler kullanılıyor:', dbError.message);
-    }
-
-    console.log('✅ Sales Dashboard stats başarıyla hesaplandı:', stats);
-
-    res.json({
-      success: true,
-      ...stats
-    });
-  } catch (error) {
-    console.error('❌ Sales Dashboard stats hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      totalOrders: 0,
-      totalCustomers: 0,
-      totalProducts: 0,
-      monthlyOrders: 0,
-      totalRevenue: 0,
-      monthlySalesTarget: 500000,
-      currentMonthlySales: 375000,
-      monthlyVisitTarget: 200,
-      currentMonthlyVisits: 164,
-      monthlyCollectionTarget: 450000,
-      currentMonthlyCollection: 401000
-    });
-  }
-});
-
 // Hedefler API - Sales.html için
 app.get("/api/targets/user/:userId", async (req, res) => {
   try {
@@ -3711,183 +3636,6 @@ async function checkTableExists(tableName) {
     return false;
   }
 }
-
-// Dashboard API'leri
-app.get("/api/dashboard/stats", async (req, res) => {
-  try {
-    // Temel istatistikleri topla
-    const stats = {};
-
-    // Kullanıcı sayısı
-    try {
-      const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
-      stats.userCount = parseInt(userCount.rows[0].count);
-    } catch (error) {
-      console.log('Users tablosu bulunamadı, 0 olarak ayarlandı');
-      stats.userCount = 0;
-    }
-
-    // Müşteri sayısı
-    try {
-      const customerCount = await pool.query('SELECT COUNT(*) as count FROM customers');
-      stats.customerCount = parseInt(customerCount.rows[0].count);
-    } catch (error) {
-      console.log('Customers tablosu bulunamadı, 0 olarak ayarlandı');
-      stats.customerCount = 0;
-    }
-
-    // Sipariş sayısı
-    try {
-      const orderCount = await pool.query('SELECT COUNT(*) as count FROM orders');
-      stats.orderCount = parseInt(orderCount.rows[0].count);
-    } catch (error) {
-      console.log('Orders tablosu bulunamadı, 0 olarak ayarlandı');
-      stats.orderCount = 0;
-    }
-
-    // Ürün sayısı
-    try {
-      const productCount = await pool.query('SELECT COUNT(*) as count FROM products');
-      stats.productCount = parseInt(productCount.rows[0].count);
-    } catch (error) {
-      console.log('Products tablosu bulunamadı, 0 olarak ayarlandı');
-      stats.productCount = 0;
-    }
-
-    // Bu ayın satış hedefi ve gerçekleşen
-    try {
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      const targetResult = await pool.query(`
-        SELECT
-          COALESCE(SUM(sales_target), 0) as total_target,
-          COALESCE(SUM(sales_achieved), 0) as total_achieved
-        FROM user_targets
-        WHERE target_year = $1 AND target_month = $2
-      `, [currentYear, currentMonth]);
-
-      stats.monthlySalesTarget = parseFloat(targetResult.rows[0].total_target) || 500000;
-      stats.currentMonthlySales = parseFloat(targetResult.rows[0].total_achieved) || 0;
-    } catch (error) {
-      console.log('User_targets tablosu bulunamadı, varsayılan değerler ayarlandı');
-      stats.monthlySalesTarget = 500000;
-      stats.currentMonthlySales = 375000;
-    }
-
-    // Bu ayın ziyaret hedefi ve gerçekleşen
-    try {
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      const visitResult = await pool.query(`
-        SELECT
-          COALESCE(SUM(visit_target), 0) as total_target,
-          COALESCE(SUM(visit_achieved), 0) as total_achieved
-        FROM user_targets
-        WHERE target_year = $1 AND target_month = $2
-      `, [currentYear, currentMonth]);
-
-      stats.monthlyVisitTarget = parseInt(visitResult.rows[0].total_target) || 200;
-      stats.currentMonthlyVisits = parseInt(visitResult.rows[0].total_achieved) || 0;
-    } catch (error) {
-      console.log('Ziyaret hedefleri bulunamadı, varsayılan değerler ayarlandı');
-      stats.monthlyVisitTarget = 200;
-      stats.currentMonthlyVisits = 164;
-    }
-
-    // Bu ayın tahsilat hedefi ve gerçekleşen
-    try {
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1;
-
-      const collectionResult = await pool.query(`
-        SELECT
-          COALESCE(SUM(collection_target), 0) as total_target,
-          COALESCE(SUM(collection_achieved), 0) as total_achieved
-        FROM user_targets
-        WHERE target_year = $1 AND target_month = $2
-      `, [currentYear, currentMonth]);
-
-      stats.monthlyCollectionTarget = parseFloat(collectionResult.rows[0].total_target) || 450000;
-      stats.currentMonthlyCollection = parseFloat(collectionResult.rows[0].total_achieved) || 0;
-    } catch (error) {
-      console.log('Tahsilat hedefleri bulunamadı, varsayılan değerler ayarlandı');
-      stats.monthlyCollectionTarget = 450000;
-      stats.currentMonthlyCollection = 401000;
-    }
-
-    // Sipariş durumları
-    try {
-      const orderStatusResult = await pool.query(`
-        SELECT
-          status,
-          COUNT(*) as count
-        FROM orders
-        GROUP BY status
-      `);
-
-      stats.pendingOrders = 0;
-      stats.productionOrders = 0;
-      stats.completedOrders = 0;
-      stats.deliveredOrders = 0;
-
-      orderStatusResult.rows.forEach(row => {
-        switch(row.status) {
-          case 'pending':
-            stats.pendingOrders = parseInt(row.count);
-            break;
-          case 'production':
-            stats.productionOrders = parseInt(row.count);
-            break;
-          case 'completed':
-            stats.completedOrders = parseInt(row.count);
-            break;
-          case 'delivered':
-            stats.deliveredOrders = parseInt(row.count);
-            break;
-        }
-      });
-    } catch (error) {
-      console.log('Sipariş durumları bulunamadı, varsayılan değerler ayarlandı');
-      stats.pendingOrders = 8;
-      stats.productionOrders = 12;
-      stats.completedOrders = 25;
-      stats.deliveredOrders = 45;
-    }
-
-    console.log('Dashboard stats API - İstatistikler:', stats);
-
-    res.json({
-      success: true,
-      stats: stats
-    });
-
-  } catch (error) {
-    console.error('Dashboard stats API hatası:', error);
-
-    // Hata durumunda varsayılan değerler döndür
-    res.json({
-      success: true,
-      stats: {
-        userCount: 0,
-        customerCount: 0,
-        orderCount: 0,
-        productCount: 0,
-        monthlySalesTarget: 500000,
-        currentMonthlySales: 375000,
-        monthlyVisitTarget: 200,
-        currentMonthlyVisits: 164,
-        monthlyCollectionTarget: 450000,
-        currentMonthlyCollection: 401000,
-        pendingOrders: 8,
-        productionOrders: 12,
-        completedOrders: 25,
-        deliveredOrders: 45
-      }
-    });
-  }
-});
 
 // Kullanıcılar API
 app.get("/api/users", async (req, res) => {
@@ -4750,6 +4498,109 @@ app.get("/api/visits", async (req, res) => {
   }
 });
 
+// Satış personeli dashboard stats
+app.get("/api/sales/dashboard/:userId", async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        // 1. Get user targets
+        const targetsResult = await pool.query(`
+            SELECT * FROM user_targets 
+            WHERE user_id = $1 AND target_year = $2 AND target_month = $3
+        `, [userId, currentYear, currentMonth]);
+        const targets = targetsResult.rows[0] || {};
+
+        // 2. Get user sales for the month
+        const salesResult = await pool.query(`
+            SELECT COALESCE(SUM(total_amount), 0) as total
+            FROM orders
+            WHERE sales_rep_id = $1 
+              AND EXTRACT(YEAR FROM order_date) = $2
+              AND EXTRACT(MONTH FROM order_date) = $3
+        `, [userId, currentYear, currentMonth]);
+        const currentMonthlySales = parseFloat(salesResult.rows[0].total);
+
+        // 3. Get user visits for the month
+        const visitsResult = await pool.query(`
+            SELECT COUNT(*) as count
+            FROM customer_visits
+            WHERE sales_rep_id = $1
+              AND EXTRACT(YEAR FROM visit_date) = $2
+              AND EXTRACT(MONTH FROM visit_date) = $3
+        `, [userId, currentYear, currentMonth]);
+        const currentMonthlyVisits = parseInt(visitsResult.rows[0].count);
+
+        // 4. Get user collections for the month
+        const collectionsResult = await pool.query(`
+            SELECT COALESCE(SUM(amount), 0) as total
+            FROM account_transactions
+            WHERE created_by = $1
+              AND transaction_type = 'credit'
+              AND EXTRACT(YEAR FROM transaction_date) = $2
+              AND EXTRACT(MONTH FROM transaction_date) = $3
+        `, [userId, currentYear, currentMonth]);
+        const currentMonthlyCollection = parseFloat(collectionsResult.rows[0].total);
+
+        res.json({
+            success: true,
+            stats: {
+                monthlySalesTarget: parseFloat(targets.sales_target) || 0,
+                currentMonthlySales: currentMonthlySales,
+                monthlyVisitTarget: parseInt(targets.visit_target) || 0,
+                currentMonthlyVisits: currentMonthlyVisits,
+                monthlyCollectionTarget: parseFloat(targets.collection_target) || 0,
+                currentMonthlyCollection: currentMonthlyCollection,
+            }
+        });
+
+    } catch (error) {
+        console.error(`Sales dashboard stats error for user ${req.params.userId}:`, error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Admin dashboard stats
+app.get("/api/dashboard/stats", async (req, res) => {
+  try {
+    console.log('📊 Admin Dashboard stats isteği geldi');
+    const stats = {};
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    // General counts
+    const counts = await Promise.all([
+      pool.query('SELECT COUNT(*) FROM users'),
+      pool.query('SELECT COUNT(*) FROM customers'),
+      pool.query('SELECT COUNT(*) FROM orders'),
+      pool.query('SELECT COUNT(*) FROM products')
+    ]);
+    stats.userCount = parseInt(counts[0].rows[0].count);
+    stats.customerCount = parseInt(counts[1].rows[0].count);
+    stats.orderCount = parseInt(counts[2].rows[0].count);
+    stats.productCount = parseInt(counts[3].rows[0].count);
+
+    // Order statuses
+    const orderStatusResult = await pool.query(`
+      SELECT status, COUNT(*) as count FROM orders GROUP BY status
+    `);
+    const orderStatuses = orderStatusResult.rows.reduce((acc, row) => {
+      acc[row.status] = parseInt(row.count);
+      return acc;
+    }, {});
+    stats.pendingOrders = orderStatuses.pending || 0;
+    stats.productionOrders = orderStatuses.production || 0;
+    stats.completedOrders = orderStatuses.completed || 0;
+    stats.deliveredOrders = orderStatuses.delivered || 0;
+
+    res.json({ success: true, stats: stats });
+  } catch (error) {
+    console.error('Admin Dashboard stats API hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Siparişler API
 app.get("/api/orders", async (req, res) => {
   try {
@@ -4773,7 +4624,7 @@ app.get("/api/orders", async (req, res) => {
       });
     }
 
-    const { customer_id } = req.query;
+    const { customer_id, sales_rep_id } = req.query;
     let query = `
       SELECT o.*,
              COALESCE(c.company_name, 'Müşteri Yok') as company_name,
@@ -4781,23 +4632,25 @@ app.get("/api/orders", async (req, res) => {
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN users u ON o.sales_rep_id = u.id
-      ORDER BY o.created_at DESC
     `;
     let params = [];
+    let whereClauses = [];
 
     if (customer_id) {
-      query = `
-        SELECT o.*,
-               COALESCE(c.company_name, 'Müşteri Yok') as company_name,
-               COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
-        FROM orders o
-        LEFT JOIN customers c ON o.customer_id = c.id
-        LEFT JOIN users u ON o.sales_rep_id = u.id
-        WHERE o.customer_id = $1
-        ORDER BY o.created_at DESC
-      `;
-      params = [customer_id];
+      params.push(customer_id);
+      whereClauses.push(`o.customer_id = $${params.length}`);
     }
+    
+    if (sales_rep_id) {
+      params.push(sales_rep_id);
+      whereClauses.push(`o.sales_rep_id = $${params.length}`);
+    }
+    
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY o.created_at DESC`;
 
     const result = await pool.query(query, params);
 
