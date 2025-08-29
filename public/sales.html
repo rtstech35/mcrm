@@ -2894,13 +2894,26 @@
                 const itemsResponse = await apiCall(`/api/orders/${orderId}/items`);
                 const items = itemsResponse.items || [];
                 
-                // Ürün bilgileri zaten API'den geliyor, ayrıca çağırmaya gerek yok
-                const itemsWithProducts = items.map(item => ({
-                    ...item,
-                    product_name: item.product_name || 'Bilinmeyen Ürün',
-                    product_description: item.product_description || '',
-                    product_unit: item.product_unit || 'adet'
-                }));
+                // Ürün bilgilerini kontrol et ve düzelt
+                console.log('Sipariş kalemleri:', items);
+                const itemsWithProducts = items.map(item => {
+                    // Ürün adını öncelik sırasına göre al
+                    let productName = item.product_name || item.name || 'Bilinmeyen Ürün';
+                    
+                    // Eğer ürün adı boş veya geçersizse, product_id'den çekmeye çalış
+                    if (!productName || productName === 'Bilinmeyen Ürün') {
+                        productName = `Ürün ID: ${item.product_id || 'Bilinmiyor'}`;
+                    }
+                    
+                    return {
+                        ...item,
+                        product_name: productName,
+                        product_description: item.product_description || item.description || '',
+                        product_unit: item.unit || item.product_unit || 'adet'
+                    };
+                });
+                
+                console.log('Düzeltilmiş ürün bilgileri:', itemsWithProducts);
                 
                 // Kullanıcı rolüne göre yetki kontrolü
                 const userRole = currentUser.role || 'employee';

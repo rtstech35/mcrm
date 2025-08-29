@@ -4332,16 +4332,23 @@ app.get("/api/orders/:id/items", async (req, res) => {
       SELECT oi.id,
              oi.order_id,
              oi.product_id,
-             COALESCE(oi.product_name, p.name, 'Ürün Adı Yok') as product_name,
+             CASE 
+               WHEN oi.product_name IS NOT NULL AND oi.product_name != '' THEN oi.product_name
+               WHEN p.name IS NOT NULL AND p.name != '' THEN p.name
+               ELSE 'Bilinmeyen Ürün'
+             END as product_name,
              oi.quantity,
-             oi.unit_price,
+             COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
              oi.total_price,
-             COALESCE(oi.unit, p.unit, 'adet') as unit
+             COALESCE(oi.unit, p.unit, 'adet') as unit,
+             p.description as product_description
       FROM order_items oi
       LEFT JOIN products p ON oi.product_id = p.id
       WHERE oi.order_id = $1
       ORDER BY oi.id
     `, [id]);
+
+    console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu:`, result.rows.map(r => ({ id: r.id, product_name: r.product_name, product_id: r.product_id })));
 
     console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu`);
 
