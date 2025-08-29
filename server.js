@@ -4290,48 +4290,23 @@ app.get("/api/products", async (req, res) => {
   try {
     console.log('📋 Products API çağrıldı');
 
-    try {
-      const result = await pool.query(`
-        SELECT * FROM products
-        WHERE is_active = true
-        ORDER BY name ASC
-      `);
+    const result = await pool.query(`
+      SELECT * FROM products
+      ORDER BY name ASC
+    `);
 
-      console.log('✅ Products API - Bulunan ürün sayısı:', result.rows.length);
+    console.log('✅ Products API - Bulunan ürün sayısı:', result.rows.length);
 
-      if (result.rows.length > 0) {
-        return res.json({
-          success: true,
-          products: result.rows
-        });
-      }
-    } catch (dbError) {
-      console.log('⚠️ Database hatası, sabit veri döndürülüyor:', dbError.message);
-    }
-
-    // Fallback: Sabit ürün listesi
-    const products = [
-      { id: 1, name: 'Ekmek', unit_price: 5.50, category: 'Fırın Ürünleri' },
-      { id: 2, name: 'Süt', unit_price: 12.00, category: 'Süt Ürünleri' },
-      { id: 3, name: 'Yumurta (30 adet)', unit_price: 45.00, category: 'Protein' },
-      { id: 4, name: 'Domates (1 kg)', unit_price: 18.00, category: 'Sebze' },
-      { id: 5, name: 'Patates (1 kg)', unit_price: 8.50, category: 'Sebze' },
-      { id: 6, name: 'Tavuk Eti (1 kg)', unit_price: 65.00, category: 'Et Ürünleri' },
-      { id: 7, name: 'Pirinç (1 kg)', unit_price: 22.00, category: 'Tahıl' },
-      { id: 8, name: 'Makarna', unit_price: 8.00, category: 'Tahıl' },
-      { id: 9, name: 'Zeytinyağı (1 lt)', unit_price: 85.00, category: 'Yağ' },
-      { id: 10, name: 'Çay (500 gr)', unit_price: 35.00, category: 'İçecek' }
-    ];
-    
     res.json({
       success: true,
-      products: products
+      products: result.rows
     });
   } catch (error) {
-    console.error('Products API hatası:', error);
+    console.error('❌ Products API hatası:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: "Ürünler yüklenirken bir veritabanı hatası oluştu.",
+      details: error.message
     });
   }
 });
