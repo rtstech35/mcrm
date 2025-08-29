@@ -921,32 +921,29 @@
 
         // Test verilerini oluştur
         async function createTestData() {
-            if (!confirm('Test verileri oluşturulsun mu?\n\nBu işlem:\n- Rolleri Türkçeye çevirecek\n- Her departmandan test kullanıcısı ekleyecek\n- Şifre: 123456')) {
+            if (!confirm('Kapsamlı test verileri oluşturulsun mu?\n\nBu işlem:\n- Test kullanıcıları oluşturacak\n- Örnek müşteriler, ürünler ve cari hesap hareketleri ekleyecek.\n\nNOT: Mevcut veriler silinmez, sadece eksik olanlar eklenir.')) {
                 return;
             }
 
             try {
-                console.log('🎯 Test verileri oluşturuluyor...');
+                console.log('🎯 Kapsamlı test verileri oluşturuluyor...');
 
-                // Rolleri Türkçeye çevir ve kullanıcıları oluştur
-                await apiCall('/api/setup/update-roles-and-create-users', {
+                const result = await apiCall('/api/create-comprehensive-data', {
                     method: 'POST'
                 });
 
-                let message = '✅ Test verileri başarıyla oluşturuldu!\n\n';
-                message += '=== Test Kullanıcıları ===\n';
-                message += 'admin / 123456 (Yönetici)\n';
-                message += 'satis / 123456 (Satış Temsilcisi)\n';
-                message += 'uretim / 123456 (Üretim Personeli)\n';
-                message += 'sevkiyat / 123456 (Sevkiyat Personeli)\n';
-                message += 'muhasebe / 123456 (Muhasebe Personeli)\n\n';
-                message += 'Artık her departmandan kullanıcı ile giriş yapabilirsiniz!';
+                let message = '✅ Kapsamlı test verileri başarıyla oluşturuldu!\n\n';
+                message += `Kullanıcılar: ${result.stats.users} adet\n`;
+                message += `Müşteriler: ${result.stats.customers} adet\n`;
+                message += `Ürünler: ${result.stats.products} adet\n`;
+                message += `Cari İşlemler: ${result.stats.transactions} adet\n\n`;
+                message += 'Sistemi şimdi test edebilirsiniz.';
 
                 alert(message);
 
             } catch (error) {
                 console.error('❌ Test verileri oluşturulamadı:', error);
-                alert('❌ Test verileri oluşturulamadı: ' + error.message);
+                alert('❌ Kapsamlı test verileri oluşturulamadı: ' + error.message);
             }
         }
 
