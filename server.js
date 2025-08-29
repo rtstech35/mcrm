@@ -4328,26 +4328,42 @@ app.get("/api/orders/:id/items", async (req, res) => {
       return res.json({ success: true, items: sampleItems });
     }
     
-    const result = await pool.query(`
-      SELECT oi.id,
-             oi.order_id,
-             oi.product_id,
-             CASE 
-               WHEN oi.product_name IS NOT NULL AND oi.product_name != '' THEN oi.product_name
-               WHEN p.name IS NOT NULL AND p.name != '' THEN p.name
-               ELSE 'Bilinmeyen Ürün'
-             END as product_name,
-             oi.quantity,
-             COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
-             oi.total_price,
-             COALESCE(oi.unit, p.unit, 'adet') as unit,
-             p.description as product_description
-      FROM order_items oi
-      LEFT JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = $1
-      ORDER BY oi.id
-    `, [id]);
-
+    // Önce order_items tablosunun kolonlarını kontrol et
+    const columnsResult = await pool.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'order_items'
+    `);
+    
+    const columns = columnsResult.rows.map(row => row.column_name);
+    const hasProductName = columns.includes('product_name');
+    
+    let query;
+    if (hasProductName) {
+      query = `
+        SELECT oi.id, oi.order_id, oi.product_id,
+               COALESCE(oi.product_name, p.name, 'Bilinmeyen Ürün') as product_name,
+               oi.quantity, COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
+               oi.total_price, COALESCE(oi.unit, p.unit, 'adet') as unit,
+               p.description as product_description
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1 ORDER BY oi.id
+      `;
+    } else {
+      query = `
+        SELECT oi.id, oi.order_id, oi.product_id,
+               COALESCE(p.name, 'Bilinmeyen Ürün') as product_name,
+               oi.quantity, COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
+               oi.total_price, COALESCE(p.unit, 'adet') as unit,
+               p.description as product_description
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1 ORDER BY oi.id
+      `;
+    }
+    
+    const result = await pool.query(query, [id]);
+    
     console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu:`, result.rows.map(r => ({ id: r.id, product_name: r.product_name, product_id: r.product_id })));
 
     console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu`);
