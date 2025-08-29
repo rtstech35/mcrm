@@ -2,50 +2,193 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#007bff">
-    <title>Saha CRM Sistemi</title>
+    <title>Marupak Crm - Giriş</title>
     <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="/theme.css">
-    <link rel="stylesheet" href="/mobile.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3a7bd5;
+            --secondary-color: #3a6073;
+            --background-color: #f4f7f6;
+            --text-color: #333;
+            --light-text-color: #777;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            padding: 20px;
+        }
+
+        .login-box {
+            max-width: 400px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transform: scale(0.95);
+            animation: scaleUp 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        @keyframes scaleUp {
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            object-fit: contain;
+        }
+
+        .login-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: -webkit-linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: var(--light-text-color);
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group .icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--light-text-color);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(58, 123, 213, 0.2);
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+        }
+
+        .options label {
+            color: var(--light-text-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .options a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .options a:hover {
+            text-decoration: underline;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 480px) {
+            .login-box {
+                padding: 30px;
+            }
+            .login-header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div id="loginContainer" class="login-container">
+    <div class="login-wrapper">
         <div class="login-box">
-            <h2>Saha CRM Sistemi</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label>Kullanıcı Adı:</label>
-                    <input type="text" id="username" required>
-                </div>
-                <div class="form-group">
-                    <label>Şifre:</label>
-                    <input type="password" id="password" required>
-                </div>
-                <button type="submit" class="btn">Giriş Yap</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="dashboard" class="dashboard">
-        <div class="header">
-            <h1>Saha CRM Sistemi</h1>
-            <div class="nav">
-                <button onclick="showDashboard()">Dashboard</button>
-                <button onclick="showUsers()">Kullanıcılar</button>
-                <button onclick="showCustomers()">Müşteriler</button>
-                <button onclick="showProducts()">Ürünler</button>
-                <button onclick="showOrders()">Siparişler</button>
-                <button onclick="showDepartments()">Departmanlar</button>
-                <button onclick="logout()">Çıkış</button>
+            <div class="login-header">
+                <img src="/logo.png" alt="Marupak Crm Logo" class="login-logo">
+                <h1>Marupak Crm</h1>
+                <p>Yönetim paneline hoş geldiniz. Lütfen giriş yapın.</p>
             </div>
-        </div>
-        <div id="content" class="content">
-            <h2>Dashboard</h2>
-            <p>Saha CRM Sistemi başarıyla kuruldu!</p>
+            <form id="loginForm">
+                <div class="input-group">
+                    <span class="icon">👤</span>
+                    <input type="text" id="username" placeholder="Kullanıcı Adı" required>
+                </div>
+                <div class="input-group">
+                    <span class="icon">🔒</span>
+                    <input type="password" id="password" placeholder="Şifre" required>
+                </div>
+                <div class="options">
+                    <label><input type="checkbox" style="margin-right: 5px;"> Beni Hatırla</label>
+                    <a href="#">Şifremi Unuttum?</a>
+                </div>
+                <button type="submit" class="login-btn">Giriş Yap</button>
+            </form>
         </div>
     </div>
 
@@ -103,190 +246,33 @@
             }
         });
 
-        function showDashboard() {
-            if (currentUser) {
-                document.getElementById('content').innerHTML = `
-                    <h2>Dashboard</h2>
-                    <p>Hoş geldiniz, ${currentUser.full_name || currentUser.username}</p>
-                    <p>Rol: ${currentUser.role || 'Belirtilmemiş'}</p>
-                    <p>Departman: ${currentUser.department || 'Belirtilmemiş'}</p>
-                `;
-            }
-        }
-
-        async function showUsers() {
-            try {
-                const response = await fetch('/api/users');
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = '<h2>Kullanıcı Yönetimi</h2>';
-                    html += '<table class="data-table">';
-                    html += '<tr><th>ID</th><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Email</th><th>Rol</th><th>Departman</th><th>Durum</th></tr>';
-
-                    data.users.forEach(user => {
-                        html += `<tr>
-                            <td>${user.id}</td>
-                            <td>${user.username}</td>
-                            <td>${user.full_name || '-'}</td>
-                            <td>${user.email || '-'}</td>
-                            <td>${user.role_name || '-'}</td>
-                            <td>${user.department_name || '-'}</td>
-                            <td>${user.is_active ? 'Aktif' : 'Pasif'}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    document.getElementById('content').innerHTML = html;
-                } else {
-                    document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Hata: ' + data.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('content').innerHTML = '<h2>Kullanıcı Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
-            }
-        }
-
-        async function showCustomers() {
-            try {
-                const response = await fetch('/api/customers');
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = '<h2>Müşteri Yönetimi</h2>';
-                    html += '<table class="data-table">';
-                    html += '<tr><th>ID</th><th>Şirket</th><th>İletişim</th><th>Telefon</th><th>Email</th><th>Satış Temsilcisi</th><th>Durum</th></tr>';
-
-                    data.customers.forEach(customer => {
-                        html += `<tr>
-                            <td>${customer.id}</td>
-                            <td>${customer.company_name}</td>
-                            <td>${customer.contact_person || '-'}</td>
-                            <td>${customer.phone || '-'}</td>
-                            <td>${customer.email || '-'}</td>
-                            <td>${customer.sales_rep_name || '-'}</td>
-                            <td>${customer.status || 'Aktif'}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    document.getElementById('content').innerHTML = html;
-                } else {
-                    document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Hata: ' + data.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('content').innerHTML = '<h2>Müşteri Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
-            }
-        }
-
-        async function showProducts() {
-            try {
-                const response = await fetch('/api/products');
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = '<h2>Ürün Yönetimi</h2>';
-                    html += '<table class="data-table">';
-                    html += '<tr><th>ID</th><th>Ürün Adı</th><th>Fiyat</th><th>Kategori</th><th>Açıklama</th><th>Durum</th></tr>';
-
-                    data.products.forEach(product => {
-                        html += `<tr>
-                            <td>${product.id}</td>
-                            <td>${product.name}</td>
-                            <td>${product.price ? product.price.toFixed(2) + ' ₺' : '-'}</td>
-                            <td>${product.category || '-'}</td>
-                            <td>${product.description || '-'}</td>
-                            <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    document.getElementById('content').innerHTML = html;
-                } else {
-                    document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Hata: ' + data.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('content').innerHTML = '<h2>Ürün Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
-            }
-        }
-
-        async function showOrders() {
-            try {
-                const response = await fetch('/api/orders');
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = '<h2>Sipariş Yönetimi</h2>';
-                    html += '<table class="data-table">';
-                    html += '<tr><th>ID</th><th>Müşteri</th><th>Toplam</th><th>Durum</th><th>Satış Temsilcisi</th><th>Tarih</th></tr>';
-
-                    data.orders.forEach(order => {
-                        const orderDate = new Date(order.created_at).toLocaleDateString('tr-TR');
-                        html += `<tr>
-                            <td>${order.id}</td>
-                            <td>${order.company_name || '-'}</td>
-                            <td>${order.total_amount ? order.total_amount.toFixed(2) + ' ₺' : '-'}</td>
-                            <td>${order.status || 'Beklemede'}</td>
-                            <td>${order.sales_rep_name || '-'}</td>
-                            <td>${orderDate}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    document.getElementById('content').innerHTML = html;
-                } else {
-                    document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Hata: ' + data.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('content').innerHTML = '<h2>Sipariş Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
-            }
-        }
-
-        async function showDepartments() {
-            try {
-                const response = await fetch('/api/departments');
-                const data = await response.json();
-
-                if (data.success) {
-                    let html = '<h2>Departman Yönetimi</h2>';
-                    html += '<p><em>Yeni departman eklemek için <a href="/admin" target="_blank">Admin Paneli</a>ni kullanın.</em></p>';
-                    html += '<table class="data-table">';
-                    html += '<tr><th>ID</th><th>Departman Adı</th><th>Açıklama</th></tr>';
-
-                    data.departments.forEach(dept => {
-                        html += `<tr>
-                            <td>${dept.id}</td>
-                            <td>${dept.name}</td>
-                            <td>${dept.description || '-'}</td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-                    document.getElementById('content').innerHTML = html;
-                } else {
-                    document.getElementById('content').innerHTML = '<h2>Departman Yönetimi</h2><p>Hata: ' + data.error + '</p>';
-                }
-            } catch (error) {
-                document.getElementById('content').innerHTML = '<h2>Departman Yönetimi</h2><p>Bağlantı hatası: ' + error.message + '</p>';
-            }
-        }
-
-        function logout() {
-            currentUser = null;
-            authToken = null;
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            document.getElementById('loginContainer').style.display = 'flex';
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-        }
-
         // Sayfa yüklendiğinde token kontrolü
         window.addEventListener('load', () => {
             const storedToken = localStorage.getItem('authToken');
             const storedUser = localStorage.getItem('currentUser');
             
             if (storedToken && storedUser) {
-                authToken = storedToken;
-                currentUser = JSON.parse(storedUser);
-                document.getElementById('loginContainer').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                showDashboard();
+                try {
+                    const user = JSON.parse(storedUser);
+                    const roleName = user.role_name || '';
+                    
+                    if (roleName.includes('Yönetici') || roleName.includes('Admin')) {
+                        window.location.href = '/admin.html';
+                    } else if (roleName.includes('Satış')) {
+                        window.location.href = '/sales.html';
+                    } else if (roleName.includes('Üretim')) {
+                        window.location.href = '/production.html';
+                    } else if (roleName.includes('Sevkiyat')) {
+                        window.location.href = '/shipping.html';
+                    } else if (roleName.includes('Muhasebe')) {
+                        window.location.href = '/accounting.html';
+                    } else {
+                        window.location.href = '/admin.html';
+                    }
+                } catch(e) {
+                    // JSON parse hatası olursa local storage'ı temizle
+                    localStorage.clear();
+                }
             }
         });
         

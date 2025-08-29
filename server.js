@@ -9,6 +9,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
+const fs = require("fs");
+const multer = require('multer');
 console.log('✅ Temel modüller yüklendi');
 
 let setupDatabase;
@@ -24,6 +26,23 @@ app.use(cors());
 app.use(express.json());
 console.log('✅ Express app yapılandırıldı');
 
+// Multer storage configuration for logo uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadPath = path.join(__dirname, 'public', 'uploads');
+        // Ensure upload directory exists
+        fs.mkdirSync(uploadPath, { recursive: true });
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        // Use a predictable name with a timestamp to avoid caching issues
+        const extension = path.extname(file.originalname);
+        const basename = file.fieldname === 'favicon' ? 'favicon' : 'logo';
+        cb(null, `${basename}-${Date.now()}${extension}`);
+    }
+});
+const upload = multer({ storage: storage });
+
 // ---------------- API ROTALARINI ÖNCELİKLENDİR ---------------- //
 // API rotaları static dosyalardan önce tanımlanmalı
 
@@ -35,6 +54,8 @@ app.use('/api/*', (req, res, next) => {
 
 // ---------------- STATİK DOSYALAR (API'lerden sonra) ---------------- //
 app.use(express.static(path.join(__dirname, "public")));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // Serve uploaded files
+
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
@@ -49,6 +70,10 @@ app.get("/setup", (req, res) => {
 
 app.get("/database-manager", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "database-manager.html"));
+});
+
+app.get("/company-settings", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "company-settings.html"));
 });
 
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
@@ -213,6 +238,58 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// Şirket Ayarları API'leri
+app.get("/api/company-settings", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM company_settings WHERE id = 1');
+    res.json({
+      success: true,
+      settings: result.rows[0] || {}
+    });
+  } catch (error) {
+    console.error('Company settings get error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/company-settings", authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'favicon', maxCount: 1 }]), async (req, res) => {
+  try {
+    const { company_name, address, phone, email, website, tax_office, tax_number } = req.body;
+    
+    let logoUrl = req.body.existing_logo_url || null;
+    let faviconUrl = req.body.existing_favicon_url || null;
+
+    if (req.files && req.files.logo) {
+      logoUrl = `/uploads/${req.files.logo[0].filename}`;
+    }
+    if (req.files && req.files.favicon) {
+      faviconUrl = `/uploads/${req.files.favicon[0].filename}`;
+    }
+
+    const result = await pool.query(`
+      UPDATE company_settings SET
+        company_name = $1,
+        address = $2,
+        phone = $3,
+        email = $4,
+        website = $5,
+        tax_office = $6,
+        tax_number = $7,
+        logo_url = $8,
+        favicon_url = $9,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+      RETURNING *
+    `, [
+      company_name, address, phone, email, website, tax_office, tax_number, logoUrl, faviconUrl
+    ]);
+
+    res.json({ success: true, message: 'Şirket ayarları başarıyla güncellendi', settings: result.rows[0] });
+  } catch (error) {
+    console.error('Company settings update error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 // ---------------- AUTH ---------------- //
 app.post("/api/register", async (req, res) => {
   try {
@@ -2042,45 +2119,47 @@ app.post("/api/user-targets", async (req, res) => {
   }
 });
 
-// Hedef güncelle
-app.put("/api/user-targets/:id", async (req, res) => {
+// Hedef güncelle (UPSERT: Update or Insert)
+app.put("/api/user-targets/:userId", async (req, res) => {
   try {
-    const { id } = req.params;
+    const { userId } = req.params;
     const {
-      sales_target, visit_target, production_target, shipping_target,
+      target_year, target_month,
+      sales_target, visit_target, production_target,
+      shipping_target,
       revenue_target, collection_target, notes
     } = req.body;
 
     const result = await pool.query(`
-      UPDATE user_targets SET
-        sales_target = $1,
-        visit_target = $2,
-        production_target = $3, 
-        shipping_target = $4,
-        revenue_target = $5,
-        collection_target = $6,
-        notes = $7,
+      INSERT INTO user_targets (
+        user_id, target_year, target_month,
+        sales_target, visit_target, production_target, shipping_target,
+        revenue_target, collection_target, notes, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (user_id, target_year, target_month)
+      DO UPDATE SET
+        sales_target = EXCLUDED.sales_target,
+        visit_target = EXCLUDED.visit_target,
+        production_target = EXCLUDED.production_target,
+        shipping_target = EXCLUDED.shipping_target,
+        revenue_target = EXCLUDED.revenue_target,
+        collection_target = EXCLUDED.collection_target,
+        notes = EXCLUDED.notes,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
       RETURNING *
     `, [
-      sales_target || 0, visit_target || 0, production_target || 0, shipping_target || 0,
-      revenue_target || 0, collection_target || 0, notes, id
+      userId, target_year, target_month,
+      sales_target || 0, visit_target || 0, production_target || 0,
+      shipping_target || 0, revenue_target || 0, collection_target || 0,
+      notes, 1 // TODO: created_by/updated_by
     ]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Hedef bulunamadı'
-      });
-    }
 
     res.json({
       success: true,
       target: result.rows[0]
     });
   } catch (error) {
-    console.error('User Target update hatası:', error);
+    console.error('User Target UPSERT hatası:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -2170,13 +2249,35 @@ app.post("/api/migrate-targets", async (req, res) => {
     const users = await pool.query('SELECT id, role_id FROM users');
 
     for (const user of users.rows) {
-      // Bu ay için hedef
-      const salesTarget = user.role_id === 1 ? 150000 : user.role_id === 2 ? 80000 : user.role_id === 3 ? 50000 : 25000;
-      const visitTarget = [1, 2, 3].includes(user.role_id) ? 20 : 5;
-      const productionTarget = user.role_id === 3 ? 100 : 0;
-      const shippingTarget = user.role_id === 4 ? 120 : 0; // Sevkiyat rolü ID'si 4 varsayıldı
-      const revenueTarget = user.role_id === 1 ? 200000 : user.role_id === 2 ? 120000 : 60000;
-      const collectionTarget = [1, 2].includes(user.role_id) ? 80000 : 30000;
+      let salesTarget = 0, visitTarget = 0, productionTarget = 0, shippingTarget = 0, revenueTarget = 0, collectionTarget = 0;
+
+      // Role-based default targets
+      switch(user.role_id) {
+        case 1: // Admin
+            salesTarget = 150000;
+            visitTarget = 20;
+            productionTarget = 100;
+            shippingTarget = 120;
+            revenueTarget = 200000;
+            collectionTarget = 80000;
+            break;
+        case 2: // Sales
+            salesTarget = 80000;
+            visitTarget = 40;
+            revenueTarget = 120000;
+            collectionTarget = 60000;
+            break;
+        case 3: // Production
+            productionTarget = 150;
+            break;
+        case 4: // Shipping
+            shippingTarget = 200;
+            break;
+        case 5: // Accounting
+            revenueTarget = 500000;
+            collectionTarget = 250000;
+            break;
+      }
 
       await pool.query(`
         INSERT INTO user_targets (
@@ -2186,8 +2287,8 @@ app.post("/api/migrate-targets", async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (user_id, target_year, target_month) DO NOTHING
       `, [
-        user.id, currentYear, currentMonth, salesTarget, 
-        visitTarget, productionTarget, shippingTarget, revenueTarget, collectionTarget,
+        user.id, currentYear, currentMonth, salesTarget, visitTarget, productionTarget, 
+        shippingTarget, revenueTarget, collectionTarget,
         'Otomatik oluşturulan örnek hedef', 1
       ]);
 
@@ -2201,9 +2302,9 @@ app.post("/api/migrate-targets", async (req, res) => {
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           ON CONFLICT (user_id, target_year, target_month) DO NOTHING
         `, [
-          user.id, currentYear, currentMonth + 1, Math.round(salesTarget * 1.1), 
-          visitTarget + 2, productionTarget + 10, shippingTarget + 15,
-          Math.round(revenueTarget * 1.1), Math.round(collectionTarget * 1.05),
+          user.id, currentYear, currentMonth + 1, Math.round(salesTarget * 1.1), visitTarget + 2, 
+          productionTarget + 10, shippingTarget + 15, Math.round(revenueTarget * 1.1), 
+          Math.round(collectionTarget * 1.05),
           'Otomatik oluşturulan gelecek ay hedefi', 1
         ]);
       }
