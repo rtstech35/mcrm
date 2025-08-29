@@ -722,11 +722,15 @@
                 if (!response.ok) {
                     let errorMessage = `API hatası: ${response.status} ${response.statusText}`;
                     try {
-                        const error = await response.json();
-                        errorMessage = error.message || errorMessage;
+                        const errorData = await response.text();
+                        try {
+                            const jsonError = JSON.parse(errorData);
+                            errorMessage = jsonError.message || jsonError.error || errorMessage;
+                        } catch {
+                            errorMessage = errorData || errorMessage;
+                        }
                     } catch (e) {
-                        const errorText = await response.text();
-                        errorMessage = errorText || errorMessage;
+                        console.log('Hata mesajı okunamadı:', e.message);
                     }
                     console.error('❌ API hatası:', errorMessage);
                     throw new Error(errorMessage);
