@@ -3403,61 +3403,40 @@ app.get("/api/targets/user/:userId", async (req, res) => {
 });
 
 // Ziyaretler API - Sales.html için
-app.post("/api/visits", async (req, res) => {
+app.post("/api/visits", authenticateToken, async (req, res) => {
   try {
     const { customer_id, visit_type, result, notes, next_contact_date, visit_date } = req.body;
+    const sales_rep_id = req.user.userId;
     console.log('📝 Yeni ziyaret kaydı:', req.body);
-    
-    // Basit ziyaret kaydı oluştur
-    const visitId = Date.now();
-    
-    res.json({
+
+    // customer_visits tablosu yoksa oluştur
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS customer_visits (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id),
+        sales_rep_id INTEGER REFERENCES users(id),
+        visit_date TIMESTAMP NOT NULL,
+        visit_type VARCHAR(50),
+        result VARCHAR(50),
+        notes TEXT,
+        next_contact_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    const newVisit = await pool.query(
+      `INSERT INTO customer_visits (customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date || null]
+    );
+
+    res.status(201).json({
       success: true,
-      visit: {
-        id: visitId,
-        customer_id,
-        visit_type,
-        result,
-        notes,
-        next_contact_date,
-        visit_date,
-        created_at: new Date().toISOString()
-      }
+      visit: newVisit.rows[0]
     });
   } catch (error) {
     console.error('Visit create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Randevular API - Sales.html için
-app.post("/api/appointments", async (req, res) => {
-  try {
-    const { customer_id, appointment_date, appointment_time, appointment_type, notes, status, sales_rep_id } = req.body;
-    console.log('📅 Yeni randevu kaydı:', req.body);
-    
-    // Basit randevu kaydı oluştur
-    const appointmentId = Date.now();
-    
-    res.json({
-      success: true,
-      appointment: {
-        id: appointmentId,
-        customer_id,
-        appointment_date,
-        appointment_time,
-        appointment_type,
-        notes,
-        status: status || 'scheduled',
-        sales_rep_id,
-        created_at: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error('Appointment create hatası:', error);
     res.status(500).json({
       success: false,
       error: error.message
