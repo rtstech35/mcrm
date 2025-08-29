@@ -10,7 +10,6 @@ const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
 const fs = require("fs");
-const multer = require('multer');
 console.log('✅ Temel modüller yüklendi');
 
 let setupDatabase;
@@ -26,23 +25,6 @@ app.use(cors());
 app.use(express.json());
 console.log('✅ Express app yapılandırıldı');
 
-// Multer storage configuration for logo uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadPath = path.join(__dirname, 'public', 'uploads');
-        // Ensure upload directory exists
-        fs.mkdirSync(uploadPath, { recursive: true });
-        cb(null, uploadPath);
-    },
-    filename: function (req, file, cb) {
-        // Use a predictable name with a timestamp to avoid caching issues
-        const extension = path.extname(file.originalname);
-        const basename = file.fieldname === 'favicon' ? 'favicon' : 'logo';
-        cb(null, `${basename}-${Date.now()}${extension}`);
-    }
-});
-const upload = multer({ storage: storage });
-
 // ---------------- API ROTALARINI ÖNCELİKLENDİR ---------------- //
 // API rotaları static dosyalardan önce tanımlanmalı
 
@@ -54,7 +36,6 @@ app.use('/api/*', (req, res, next) => {
 
 // ---------------- STATİK DOSYALAR (API'lerden sonra) ---------------- //
 app.use(express.static(path.join(__dirname, "public")));
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'))); // Serve uploaded files
 
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
@@ -70,10 +51,6 @@ app.get("/setup", (req, res) => {
 
 app.get("/database-manager", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "database-manager.html"));
-});
-
-app.get("/company-settings", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "company-settings.html"));
 });
 
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
@@ -238,58 +215,6 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// Şirket Ayarları API'leri
-app.get("/api/company-settings", authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM company_settings WHERE id = 1');
-    res.json({
-      success: true,
-      settings: result.rows[0] || {}
-    });
-  } catch (error) {
-    console.error('Company settings get error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post("/api/company-settings", authenticateToken, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'favicon', maxCount: 1 }]), async (req, res) => {
-  try {
-    const { company_name, address, phone, email, website, tax_office, tax_number } = req.body;
-    
-    let logoUrl = req.body.existing_logo_url || null;
-    let faviconUrl = req.body.existing_favicon_url || null;
-
-    if (req.files && req.files.logo) {
-      logoUrl = `/uploads/${req.files.logo[0].filename}`;
-    }
-    if (req.files && req.files.favicon) {
-      faviconUrl = `/uploads/${req.files.favicon[0].filename}`;
-    }
-
-    const result = await pool.query(`
-      UPDATE company_settings SET
-        company_name = $1,
-        address = $2,
-        phone = $3,
-        email = $4,
-        website = $5,
-        tax_office = $6,
-        tax_number = $7,
-        logo_url = $8,
-        favicon_url = $9,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = 1
-      RETURNING *
-    `, [
-      company_name, address, phone, email, website, tax_office, tax_number, logoUrl, faviconUrl
-    ]);
-
-    res.json({ success: true, message: 'Şirket ayarları başarıyla güncellendi', settings: result.rows[0] });
-  } catch (error) {
-    console.error('Company settings update error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 // ---------------- AUTH ---------------- //
 app.post("/api/register", async (req, res) => {
   try {
