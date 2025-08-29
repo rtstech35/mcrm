@@ -479,7 +479,13 @@
             const userNameEl = document.getElementById('userName');
             const dateTimeEl = document.getElementById('currentDateTime');
             
-            if (userNameEl) userNameEl.textContent = currentUser.full_name || 'Kullanıcı';
+            if (userNameEl) {
+                let welcomeName = currentUser.full_name || 'Kullanıcı';
+                if (currentUser.role_name && !currentUser.role_name.includes('Satış')) {
+                    welcomeName += ` (${currentUser.role_name})`;
+                }
+                userNameEl.textContent = welcomeName;
+            }
             if (dateTimeEl) dateTimeEl.textContent = `${dateStr} - ${timeStr}`;
         };
         
@@ -3149,9 +3155,14 @@
         function updateUserInfo() {
             const userInfo = document.getElementById('userInfo');
             if (userInfo) {
+                let welcomeMessage = `Hoş geldiniz, ${currentUser.full_name}`;
+                if (currentUser.role_name && !currentUser.role_name.includes('Satış')) {
+                    welcomeMessage += ` (Yönetici Görünümü)`;
+                }
+
                 userInfo.innerHTML = `
                     <div style="font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem;">Satış Dashboard</div>
-                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">Hoş geldiniz, ${currentUser.full_name}</div>
+                    <div style="font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem;">${welcomeMessage}</div>
                     <div style="font-size: 0.75rem; opacity: 0.8;">
                         ${new Date().toLocaleDateString('tr-TR')} - ${new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})}
                     </div>
