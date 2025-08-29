@@ -137,9 +137,32 @@
                 
                 <!-- Hedef Bilgileri -->
                 <div id="targetSection" style="border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; display: none;">
-                    <h4>📊 Aylık Hedef</h4>
-                    <div id="targetFields">
-                        <!-- Hedef alanları role göre dinamik olarak yüklenecek -->
+                    <h4>📊 Aylık Hedefler (Mevcut Ay)</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Satış Hedefi (₺):</label>
+                            <input type="number" id="user_target_sales" placeholder="500000" step="1000">
+                        </div>
+                        <div class="form-group">
+                            <label>Ziyaret Hedefi (Adet):</label>
+                            <input type="number" id="user_target_visits" placeholder="50" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Üretim Hedefi (Adet):</label>
+                            <input type="number" id="user_target_production" placeholder="100" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Sevkiyat Hedefi (Adet):</label>
+                            <input type="number" id="user_target_shipping" placeholder="120" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Ciro Hedefi (₺):</label>
+                            <input type="number" id="user_target_revenue" placeholder="1000000" step="1000">
+                        </div>
+                        <div class="form-group">
+                            <label>Tahsilat Hedefi (₺):</label>
+                            <input type="number" id="user_target_collection" placeholder="400000" step="1000">
+                        </div>
                     </div>
                 </div>
                 
@@ -1173,7 +1196,7 @@
             }
         }
 
-        function updateTargetFields() {
+        function showTargetFields() {
             const roleSelect = document.getElementById('role_id');
             const targetSection = document.getElementById('targetSection');
             const targetFields = document.getElementById('targetFields');
@@ -1181,46 +1204,8 @@
             const selectedRoleId = roleSelect.value;
             const selectedRole = window.rolesData?.find(role => role.id == selectedRoleId);
             
-            if (!selectedRole) {
-                targetSection.style.display = 'none';
-                return;
-            }
-            
-            const roleName = selectedRole.name.toLowerCase();
-            let targetField = '';
-            
-            if (roleName.includes('satış') || roleName.includes('sales')) {
-                targetField = `
-                    <div class="form-group">
-                        <label>Aylık Satış Hedefi (₺):</label>
-                        <input type="number" id="user_target" placeholder="500000" step="1000">
-                    </div>
-                `;
-            } else if (roleName.includes('üretim') || roleName.includes('production')) {
-                targetField = `
-                    <div class="form-group">
-                        <label>Aylık Üretim Hedefi (Adet):</label>
-                        <input type="number" id="user_target" placeholder="100" min="0">
-                    </div>
-                `;
-            } else if (roleName.includes('sevkiyat') || roleName.includes('shipping')) {
-                targetField = `
-                    <div class="form-group">
-                        <label>Aylık Sevkiyat Hedefi (Adet):</label>
-                        <input type="number" id="user_target" placeholder="50" min="0">
-                    </div>
-                `;
-            } else if (roleName.includes('muhasebe') || roleName.includes('accounting')) {
-                targetField = `
-                    <div class="form-group">
-                        <label>Aylık Ciro Hedefi (₺):</label>
-                        <input type="number" id="user_target" placeholder="1000000" step="1000">
-                    </div>
-                `;
-            }
-            
-            if (targetField) {
-                targetFields.innerHTML = targetField;
+            // Rol seçildiğinde hedef bölümünü her zaman göster
+            if (selectedRoleId) {
                 targetSection.style.display = 'block';
             } else {
                 targetSection.style.display = 'none';
@@ -1266,7 +1251,7 @@
                 document.getElementById('role_id').value = user.role_id || '';
 
                 // Hedef alanlarını güncelle
-                updateTargetFields();
+                showTargetFields();
                 
                 // Mevcut hedefi yükle
                 setTimeout(async () => {
@@ -1274,8 +1259,13 @@
                         const currentDate = new Date();
                         const targetResponse = await apiCall(`/api/user-targets/${userId}?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`);
                         const userTargetInput = document.getElementById('user_target');
-                        if (userTargetInput && targetResponse.target) {
-                            userTargetInput.value = targetResponse.target.target_value || '';
+                        if (targetResponse.target) {
+                            document.getElementById('user_target_sales').value = targetResponse.target.sales_target || '';
+                            document.getElementById('user_target_visits').value = targetResponse.target.visit_target || '';
+                            document.getElementById('user_target_production').value = targetResponse.target.production_target || '';
+                            document.getElementById('user_target_shipping').value = targetResponse.target.shipping_target || '';
+                            document.getElementById('user_target_revenue').value = targetResponse.target.revenue_target || '';
+                            document.getElementById('user_target_collection').value = targetResponse.target.collection_target || '';
                         }
                     } catch (error) {
                         console.log('Hedef yüklenemedi:', error.message);
@@ -1374,9 +1364,14 @@
             };
             
             // Hedef bilgisi
-            const userTargetInput = document.getElementById('user_target');
-            const targetValue = userTargetInput ? parseFloat(userTargetInput.value) || 0 : 0;
-
+            const targetData = {
+                sales_target: parseFloat(document.getElementById('user_target_sales').value) || 0,
+                visit_target: parseInt(document.getElementById('user_target_visits').value) || 0,
+                production_target: parseInt(document.getElementById('user_target_production').value) || 0,
+                shipping_target: parseInt(document.getElementById('user_target_shipping').value) || 0,
+                revenue_target: parseFloat(document.getElementById('user_target_revenue').value) || 0,
+                collection_target: parseFloat(document.getElementById('user_target_collection').value) || 0
+            };
             // Şifre kontrolü
             const password = document.getElementById('password').value;
             
@@ -1401,21 +1396,18 @@
                     });
                     
                     // Hedefi kaydet
-                    if (targetValue > 0) {
+                    if (Object.values(targetData).some(v => v > 0)) {
                         const currentDate = new Date();
                         const targetPayload = {
                             user_id: parseInt(userId),
                             target_year: currentDate.getFullYear(),
                             target_month: currentDate.getMonth() + 1,
-                            target_value: targetValue,
-                            role_id: formData.role_id
+                            ...targetData
                         };
                         
                         try {
-                            await apiCall('/api/user-targets', {
-                                method: 'POST',
-                                body: JSON.stringify(targetPayload)
-                            });
+                            // Mevcut hedefi güncelle veya yenisini oluştur
+                            await apiCall(`/api/user-targets/${userId}`, { method: 'PUT', body: JSON.stringify(targetPayload) });
                         } catch (targetError) {
                             console.log('Hedef kaydetme hatası:', targetError.message);
                         }
@@ -1430,15 +1422,14 @@
                     });
                     
                     // Hedefi kaydet
-                    if (targetValue > 0) {
+                    if (Object.values(targetData).some(v => v > 0)) {
                         const newUserId = result.user ? result.user.id : result.id;
                         const currentDate = new Date();
                         const targetPayload = {
                             user_id: newUserId,
                             target_year: currentDate.getFullYear(),
                             target_month: currentDate.getMonth() + 1,
-                            target_value: targetValue,
-                            role_id: formData.role_id
+                            ...targetData
                         };
                         
                         try {

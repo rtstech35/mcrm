@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS user_targets (
     production_target INTEGER DEFAULT 0, -- Aylık üretim hedefi (adet)
     production_achieved INTEGER DEFAULT 0, -- Gerçekleşen üretim
     
+    -- Sevkiyat hedefleri
+    shipping_target INTEGER DEFAULT 0, -- Aylık sevkiyat hedefi (adet)
+    shipping_achieved INTEGER DEFAULT 0, -- Gerçekleşen sevkiyat
+    
     -- Ciro hedefleri
     revenue_target DECIMAL(12,2) DEFAULT 0, -- Aylık ciro hedefi (TL)
     revenue_achieved DECIMAL(12,2) DEFAULT 0, -- Gerçekleşen ciro

@@ -2088,7 +2088,7 @@ app.post("/api/user-targets", async (req, res) => {
   try {
     const {
       user_id, target_year, target_month,
-      sales_target, visit_target, production_target,
+      sales_target, visit_target, production_target, shipping_target,
       revenue_target, collection_target, notes
     } = req.body;
 
@@ -2107,15 +2107,15 @@ app.post("/api/user-targets", async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO user_targets (
-        user_id, target_year, target_month,
-        sales_target, visit_target, production_target,
+        user_id, target_year, target_month, sales_target, 
+        visit_target, production_target, shipping_target,
         revenue_target, collection_target, notes,
         created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
       user_id, target_year, target_month,
-      sales_target || 0, visit_target || 0, production_target || 0,
+      sales_target || 0, visit_target || 0, production_target || 0, shipping_target || 0,
       revenue_target || 0, collection_target || 0, notes,
       1 // TODO: Gerçek kullanıcı ID'si
     ]);
@@ -2138,7 +2138,7 @@ app.put("/api/user-targets/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      sales_target, visit_target, production_target,
+      sales_target, visit_target, production_target, shipping_target,
       revenue_target, collection_target, notes
     } = req.body;
 
@@ -2146,15 +2146,16 @@ app.put("/api/user-targets/:id", async (req, res) => {
       UPDATE user_targets SET
         sales_target = $1,
         visit_target = $2,
-        production_target = $3,
-        revenue_target = $4,
-        collection_target = $5,
-        notes = $6,
+        production_target = $3, 
+        shipping_target = $4,
+        revenue_target = $5,
+        collection_target = $6,
+        notes = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      WHERE id = $8
       RETURNING *
     `, [
-      sales_target || 0, visit_target || 0, production_target || 0,
+      sales_target || 0, visit_target || 0, production_target || 0, shipping_target || 0,
       revenue_target || 0, collection_target || 0, notes, id
     ]);
 
@@ -2227,6 +2228,9 @@ app.post("/api/migrate-targets", async (req, res) => {
           production_target INTEGER DEFAULT 0,
           production_achieved INTEGER DEFAULT 0,
 
+          shipping_target INTEGER DEFAULT 0,
+          shipping_achieved INTEGER DEFAULT 0,
+
           revenue_target DECIMAL(12,2) DEFAULT 0,
           revenue_achieved DECIMAL(12,2) DEFAULT 0,
 
@@ -2261,19 +2265,20 @@ app.post("/api/migrate-targets", async (req, res) => {
       const salesTarget = user.role_id === 1 ? 150000 : user.role_id === 2 ? 80000 : user.role_id === 3 ? 50000 : 25000;
       const visitTarget = [1, 2, 3].includes(user.role_id) ? 20 : 5;
       const productionTarget = user.role_id === 3 ? 100 : 0;
+      const shippingTarget = user.role_id === 4 ? 120 : 0; // Sevkiyat rolü ID'si 4 varsayıldı
       const revenueTarget = user.role_id === 1 ? 200000 : user.role_id === 2 ? 120000 : 60000;
       const collectionTarget = [1, 2].includes(user.role_id) ? 80000 : 30000;
 
       await pool.query(`
         INSERT INTO user_targets (
           user_id, target_year, target_month,
-          sales_target, visit_target, production_target, revenue_target, collection_target,
+          sales_target, visit_target, production_target, shipping_target, revenue_target, collection_target,
           notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (user_id, target_year, target_month) DO NOTHING
       `, [
-        user.id, currentYear, currentMonth,
-        salesTarget, visitTarget, productionTarget, revenueTarget, collectionTarget,
+        user.id, currentYear, currentMonth, salesTarget, 
+        visitTarget, productionTarget, shippingTarget, revenueTarget, collectionTarget,
         'Otomatik oluşturulan örnek hedef', 1
       ]);
 
@@ -2282,13 +2287,13 @@ app.post("/api/migrate-targets", async (req, res) => {
         await pool.query(`
           INSERT INTO user_targets (
             user_id, target_year, target_month,
-            sales_target, visit_target, production_target, revenue_target, collection_target,
+            sales_target, visit_target, production_target, shipping_target, revenue_target, collection_target,
             notes, created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           ON CONFLICT (user_id, target_year, target_month) DO NOTHING
         `, [
-          user.id, currentYear, currentMonth + 1,
-          Math.round(salesTarget * 1.1), visitTarget + 2, productionTarget + 10,
+          user.id, currentYear, currentMonth + 1, Math.round(salesTarget * 1.1), 
+          visitTarget + 2, productionTarget + 10, shippingTarget + 15,
           Math.round(revenueTarget * 1.1), Math.round(collectionTarget * 1.05),
           'Otomatik oluşturulan gelecek ay hedefi', 1
         ]);
