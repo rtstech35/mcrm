@@ -4,7 +4,7 @@ require("dotenv").config();
 console.log('✅ Environment variables yüklendi');
 
 const express = require("express");
-const cors = require("cors");
+const cors =require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
@@ -4821,7 +4821,7 @@ app.post("/api/orders", async (req, res) => {
   try {
     console.log('📦 Sipariş oluşturma isteği:', req.body);
     
-    const { customer_id, order_date, delivery_date, total_amount, notes, products } = req.body;
+    const { customer_id, order_date, delivery_date, total_amount, notes, items } = req.body;
     
     // Sipariş numarası oluştur
     const orderNum = `SIP${Date.now()}`;
@@ -4835,46 +4835,44 @@ app.post("/api/orders", async (req, res) => {
     const orderId = result.rows[0].id;
     console.log(`📦 Sipariş oluşturuldu, ID: ${orderId}`);
     
-    // Sipariş kalemlerini ekle
-    if (products && products.length > 0) {
-      console.log(`📦 ${products.length} ürün ekleniyor...`);
+    // Sipariş kalemlerini ekle (DAHA GÜVENLİ YÖNTEM)
+    if (items && items.length > 0) {
+      console.log(`📦 ${items.length} ürün ekleniyor...`);
       
-      for (const product of products) {
+      for (const item of items) {
         try {
-          let productName = product.name || 'Bilinmeyen Ürün';
-          let unitPrice = parseFloat(product.unit_price || product.price || 0);
-          let unit = product.unit || 'adet';
-          
-          // Ürün bilgilerini products tablosundan al
-          if (product.id) {
-            try {
-              const productResult = await pool.query('SELECT name, unit_price, unit FROM products WHERE id = $1', [product.id]);
-              if (productResult.rows.length > 0) {
-                const dbProduct = productResult.rows[0];
-                productName = dbProduct.name || productName;
-                unitPrice = parseFloat(dbProduct.unit_price) || unitPrice;
-                unit = dbProduct.unit || unit;
-              }
-            } catch (productError) {
-              console.log('Ürün bilgisi alınamadı:', productError.message);
-            }
+          const productId = item.product_id || item.id;
+          if (!productId) {
+            console.warn('Ürün ID olmadan kalem atlanıyor:', item);
+            continue;
           }
           
-          const quantity = parseInt(product.quantity) || 1;
-          const totalPrice = unitPrice * quantity;
+          // Ürün bilgilerini her zaman veritabanından alarak veri bütünlüğünü sağla
+          const productResult = await pool.query('SELECT name, unit_price, unit FROM products WHERE id = $1', [productId]);
           
-          console.log(`➕ Ekleniyor: ${productName} - ${quantity} ${unit} - ${unitPrice} TL`);
+          if (productResult.rows.length === 0) {
+            console.warn(`Ürün bulunamadı (ID: ${productId}), kalem atlanıyor.`);
+            continue;
+          }
+          
+          const dbProduct = productResult.rows[0];
+          const productName = dbProduct.name;
+          const unit = dbProduct.unit || 'adet';
+          // Fiyat override edilebilir, edilmemişse veritabanından al
+          const unitPrice = parseFloat(item.unit_price || item.price || dbProduct.unit_price || 0);
+          const quantity = parseInt(item.quantity) || 1;
+          const totalPrice = unitPrice * quantity;
           
           const itemResult = await pool.query(`
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, unit)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
-          `, [orderId, product.id || null, productName, quantity, unitPrice, totalPrice, unit]);
+          `, [orderId, productId, productName, quantity, unitPrice, totalPrice, unit]);
           
           console.log(`✅ Kalem eklendi, ID: ${itemResult.rows[0].id}`);
           
         } catch (itemError) {
-          console.error(`❌ Ürün ekleme hatası (${product.name}):`, itemError.message);
+          console.error(`❌ Ürün ekleme hatası:`, itemError.message);
           // Hata olsa bile devam et
         }
       }
