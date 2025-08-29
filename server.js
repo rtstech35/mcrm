@@ -304,7 +304,7 @@ app.post("/api/login", async (req, res) => {
         console.log("✅ bcrypt şifre eşleşti!");
         
         const token = jwt.sign(
-          { userId: user.id, username: user.username, role: 'admin' },
+          { userId: user.id, username: user.username, role: user.role_name },
           process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
           { expiresIn: "24h" }
         );

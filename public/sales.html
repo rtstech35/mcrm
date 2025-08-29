@@ -565,6 +565,18 @@
         console.log('🔑 Auth token:', authToken ? 'Mevcut' : 'Yok');
         console.log('👤 Current user:', currentUser);
 
+        // Yetki kontrolü
+        const salesAllowedRoles = ['Satış Temsilcisi', 'Yönetici', 'Admin'];
+        const userRole = currentUser.role_name || '';
+        
+        if (!salesAllowedRoles.some(role => userRole.includes(role))) {
+            alert('Bu sayfaya erişim yetkiniz yok. Ana sayfaya yönlendiriliyorsunuz.');
+            // Kullanıcıyı kendi paneline veya ana sayfaya yönlendir
+            window.location.href = '/';
+            // Scriptin geri kalanının çalışmasını engelle
+            throw new Error("Yetkisiz erişim");
+        }
+
         if (!authToken) {
             console.log('⚠️ Token yok, ana sayfaya yönlendiriliyor');
             // Geçici olarak token kontrolünü devre dışı bırak

@@ -360,6 +360,18 @@
         // Sayfa yüklendiğinde
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
+
+            // Yetki kontrolü
+            const productionAllowedRoles = ['Üretim Personeli', 'Yönetici', 'Admin'];
+            const userRole = currentUser.role_name || '';
+
+            if (!productionAllowedRoles.some(role => userRole.includes(role))) {
+                alert('Bu sayfaya erişim yetkiniz yok. Ana sayfaya yönlendiriliyorsunuz.');
+                window.location.href = '/';
+                // Scriptin geri kalanının çalışmasını engelle
+                throw new Error("Yetkisiz erişim");
+            }
+
             loadDashboardData();
         });
 
