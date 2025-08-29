@@ -71,15 +71,16 @@ try {
   };
 }
 
-// Order items tablosunu otomatik oluştur
+// Order items tablosunu otomatik oluştur ve güncelle
 async function ensureOrderItemsTable() {
   try {
+    // Tabloyu oluştur
     await pool.query(`
       CREATE TABLE IF NOT EXISTS order_items (
           id SERIAL PRIMARY KEY,
           order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
           product_id INTEGER,
-          product_name VARCHAR(200) NOT NULL,
+          product_name VARCHAR(200),
           quantity INTEGER NOT NULL DEFAULT 1,
           unit_price DECIMAL(10,2) DEFAULT 0,
           total_price DECIMAL(10,2) DEFAULT 0,
@@ -87,7 +88,22 @@ async function ensureOrderItemsTable() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ Order items tablosu kontrol edildi');
+    
+    // Eksik kolonları ekle
+    await pool.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'order_items' AND column_name = 'product_name') THEN
+              ALTER TABLE order_items ADD COLUMN product_name VARCHAR(200);
+          END IF;
+          
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'order_items' AND column_name = 'unit') THEN
+              ALTER TABLE order_items ADD COLUMN unit VARCHAR(20) DEFAULT 'adet';
+          END IF;
+      END $$;
+    `);
+    
+    console.log('✅ Order items tablosu kontrol edildi ve güncellendi');
   } catch (error) {
     console.log('⚠️ Order items tablosu oluşturulamadı:', error.message);
   }
@@ -4328,41 +4344,19 @@ app.get("/api/orders/:id/items", async (req, res) => {
       return res.json({ success: true, items: sampleItems });
     }
     
-    // Önce order_items tablosunun kolonlarını kontrol et
-    const columnsResult = await pool.query(`
-      SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'order_items'
-    `);
-    
-    const columns = columnsResult.rows.map(row => row.column_name);
-    const hasProductName = columns.includes('product_name');
-    
-    let query;
-    if (hasProductName) {
-      query = `
-        SELECT oi.id, oi.order_id, oi.product_id,
-               COALESCE(oi.product_name, p.name, 'Bilinmeyen Ürün') as product_name,
-               oi.quantity, COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
-               oi.total_price, COALESCE(oi.unit, p.unit, 'adet') as unit,
-               p.description as product_description
-        FROM order_items oi
-        LEFT JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = $1 ORDER BY oi.id
-      `;
-    } else {
-      query = `
-        SELECT oi.id, oi.order_id, oi.product_id,
-               COALESCE(p.name, 'Bilinmeyen Ürün') as product_name,
-               oi.quantity, COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
-               oi.total_price, COALESCE(p.unit, 'adet') as unit,
-               p.description as product_description
-        FROM order_items oi
-        LEFT JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = $1 ORDER BY oi.id
-      `;
-    }
-    
-    const result = await pool.query(query, [id]);
+    const result = await pool.query(`
+      SELECT oi.id, oi.order_id, oi.product_id,
+             COALESCE(oi.product_name, p.name, 'Bilinmeyen Ürün') as product_name,
+             oi.quantity, 
+             COALESCE(oi.unit_price, p.unit_price, 0) as unit_price,
+             oi.total_price, 
+             COALESCE(oi.unit, p.unit, 'adet') as unit,
+             p.description as product_description
+      FROM order_items oi
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = $1 
+      ORDER BY oi.id
+    `, [id]);
     
     console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu:`, result.rows.map(r => ({ id: r.id, product_name: r.product_name, product_id: r.product_id })));
 
@@ -4721,17 +4715,17 @@ app.post("/api/orders", async (req, res) => {
     if (products && products.length > 0) {
       try {
         for (const product of products) {
-          // Ürün adını products tablosundan al
-          let productName = product.name;
+          let productName = product.name || 'Bilinmeyen Ürün';
           let unitPrice = product.unit_price || product.price || 0;
           let unit = product.unit || 'adet';
           
+          // Ürün bilgilerini products tablosundan al
           if (product.id) {
             try {
               const productResult = await pool.query('SELECT name, unit_price, unit FROM products WHERE id = $1', [product.id]);
               if (productResult.rows.length > 0) {
                 const dbProduct = productResult.rows[0];
-                productName = dbProduct.name;
+                productName = dbProduct.name || productName;
                 unitPrice = dbProduct.unit_price || unitPrice;
                 unit = dbProduct.unit || unit;
               }
@@ -4745,10 +4739,12 @@ app.post("/api/orders", async (req, res) => {
           await pool.query(`
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, unit)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `, [orderId, product.id, productName, product.quantity, unitPrice, totalPrice, unit]);
+          `, [orderId, product.id || null, productName, product.quantity, unitPrice, totalPrice, unit]);
+          
+          console.log(`Ürün eklendi: ${productName} - ${product.quantity} ${unit}`);
         }
       } catch (itemError) {
-        console.log('Order items eklenirken hata (tablo olmayabilir):', itemError.message);
+        console.error('Order items eklenirken hata:', itemError);
       }
     }
     

@@ -90,9 +90,12 @@ CREATE TABLE IF NOT EXISTS order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER REFERENCES orders(id),
     product_id INTEGER REFERENCES products(id),
+    product_name VARCHAR(200) NOT NULL,
     quantity DECIMAL(10,2) NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
-    total_price DECIMAL(12,2) NOT NULL
+    total_price DECIMAL(12,2) NOT NULL,
+    unit VARCHAR(20) DEFAULT 'adet',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Müşteri ziyaretleri tablosu
