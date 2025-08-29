@@ -4349,8 +4349,6 @@ app.get("/api/orders/:id/items", async (req, res) => {
     const allItemsCheck = await pool.query('SELECT COUNT(*) as count FROM order_items');
     console.log(`📊 Toplam order_items sayısı: ${allItemsCheck.rows[0].count}`);
     
-
-    
     const result = await pool.query(`
       SELECT oi.id, oi.order_id, oi.product_id,
              COALESCE(oi.product_name, p.name, 'Bilinmeyen Ürün') as product_name,
@@ -4370,7 +4368,8 @@ app.get("/api/orders/:id/items", async (req, res) => {
       console.log(`  ${index + 1}. ${item.product_name} - ${item.quantity} ${item.unit} - ${item.unit_price} TL`);
     });
 
-    // Eğer hala kayıt yoksa boş array döndür
+
+
     if (result.rows.length === 0) {
       console.log(`⚠️ Sipariş ${id} için hiç kalem bulunamadı`);
       return res.json({ success: true, items: [] });
@@ -4716,16 +4715,19 @@ app.post("/api/orders", async (req, res) => {
       INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, delivery_date, total_amount, notes, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
       RETURNING *
-    `, [orderNum, customer_id, 1, order_date, delivery_date, parseFloat(total_amount), notes, ]);
+    `, [orderNum, customer_id, 1, order_date, delivery_date, parseFloat(total_amount), notes]);
     
     const orderId = result.rows[0].id;
+    console.log(`📦 Sipariş oluşturuldu, ID: ${orderId}`);
     
     // Sipariş kalemlerini ekle
     if (products && products.length > 0) {
-      try {
-        for (const product of products) {
+      console.log(`📦 ${products.length} ürün ekleniyor...`);
+      
+      for (const product of products) {
+        try {
           let productName = product.name || 'Bilinmeyen Ürün';
-          let unitPrice = product.unit_price || product.price || 0;
+          let unitPrice = parseFloat(product.unit_price || product.price || 0);
           let unit = product.unit || 'adet';
           
           // Ürün bilgilerini products tablosundan al
@@ -4735,7 +4737,7 @@ app.post("/api/orders", async (req, res) => {
               if (productResult.rows.length > 0) {
                 const dbProduct = productResult.rows[0];
                 productName = dbProduct.name || productName;
-                unitPrice = dbProduct.unit_price || unitPrice;
+                unitPrice = parseFloat(dbProduct.unit_price) || unitPrice;
                 unit = dbProduct.unit || unit;
               }
             } catch (productError) {
@@ -4743,19 +4745,31 @@ app.post("/api/orders", async (req, res) => {
             }
           }
           
-          const totalPrice = unitPrice * product.quantity;
+          const quantity = parseInt(product.quantity) || 1;
+          const totalPrice = unitPrice * quantity;
           
-          await pool.query(`
+          console.log(`➕ Ekleniyor: ${productName} - ${quantity} ${unit} - ${unitPrice} TL`);
+          
+          const itemResult = await pool.query(`
             INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, unit)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-          `, [orderId, product.id || null, productName, product.quantity, unitPrice, totalPrice, unit]);
+            RETURNING id
+          `, [orderId, product.id || null, productName, quantity, unitPrice, totalPrice, unit]);
           
-          console.log(`Ürün eklendi: ${productName} - ${product.quantity} ${unit}`);
+          console.log(`✅ Kalem eklendi, ID: ${itemResult.rows[0].id}`);
+          
+        } catch (itemError) {
+          console.error(`❌ Ürün ekleme hatası (${product.name}):`, itemError.message);
+          // Hata olsa bile devam et
         }
-      } catch (itemError) {
-        console.error('Order items eklenirken hata:', itemError);
       }
+    } else {
+      console.log('⚠️ Hiç ürün gönderilmedi');
     }
+    
+    // Eklenen kalemleri kontrol et
+    const itemsCheck = await pool.query('SELECT COUNT(*) as count FROM order_items WHERE order_id = $1', [orderId]);
+    console.log(`📊 Sipariş ${orderId} için ${itemsCheck.rows[0].count} kalem eklendi`);
     
     console.log('✅ Sipariş oluşturuldu:', result.rows[0]);
     
