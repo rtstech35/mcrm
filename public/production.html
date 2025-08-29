@@ -444,34 +444,28 @@
             }
         }
 
+        async function loadOrderStatus() {
+            try {
+                const token = localStorage.getItem('token');
                 const response = await fetch('/api/orders', {
                     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
-                
-                if (!response.ok) {
-                    console.log('API yanıtı başarısız, varsayılan değerler kullanılıyor');
-                    setDefaultCounts();
-                    return;
-                }
-                
+
+                if (!response.ok) throw new Error('Siparişler alınamadı');
+
                 const data = await response.json();
                 const orders = data.orders || data || [];
-                
-                // Sipariş durumlarını say
-                const statusCounts = {
-                    pending: orders.filter(o => o.status === 'pending').length,
-                    production: orders.filter(o => o.status === 'production').length,
-                    completed: orders.filter(o => o.status === 'completed').length,
-                    ready_for_delivery: orders.filter(o => o.status === 'ready_for_delivery').length,
-                    delivered: orders.filter(o => o.status === 'delivered').length
-                };
-                
-                document.getElementById('pendingCount').textContent = statusCounts.pending;
-                document.getElementById('productionCount').textContent = statusCounts.production;
-                document.getElementById('completedCount').textContent = statusCounts.completed;
-                document.getElementById('deliveryCount').textContent = statusCounts.ready_for_delivery;
-                document.getElementById('deliveredCount').textContent = statusCounts.delivered;
-                
+
+                const statusCounts = orders.reduce((acc, order) => {
+                    acc[order.status] = (acc[order.status] || 0) + 1;
+                    return acc;
+                }, {});
+
+                document.getElementById('pendingCount').textContent = statusCounts.pending || 0;
+                document.getElementById('productionCount').textContent = statusCounts.production || 0;
+                document.getElementById('completedCount').textContent = statusCounts.completed || 0;
+                document.getElementById('deliveryCount').textContent = statusCounts.ready_for_delivery || 0;
+                document.getElementById('deliveredCount').textContent = statusCounts.delivered || 0;
             } catch (error) {
                 console.error('Sipariş durumları yüklenirken hata:', error);
                 setDefaultCounts();

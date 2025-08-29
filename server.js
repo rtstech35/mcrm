@@ -2370,7 +2370,7 @@ app.get("/api/cash-registers", async (req, res) => {
 });
 
 // İrsaliye Yönetimi API'leri
-app.get("/api/delivery-notes", async (req, res) => {
+app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
   try {
     // Önce delivery_notes tablosunun varlığını kontrol et
     const tableExists = await checkTableExists('delivery_notes');
@@ -2409,7 +2409,8 @@ app.get("/api/delivery-notes", async (req, res) => {
     }
 
     const { status, customer_id } = req.query;
-
+    const { userId, role } = req.user;
+ 
     let query = `
       SELECT dn.*,
              c.company_name as customer_name,
@@ -2420,22 +2421,28 @@ app.get("/api/delivery-notes", async (req, res) => {
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN users u ON dn.delivered_by = u.id
       LEFT JOIN orders o ON dn.order_id = o.id
-      WHERE 1=1
     `;
 
     const params = [];
-    let paramIndex = 1;
+    const whereClauses = [];
 
     if (status) {
-      query += ` AND dn.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
+      whereClauses.push(`dn.status = $${params.push(status)}`);
     }
     
     if (customer_id) {
-      query += ` AND dn.customer_id = $${paramIndex}`;
-      params.push(customer_id);
-      paramIndex++;
+      whereClauses.push(`dn.customer_id = $${params.push(customer_id)}`);
+    }
+
+    // Admin/Yönetici tümünü görür, diğerleri sadece kendilerine atanmış olanları
+    if (role === 'Sevkiyat Personeli') {
+        whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
+    } else if (role === 'Satış Temsilcisi') {
+        whereClauses.push(`c.assigned_sales_rep = $${params.push(userId)}`);
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
     query += ` ORDER BY dn.created_at DESC`;
@@ -2852,12 +2859,14 @@ app.post("/api/migrate-delivery-notes", async (req, res) => {
 });
 
 // Randevu/Görev Yönetimi API'leri
-app.get("/api/appointments", async (req, res) => {
+app.get("/api/appointments", authenticateToken, async (req, res) => {
   try {
-    const { type, status, assigned_to, customer_id } = req.query;
+    const { type, status, assigned_to, customer_id, start_date } = req.query;
+    const { userId, role } = req.user;
 
     let query = `
       SELECT a.*,
+             u.id as user_id,
              u.full_name as assigned_to_name,
              r.name as assigned_to_role,
              c.company_name as customer_name
@@ -2865,39 +2874,47 @@ app.get("/api/appointments", async (req, res) => {
       LEFT JOIN users u ON a.assigned_to = u.id
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN customers c ON a.customer_id = c.id
-      WHERE 1=1
     `;
 
     const params = [];
-    let paramIndex = 1;
+    const whereClauses = [];
 
     if (type) {
-      query += ` AND a.type = $${paramIndex}`;
-      params.push(type);
-      paramIndex++;
+      whereClauses.push(`a.type = $${params.push(type)}`);
     }
 
     if (status) {
-      query += ` AND a.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-
-    if (assigned_to) {
-      query += ` AND a.assigned_to = $${paramIndex}`;
-      params.push(parseInt(assigned_to));
-      paramIndex++;
+      whereClauses.push(`a.status = $${params.push(status)}`);
     }
 
     if (customer_id) {
-      query += ` AND a.customer_id = $${paramIndex}`;
-      params.push(parseInt(customer_id));
-      paramIndex++;
+      whereClauses.push(`a.customer_id = $${params.push(parseInt(customer_id))}`);
+    }
+
+    if (start_date) {
+      whereClauses.push(`a.start_date = $${params.push(start_date)}`);
+    }
+
+    // Admin tüm randevuları görebilir, diğerleri sadece kendininkini
+    if (role !== 'Yönetici' && role !== 'Admin') {
+      whereClauses.push(`a.assigned_to = $${params.push(userId)}`);
+    } else if (assigned_to) { // Admin ise ve belirli bir kullanıcıyı filtrelemek istiyorsa
+      whereClauses.push(`a.assigned_to = $${params.push(parseInt(assigned_to))}`);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
 
     query += ` ORDER BY a.start_date ASC, a.start_time ASC`;
 
     const result = await pool.query(query, params);
+
+    // Eğer whereClauses boşsa ve rol admin değilse, yine de filtrele
+    if (whereClauses.length === 0 && role !== 'Yönetici' && role !== 'Admin') {
+        const filteredResults = result.rows.filter(apt => apt.user_id === userId);
+        return res.json({ success: true, appointments: filteredResults });
+    }
 
     console.log('Appointments API - Bulunan randevu sayısı:', result.rows.length);
 
@@ -3812,7 +3829,7 @@ app.delete("/api/users/:id", async (req, res) => {
 });
 
 // Müşteriler API
-app.get("/api/customers", async (req, res) => {
+app.get("/api/customers", authenticateToken, async (req, res) => {
   try {
     console.log('🏢 Customers API çağrıldı');
 
@@ -3834,13 +3851,25 @@ app.get("/api/customers", async (req, res) => {
       });
     }
 
-    const result = await pool.query(`
+    const { userId, role } = req.user;
+
+    let query = `
       SELECT c.*,
              COALESCE(u.full_name, 'Atanmamış') as sales_rep_name
       FROM customers c
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
-      ORDER BY c.created_at DESC
-    `);
+    `;
+    const params = [];
+
+    // Admin tüm müşterileri görebilir, diğerleri sadece kendininkini
+    if (role !== 'Yönetici' && role !== 'Admin') {
+        params.push(userId);
+        query += ` WHERE c.assigned_sales_rep = $1`;
+    }
+
+    query += ` ORDER BY c.created_at DESC`;
+
+    const result = await pool.query(query, params);
 
     console.log('✅ Customers API - Bulunan müşteri sayısı:', result.rows.length);
 
@@ -4143,16 +4172,13 @@ app.post("/api/invoices/:id/payment", async (req, res) => {
 });
 
 // Tek sipariş getir
-app.get("/api/orders/:id", authenticateToken, async (req, res) => {
+app.get("/api/orders/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT o.*, 
-             c.company_name,
-             u.full_name as sales_rep_name
+      SELECT o.*, c.company_name
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
-      LEFT JOIN users u ON o.sales_rep_id = u.id
       WHERE o.id = $1
     `, [id]);
 
@@ -4167,7 +4193,7 @@ app.get("/api/orders/:id", authenticateToken, async (req, res) => {
 });
 
 // Sipariş kalemlerini getir
-app.get("/api/orders/:id/items", authenticateToken, async (req, res) => {
+app.get("/api/orders/:id/items", async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 Sipariş ${id} için kalemler isteniyor...`);
@@ -4228,41 +4254,14 @@ app.get("/api/orders/:id/items", authenticateToken, async (req, res) => {
 });
 
 // Sipariş durumu güncelle
-app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
+app.put("/api/orders/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, order_date, delivery_date, notes } = req.body;
-
-    const fieldsToUpdate = [];
-    const values = [];
-    let queryIndex = 1;
-
-    if (status) {
-      fieldsToUpdate.push(`status = $${queryIndex++}`);
-      values.push(status);
-    }
-    if (order_date) {
-      fieldsToUpdate.push(`order_date = $${queryIndex++}`);
-      values.push(order_date);
-    }
-    if (delivery_date) {
-      fieldsToUpdate.push(`delivery_date = $${queryIndex++}`);
-      values.push(delivery_date);
-    }
-    // Notlar boş bir string olabilir, bu yüzden undefined kontrolü yapıyoruz.
-    if (notes !== undefined) {
-      fieldsToUpdate.push(`notes = $${queryIndex++}`);
-      values.push(notes);
-    }
-
-    if (fieldsToUpdate.length === 0) {
-      return res.status(400).json({ success: false, error: 'Güncellenecek bir alan belirtilmedi.' });
-    }
-
-    const updateQuery = `UPDATE orders SET ${fieldsToUpdate.join(', ')} WHERE id = $${queryIndex} RETURNING *`;
-    values.push(id);
+    const { status } = req.body;
     
-    const result = await pool.query(updateQuery, values);
+    const result = await pool.query(`
+      UPDATE orders SET status = $1 WHERE id = $2 RETURNING *
+    `, [status, id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
@@ -4275,7 +4274,7 @@ app.put("/api/orders/:id/status", authenticateToken, async (req, res) => {
 });
 
 // Tek müşteri getir
-app.get("/api/customers/:id", authenticateToken, async (req, res) => {
+app.get("/api/customers/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -4611,7 +4610,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
 });
 
 // Siparişler API
-app.get("/api/orders", async (req, res) => {
+app.get("/api/orders", authenticateToken, async (req, res) => {
   try {
     console.log('📦 Orders API çağrıldı');
 
