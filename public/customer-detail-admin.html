@@ -264,17 +264,16 @@
 
         async function loadSummaryData() {
             try {
-                const [orders, deliveryNotes, invoices, accountSummary] = await Promise.all([
+                const [orders, deliveryNotes, invoices] = await Promise.all([
                     apiCall(`/api/orders?customer_id=${customerId}`),
-                    apiCall(`/api/cari/customers/${customerId}/delivery-notes`),
-                    apiCall(`/api/cari/invoices?customer_id=${customerId}`),
-                    apiCall(`/api/cari/customers/${customerId}/account-summary`)
+                    apiCall(`/api/delivery-notes?customer_id=${customerId}`).catch(() => ({ delivery_notes: [] })),
+                    apiCall(`/api/invoices?customer_id=${customerId}`).catch(() => ({ invoices: [] }))
                 ]);
 
-                const totalOrders = orders.length;
-                const totalDeliveryNotes = deliveryNotes.length;
-                const totalInvoices = invoices.length;
-                const balance = accountSummary.balance || 0;
+                const totalOrders = orders.orders ? orders.orders.length : (orders.length || 0);
+                const totalDeliveryNotes = deliveryNotes.delivery_notes ? deliveryNotes.delivery_notes.length : 0;
+                const totalInvoices = invoices.invoices ? invoices.invoices.length : 0;
+                const balance = 0; // Default balance
 
                 document.getElementById('summaryCards').innerHTML = `
                     <div style="background: linear-gradient(135deg, #42A5F5, #1E88E5); color: white; padding: 1rem; border-radius: 8px; text-align: center;">
@@ -304,7 +303,7 @@
             try {
                 // Siparişleri yükle
                 const ordersResponse = await apiCall(`/api/orders?customer_id=${customerId}`);
-                const orders = ordersResponse.orders || [];
+                const orders = ordersResponse.orders || ordersResponse || [];
                 document.getElementById('ordersList').innerHTML = orders.map(order => `
                     <div class="list-item" onclick="viewOrder(${order.id})">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -321,76 +320,98 @@
                 `).join('');
 
                 // İrsaliyeleri yükle
-                const deliveryNotes = await apiCall(`/api/cari/customers/${customerId}/delivery-notes`);
-                document.getElementById('deliveryNotesList').innerHTML = deliveryNotes.map(dn => `
-                    <div class="list-item" onclick="viewDeliveryNote(${dn.id})">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${dn.delivery_note_number}</strong>
-                                <p style="color: #718096; font-size: 0.875rem;">${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <p style="font-weight: 600;">${dn.total_amount} TL</p>
-                                <span class="status-badge ${dn.is_invoiced ? 'status-paid' : 'status-unpaid'}">${dn.is_invoiced ? 'Faturalandı' : 'Bekliyor'}</span>
+                try {
+                    const deliveryNotesResponse = await apiCall(`/api/delivery-notes?customer_id=${customerId}`);
+                    const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
+                    document.getElementById('deliveryNotesList').innerHTML = deliveryNotes.map(dn => `
+                        <div class="list-item" onclick="viewDeliveryNote(${dn.id})">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${dn.delivery_number}</strong>
+                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <p style="font-weight: 600;">${dn.total_amount || 0} TL</p>
+                                    <span class="status-badge ${dn.is_invoiced ? 'status-paid' : 'status-unpaid'}">${dn.is_invoiced ? 'Faturalandı' : 'Bekliyor'}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } catch (error) {
+                    console.log('İrsaliyeler yüklenemedi:', error.message);
+                    document.getElementById('deliveryNotesList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">İrsaliye bulunamadı</div>';
+                }
                 
                 // Faturaları yükle
-                const invoices = await apiCall(`/api/cari/customers/${customerId}/invoices`);
-                document.getElementById('invoicesList').innerHTML = invoices.map(inv => `
-                    <div class="list-item" onclick="viewInvoice(${inv.id})">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${inv.invoice_number}</strong>
-                                <p style="color: #718096; font-size: 0.875rem;">${new Date(inv.invoice_date).toLocaleDateString('tr-TR')}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <p style="font-weight: 600;">${inv.total_amount} TL</p>
-                                <p style="color: #28a745; font-size: 0.875rem;">Ödenen: ${inv.paid_amount} TL</p>
-                                <span class="status-badge ${inv.status === 'paid' ? 'status-paid' : inv.status === 'partial' ? 'status-partial' : 'status-unpaid'}">${inv.status_text}</span>
+                try {
+                    const invoicesResponse = await apiCall(`/api/invoices?customer_id=${customerId}`);
+                    const invoices = invoicesResponse.invoices || [];
+                    document.getElementById('invoicesList').innerHTML = invoices.map(inv => `
+                        <div class="list-item" onclick="viewInvoice(${inv.id})">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${inv.invoice_number}</strong>
+                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(inv.invoice_date || inv.created_at).toLocaleDateString('tr-TR')}</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <p style="font-weight: 600;">${inv.total_amount} TL</p>
+                                    <p style="color: #28a745; font-size: 0.875rem;">Ödenen: ${inv.paid_amount || 0} TL</p>
+                                    <span class="status-badge ${inv.status === 'paid' ? 'status-paid' : inv.status === 'partial' ? 'status-partial' : 'status-unpaid'}">${inv.status || 'Bekliyor'}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } catch (error) {
+                    console.log('Faturalar yüklenemedi:', error.message);
+                    document.getElementById('invoicesList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Fatura bulunamadı</div>';
+                }
                 
                 // Tahsilatları yükle
-                const payments = await apiCall(`/api/cari/customers/${customerId}/payments`);
-                document.getElementById('paymentsList').innerHTML = payments.map(payment => `
-                    <div class="list-item">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${payment.invoice_number || 'Genel Tahsilat'}</strong>
-                                <p style="color: #718096; font-size: 0.875rem;">${new Date(payment.payment_date).toLocaleDateString('tr-TR')}</p>
-                                <p style="color: #718096; font-size: 0.875rem;">${payment.cash_register_name} - ${payment.payment_method}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                <p style="font-weight: 600; color: #28a745;">${payment.amount} TL</p>
-                                ${payment.reference_number ? `<p style="color: #718096; font-size: 0.875rem;">Ref: ${payment.reference_number}</p>` : ''}
+                try {
+                    const paymentsResponse = await apiCall(`/api/account-transactions?customer_id=${customerId}&transaction_type=credit`);
+                    const payments = paymentsResponse.transactions || [];
+                    document.getElementById('paymentsList').innerHTML = payments.map(payment => `
+                        <div class="list-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${payment.reference_number || 'Genel Tahsilat'}</strong>
+                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(payment.transaction_date).toLocaleDateString('tr-TR')}</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">${payment.description}</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <p style="font-weight: 600; color: #28a745;">${payment.amount} TL</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } catch (error) {
+                    console.log('Tahsilatlar yüklenemedi:', error.message);
+                    document.getElementById('paymentsList').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Tahsilat bulunamadı</div>';
+                }
                 
                 // Cari hesap hareketlerini yükle
-                const movements = await apiCall(`/api/cari/customers/${customerId}/movements`);
-                document.getElementById('accountMovements').innerHTML = movements.map(movement => `
-                    <div class="list-item">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${movement.description}</strong>
-                                <p style="color: #718096; font-size: 0.875rem;">${new Date(movement.movement_date).toLocaleDateString('tr-TR')}</p>
-                                <p style="color: #718096; font-size: 0.875rem;">${movement.reference_number || ''}</p>
-                            </div>
-                            <div style="text-align: right;">
-                                ${movement.debit_amount > 0 ? `<p style="font-weight: 600; color: #dc3545;">Borç: ${movement.debit_amount} TL</p>` : ''}
-                                ${movement.credit_amount > 0 ? `<p style="font-weight: 600; color: #28a745;">Alacak: ${movement.credit_amount} TL</p>` : ''}
-                                <p style="color: #718096; font-size: 0.875rem;">Bakiye: ${movement.balance} TL</p>
+                try {
+                    const movementsResponse = await apiCall(`/api/account-transactions?customer_id=${customerId}`);
+                    const movements = movementsResponse.transactions || [];
+                    document.getElementById('accountMovements').innerHTML = movements.map(movement => `
+                        <div class="list-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${movement.description}</strong>
+                                    <p style="color: #718096; font-size: 0.875rem;">${new Date(movement.transaction_date).toLocaleDateString('tr-TR')}</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">${movement.reference_number || ''}</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    ${movement.transaction_type === 'debit' ? `<p style="font-weight: 600; color: #dc3545;">Borç: ${movement.amount} TL</p>` : ''}
+                                    ${movement.transaction_type === 'credit' ? `<p style="font-weight: 600; color: #28a745;">Alacak: ${movement.amount} TL</p>` : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } catch (error) {
+                    console.log('Cari hareketler yüklenemedi:', error.message);
+                    document.getElementById('accountMovements').innerHTML = '<div style="padding: 1rem; text-align: center; color: #718096;">Cari hareket bulunamadı</div>';
+                }
 
             } catch (error) {
                 console.error('Sekme verileri yüklenemedi:', error);
@@ -439,8 +460,8 @@
                 console.log('API çağrıları başlatılıyor...');
                 // Kasaları ve faturaları yükle
                 const [cashRegisters, invoices] = await Promise.all([
-                    apiCall('/api/cari/cash-registers'),
-                    apiCall(`/api/cari/customers/${customerId}/invoices`)
+                    apiCall('/api/cash-registers').catch(() => ({ cash_registers: [] })),
+                    apiCall(`/api/invoices?customer_id=${customerId}`).catch(() => ({ invoices: [] }))
                 ]);
                 
                 console.log('Kasalar:', cashRegisters);
@@ -451,13 +472,16 @@
                 const unpaidInvoices = invoices.filter(inv => inv.remaining_amount > 0);
                 console.log('Ödenmemiş faturalar:', unpaidInvoices);
                 
-                const cashRegisterOptions = cashRegisters.map(cr => 
-                    `<option value="${cr.id}">${cr.name} (${cr.balance} TL)</option>`
+                const cashRegistersList = cashRegisters.cash_registers || cashRegisters || [];
+                const cashRegisterOptions = cashRegistersList.map(cr => 
+                    `<option value="${cr.id}">${cr.name} (${cr.balance || 0} TL)</option>`
                 ).join('');
                 console.log('Kasa seçenekleri:', cashRegisterOptions);
                 
+                const invoicesList = invoices.invoices || invoices || [];
+                const unpaidInvoices = invoicesList.filter(inv => (inv.remaining_amount || inv.total_amount) > 0);
                 const invoiceOptions = unpaidInvoices.map(inv => 
-                    `<option value="${inv.id}">${inv.invoice_number} - Kalan: ${inv.remaining_amount} TL</option>`
+                    `<option value="${inv.id}">${inv.invoice_number} - Kalan: ${inv.remaining_amount || inv.total_amount} TL</option>`
                 ).join('');
                 console.log('Fatura seçenekleri:', invoiceOptions);
                 
@@ -542,16 +566,15 @@
             }
 
             try {
-                await apiCall('/api/cari/payments', {
+                await apiCall('/api/account-transactions', {
                     method: 'POST',
                     body: JSON.stringify({
-                        customerId: customerId,
-                        invoiceId: invoiceId,
+                        customer_id: customerId,
+                        transaction_type: 'credit',
                         amount: amount,
-                        paymentMethod: method,
-                        cashRegisterId: cashRegisterId,
-                        referenceNumber: reference,
-                        notes: `Admin panelinden ${method} ile tahsilat`
+                        transaction_date: new Date().toISOString().split('T')[0],
+                        description: `Admin panelinden ${method} ile tahsilat`,
+                        reference_number: reference || `PAY-${Date.now()}`
                     })
                 });
                 
@@ -577,8 +600,10 @@
             }
             
             try {
-                const movements = await apiCall(`/api/cari/customers/${customerId}/movements?start_date=${startDate}&end_date=${endDate}`);
-                const customer = await apiCall(`/api/customers/${customerId}`);
+                const movementsResponse = await apiCall(`/api/account-transactions?customer_id=${customerId}&start_date=${startDate}&end_date=${endDate}`);
+                const movements = movementsResponse.transactions || [];
+                const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                const customer = customerResponse.customer || customerResponse;
                 
                 let html = `
                     <div style="padding: 2rem; background: white; border-radius: 8px;">

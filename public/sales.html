@@ -1054,7 +1054,8 @@
                     body: JSON.stringify(formData)
                 });
                 
-                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${result.order.order_number || 'SIP' + Date.now()}`);
+                const orderNumber = result.order?.order_number || result.order_number || 'SIP' + Date.now();
+                alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${orderNumber}`);
                 document.getElementById('orderForm').reset();
                 orderProducts = [];
                 closeModal('orderModal');
