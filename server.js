@@ -4322,27 +4322,34 @@ app.get("/api/orders/:id/items", async (req, res) => {
     if (!tableCheck.rows[0].exists) {
       // Tablo yoksa örnek veri döndür
       const sampleItems = [
-        { id: 1, product_name: 'Demir Profil 40x40', quantity: 10, unit: 'adet' },
-        { id: 2, product_name: 'Çelik Levha 2mm', quantity: 5, unit: 'm²' }
+        { id: 1, product_name: 'Demir Profil 40x40', quantity: 10, unit: 'adet', unit_price: 25.50, total_price: 255.00 },
+        { id: 2, product_name: 'Çelik Levha 2mm', quantity: 5, unit: 'm²', unit_price: 120.00, total_price: 600.00 }
       ];
       return res.json({ success: true, items: sampleItems });
     }
     
     const result = await pool.query(`
-      SELECT oi.*, 
-             COALESCE(p.name, oi.product_name) as product_name, 
-             COALESCE(p.unit, 'adet') as unit
+      SELECT oi.id,
+             oi.order_id,
+             oi.product_id,
+             COALESCE(oi.product_name, p.name, 'Ürün Adı Yok') as product_name,
+             oi.quantity,
+             oi.unit_price,
+             oi.total_price,
+             COALESCE(oi.unit, p.unit, 'adet') as unit
       FROM order_items oi
       LEFT JOIN products p ON oi.product_id = p.id
       WHERE oi.order_id = $1
       ORDER BY oi.id
     `, [id]);
 
+    console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu`);
+
     // Eğer kayıt yoksa örnek veri döndür
     if (result.rows.length === 0) {
       const sampleItems = [
-        { id: 1, product_name: 'Örnek Ürün 1', quantity: 2, unit: 'adet' },
-        { id: 2, product_name: 'Örnek Ürün 2', quantity: 3, unit: 'kg' }
+        { id: 1, product_name: 'Örnek Ürün 1', quantity: 2, unit: 'adet', unit_price: 50.00, total_price: 100.00 },
+        { id: 2, product_name: 'Örnek Ürün 2', quantity: 3, unit: 'kg', unit_price: 30.00, total_price: 90.00 }
       ];
       return res.json({ success: true, items: sampleItems });
     }
@@ -4352,8 +4359,8 @@ app.get("/api/orders/:id/items", async (req, res) => {
     console.error('Order items API hatası:', error);
     // Hata durumunda örnek veri döndür
     const sampleItems = [
-      { id: 1, product_name: 'Demir Profil', quantity: 5, unit: 'adet' },
-      { id: 2, product_name: 'Çelik Malzeme', quantity: 8, unit: 'kg' }
+      { id: 1, product_name: 'Demir Profil', quantity: 5, unit: 'adet', unit_price: 25.00, total_price: 125.00 },
+      { id: 2, product_name: 'Çelik Malzeme', quantity: 8, unit: 'kg', unit_price: 15.00, total_price: 120.00 }
     ];
     res.json({ success: true, items: sampleItems });
   }
@@ -4700,10 +4707,31 @@ app.post("/api/orders", async (req, res) => {
     if (products && products.length > 0) {
       try {
         for (const product of products) {
+          // Ürün adını products tablosundan al
+          let productName = product.name;
+          let unitPrice = product.unit_price || product.price || 0;
+          let unit = product.unit || 'adet';
+          
+          if (product.id) {
+            try {
+              const productResult = await pool.query('SELECT name, unit_price, unit FROM products WHERE id = $1', [product.id]);
+              if (productResult.rows.length > 0) {
+                const dbProduct = productResult.rows[0];
+                productName = dbProduct.name;
+                unitPrice = dbProduct.unit_price || unitPrice;
+                unit = dbProduct.unit || unit;
+              }
+            } catch (productError) {
+              console.log('Ürün bilgisi alınamadı:', productError.message);
+            }
+          }
+          
+          const totalPrice = unitPrice * product.quantity;
+          
           await pool.query(`
-            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `, [orderId, product.id, product.name, product.quantity, product.unit_price || product.price, (product.unit_price || product.price) * product.quantity]);
+            INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, unit)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `, [orderId, product.id, productName, product.quantity, unitPrice, totalPrice, unit]);
         }
       } catch (itemError) {
         console.log('Order items eklenirken hata (tablo olmayabilir):', itemError.message);
