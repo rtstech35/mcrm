@@ -4325,6 +4325,7 @@ app.get("/api/orders/:id", async (req, res) => {
 app.get("/api/orders/:id/items", async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`🔍 Sipariş ${id} için kalemler isteniyor...`);
     
     // Önce order_items tablosunun varlığını kontrol et
     const tableCheck = await pool.query(`
@@ -4336,13 +4337,19 @@ app.get("/api/orders/:id/items", async (req, res) => {
     `);
     
     if (!tableCheck.rows[0].exists) {
-      // Tablo yoksa örnek veri döndür
+      console.log('⚠️ order_items tablosu bulunamadı, örnek veri döndürülüyor');
       const sampleItems = [
         { id: 1, product_name: 'Demir Profil 40x40', quantity: 10, unit: 'adet', unit_price: 25.50, total_price: 255.00 },
         { id: 2, product_name: 'Çelik Levha 2mm', quantity: 5, unit: 'm²', unit_price: 120.00, total_price: 600.00 }
       ];
       return res.json({ success: true, items: sampleItems });
     }
+    
+    // Önce tüm order_items'ları kontrol et
+    const allItemsCheck = await pool.query('SELECT COUNT(*) as count FROM order_items');
+    console.log(`📊 Toplam order_items sayısı: ${allItemsCheck.rows[0].count}`);
+    
+
     
     const result = await pool.query(`
       SELECT oi.id, oi.order_id, oi.product_id,
@@ -4358,18 +4365,20 @@ app.get("/api/orders/:id/items", async (req, res) => {
       ORDER BY oi.id
     `, [id]);
     
-    console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu:`, result.rows.map(r => ({ id: r.id, product_name: r.product_name, product_id: r.product_id })));
+    console.log(`📋 Sipariş ${id} için ${result.rows.length} kalem bulundu:`);
+    result.rows.forEach((item, index) => {
+      console.log(`  ${index + 1}. ${item.product_name} - ${item.quantity} ${item.unit} - ${item.unit_price} TL`);
+    });
 
-    console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu`);
-
-    // Eğer kayıt yoksa boş array döndür
+    // Eğer hala kayıt yoksa boş array döndür
     if (result.rows.length === 0) {
+      console.log(`⚠️ Sipariş ${id} için hiç kalem bulunamadı`);
       return res.json({ success: true, items: [] });
     }
 
     res.json({ success: true, items: result.rows });
   } catch (error) {
-    console.error('Order items API hatası:', error);
+    console.error('❌ Order items API hatası:', error);
     res.status(500).json({ success: false, error: error.message, items: [] });
   }
 });
