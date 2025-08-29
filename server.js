@@ -4352,24 +4352,15 @@ app.get("/api/orders/:id/items", async (req, res) => {
 
     console.log(`Sipariş ${id} için ${result.rows.length} kalem bulundu`);
 
-    // Eğer kayıt yoksa örnek veri döndür
+    // Eğer kayıt yoksa boş array döndür
     if (result.rows.length === 0) {
-      const sampleItems = [
-        { id: 1, product_name: 'Örnek Ürün 1', quantity: 2, unit: 'adet', unit_price: 50.00, total_price: 100.00 },
-        { id: 2, product_name: 'Örnek Ürün 2', quantity: 3, unit: 'kg', unit_price: 30.00, total_price: 90.00 }
-      ];
-      return res.json({ success: true, items: sampleItems });
+      return res.json({ success: true, items: [] });
     }
 
     res.json({ success: true, items: result.rows });
   } catch (error) {
     console.error('Order items API hatası:', error);
-    // Hata durumunda örnek veri döndür
-    const sampleItems = [
-      { id: 1, product_name: 'Demir Profil', quantity: 5, unit: 'adet', unit_price: 25.00, total_price: 125.00 },
-      { id: 2, product_name: 'Çelik Malzeme', quantity: 8, unit: 'kg', unit_price: 15.00, total_price: 120.00 }
-    ];
-    res.json({ success: true, items: sampleItems });
+    res.status(500).json({ success: false, error: error.message, items: [] });
   }
 });
 

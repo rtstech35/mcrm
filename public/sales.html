@@ -2897,11 +2897,6 @@
                 // Ürün bilgilerini kontrol et ve düzelt
                 console.log('Sipariş kalemleri RAW:', JSON.stringify(items, null, 2));
                 
-                // Geçici debug için alert
-                if (items.length > 0) {
-                    alert(`İlk ürün bilgileri:\nproduct_name: ${items[0].product_name}\nname: ${items[0].name}\nproduct_id: ${items[0].product_id}\nunit: ${items[0].unit}`);
-                }
-                
                 const itemsWithProducts = items.map((item, index) => {
                     console.log(`Kalem ${index + 1}:`, {
                         product_name: item.product_name,
