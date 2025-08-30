@@ -400,15 +400,15 @@
                 <h3>Sevkiyat Paneli</h3>
             </div>
             <nav class="sidebar-nav">
-                <a href="shipping.html" class="nav-link active">
+                <a href="shipping.html" class="nav-link active" data-role="all">
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="#" onclick="window.open('delivery-notes.html', '_blank')" class="nav-link">
+                <a href="#" onclick="window.open('delivery-notes.html', '_blank')" class="nav-link" data-role="Sevkiyat,Yönetici,Admin">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">İrsaliyeler</span>
                 </a>
-                <a href="#" onclick="loadCustomerMap()" class="nav-link">
+                <a href="#" onclick="loadCustomerMap()" class="nav-link" data-role="all">
                     <span class="nav-icon">🗺️</span>
                     <span class="nav-text">Harita</span>
                 </a>
@@ -618,6 +618,26 @@
             closeOrdersModal();
         });
 
+        function setupMenuVisibility() {
+            const userRole = currentUser.role_name || '';
+            if (!userRole) {
+                console.warn('Kullanıcı rolü bulunamadı, menü gizleme işlemi atlanıyor.');
+                return;
+            }
+            
+            const menuItems = document.querySelectorAll('.sidebar-nav a');
+
+            menuItems.forEach(item => {
+                const allowedRolesAttr = item.dataset.role;
+                if (!allowedRolesAttr) return;
+
+                const allowedRoles = allowedRolesAttr.split(',');
+                
+                if (allowedRoles[0].trim().toLowerCase() !== 'all' && !allowedRoles.some(role => userRole.includes(role.trim()))) {
+                    item.style.display = 'none';
+                }
+            });
+        }
         // ESC tuşu ile modal kapat
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
@@ -749,6 +769,7 @@
             }, 2000);
             updateDateTime();
             setInterval(updateDateTime, 60000);
+            setupMenuVisibility();
         });
         
         async function loadDashboardData() {
