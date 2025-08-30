@@ -363,6 +363,15 @@ const authenticateToken = (req, res, next) => {
     if (err) {
       return res.status(403).json({ error: 'Geçersiz token' });
     }
+    // Güvenlik önlemi: Eğer permissions string ise, JSON.parse yap
+    if (user && user.permissions && typeof user.permissions === 'string') {
+        try {
+            user.permissions = JSON.parse(user.permissions);
+        } catch (e) {
+            console.error('JWT permissions parse hatası:', e);
+            user.permissions = {};
+        }
+    }
     req.user = user;
     next();
   });
