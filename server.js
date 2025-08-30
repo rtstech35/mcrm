@@ -12,6 +12,16 @@ const path = require("path");
 const fs = require("fs");
 console.log('✅ Temel modüller yüklendi');
 
+// --- GÜVENLİK VE ORTAM AYARLARI ---
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.error("❌ KRİTİK HATA: JWT_SECRET ortam değişkeni production ortamında zorunludur.");
+    console.error("❌ Güvenlik nedeniyle sunucu başlatılamıyor. Lütfen Render panelinden JWT_SECRET değişkenini ayarlayın.");
+    process.exit(1); // Sunucuyu başlatma
+} else if (!JWT_SECRET) {
+    console.warn("⚠️ UYARI: JWT_SECRET tanımlanmamış. Geliştirme için geçici anahtar kullanılacak. Production'da mutlaka ayarlayın!");
+}
+
 let setupDatabase;
 try {
   setupDatabase = require("./setup-database");
@@ -128,22 +138,28 @@ if (pool && pool.connect) {
   pool.connect()
     .then(async () => {
       console.log("✅ PostgreSQL bağlantısı başarılı");
+
+      // Veritabanı migration'larını çalıştır (Production için güvenli)
+      await runMigrations();
       
       // Order items tablosunu kontrol et
       await ensureOrderItemsTable();
 
-      // Production'da otomatik database setup
-      try {
-        console.log("🔄 Database setup kontrol ediliyor...");
-        if (setupDatabase) {
-          await setupDatabase();
-          console.log("✅ Database setup tamamlandı");
-        } else {
-          console.log("⚠️ setupDatabase fonksiyonu bulunamadı, manuel kurulum gerekli");
+      // DİKKAT: Production'da otomatik ve yıkıcı database setup'ı engelle!
+      if (process.env.NODE_ENV !== 'production') {
+        try {
+          console.log("🔄 Geliştirme ortamı için database setup kontrol ediliyor...");
+          if (setupDatabase) {
+            await setupDatabase();
+            console.log("✅ Geliştirme ortamı için database setup tamamlandı");
+          } else {
+            console.log("⚠️ setupDatabase fonksiyonu bulunamadı, manuel kurulum gerekli");
+          }
+        } catch (error) {
+          console.log("⚠️ Database setup hatası:", error.message);
         }
-      } catch (error) {
-        console.log("⚠️ Database setup hatası:", error.message);
-        console.log("💡 Setup sayfasından manuel kurulum yapın: /setup.html");
+      } else {
+        console.log("✅ Production ortamı, otomatik database setup atlandı.");
       }
     })
     .catch(err => {
@@ -152,6 +168,50 @@ if (pool && pool.connect) {
     });
 } else {
   console.log("⚠️ Database pool oluşturulamadı, server database olmadan çalışacak");
+}
+
+// Otomatik veritabanı migration fonksiyonu
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    console.log('🔄 Veritabanı migration kontrolü başlatılıyor...');
+
+    // 1. Migrations tablosunun varlığını kontrol et, yoksa oluştur
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        run_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 2. Çalıştırılmış migration'ları al
+    const ranMigrationsResult = await client.query('SELECT name FROM migrations;');
+    const ranMigrations = ranMigrationsResult.rows.map(row => row.name);
+
+    // 3. Migration dosyalarını oku
+    const migrationsDir = path.join(__dirname, 'database', 'migrations');
+    if (!fs.existsSync(migrationsDir)) fs.mkdirSync(migrationsDir, { recursive: true });
+    
+    const migrationFiles = fs.readdirSync(migrationsDir).filter(file => file.endsWith('.sql')).sort();
+
+    // 4. Çalıştırılmamış olanları çalıştır
+    for (const file of migrationFiles) {
+      if (!ranMigrations.includes(file)) {
+        console.log(`🚀 Yeni migration çalıştırılıyor: ${file}`);
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+        await client.query(sql);
+        await client.query('INSERT INTO migrations (name) VALUES ($1)', [file]);
+        console.log(`✅ Migration başarıyla tamamlandı: ${file}`);
+      }
+    }
+    console.log('🏁 Veritabanı migration kontrolü tamamlandı.');
+  } catch (err) {
+    console.error('❌ Migration işlemi sırasında kritik hata:', err);
+    throw err; // Sunucunun başlamasını engelle
+  } finally {
+    client.release();
+  }
 }
 
 // ---------------- TEST ---------------- //
@@ -295,7 +355,7 @@ app.post("/api/login", async (req, res) => {
           role: user.role_name,
           permissions: user.permissions || {} // Yetkileri token'a ekle
         },
-        process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
+        JWT_SECRET || "fallback_secret_key_change_in_production", // Geliştirme için fallback
         { expiresIn: "24h" }
       );
       
@@ -330,7 +390,7 @@ app.post("/api/login", async (req, res) => {
             role: user.role_name,
             permissions: user.permissions || {} // Yetkileri token'a ekle
           },
-          process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
+          JWT_SECRET || "fallback_secret_key_change_in_production",
           { expiresIn: "24h" }
         );
         
@@ -371,7 +431,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token gerekli' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_key_change_in_production", (err, user) => {
+  jwt.verify(token, JWT_SECRET || "fallback_secret_key_change_in_production", (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Geçersiz token' });
     }

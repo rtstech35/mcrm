@@ -461,7 +461,7 @@
 
         <!-- Teslimat Durumları -->
         <div class="delivery-status">
-            <div class="status-card" onclick="showDeliveries('ready_for_shipping')" title="Sevkiyat bekleyen siparişleri görüntüle">
+            <div class="status-card" onclick="showDeliveryNotes('pending')" title="Sevkiyat bekleyen siparişleri görüntüle">
                 <div class="status-icon">📦</div>
                 <div class="status-info">
                     <h4>Sevkiyat Bekleyen Siparişler</h4>
@@ -470,7 +470,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showDeliveries('in_transit')" title="Sevkiyatını aldığı siparişleri görüntüle">
+            <div class="status-card" onclick="showDeliveryNotes('in_transit')" title="Sevkiyatını aldığı siparişleri görüntüle">
                 <div class="status-icon">🚚</div>
                 <div class="status-info">
                     <h4>Sevkiyatını Aldığı Siparişler</h4>
@@ -479,7 +479,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showDeliveries('delivered')" title="Tamamlanan sevkiyatları görüntüle">
+            <div class="status-card" onclick="showDeliveryNotes('delivered')" title="Tamamlanan sevkiyatları görüntüle">
                 <div class="status-icon">✅</div>
                 <div class="status-info">
                     <h4>Sevkiyatı Tamamlanan Ürünler</h4>
@@ -515,7 +515,7 @@
             <div class="modal-body" id="deliveryNotesList">
                 <!-- İrsaliyeler buraya yüklenecek -->
             </div>
-        </div>
+        </div> 
     </div>
 
     <!-- İmza Modal -->
@@ -548,7 +548,7 @@
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #eee;">
                 <button onclick="closeSignatureModal()" class="btn btn-secondary">İptal</button>
-                <button id="completeDeliveryBtn" onclick="saveSignatureAndComplete()" class="btn btn-success">Teslimatı Tamamla</button>
+                <button id="completeDeliveryBtn" onclick="saveSignatureAndCompleteDelivery()" class="btn btn-success">Teslimatı Tamamla</button>
             </div>
         </div>
     </div>
@@ -928,7 +928,7 @@
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
                                 ${status === 'pending' ? `<button onclick="startShipping(${note.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
-                                ${status === 'in_transit' ? `<button onclick="completeShipping(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
+                                ${status === 'in_transit' ? `<button onclick="showSignatureModal(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
                                 ${status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : ''}
                             </div>
                         </div>
@@ -950,18 +950,17 @@
         function closeDeliveryNotesModal() {
             const modal = document.getElementById('deliveryNotesModal');
             if (modal) {
-                modal.style.opacity = '0';
-                setTimeout(() => modal.style.display = 'none', 200);
+                modal.style.display = 'none';
             }
         }
         
         // Modal dışına tıklandığında kapat
         document.addEventListener('click', function(event) {
-            const ordersModal = document.getElementById('ordersModal');
+            const deliveryNotesModal = document.getElementById('deliveryNotesModal');
             const signatureModal = document.getElementById('signatureModal');
             
-            if (ordersModal && event.target === ordersModal) {
-                closeOrdersModal();
+            if (deliveryNotesModal && event.target === deliveryNotesModal) {
+                closeDeliveryNotesModal();
             }
             if (signatureModal && event.target === signatureModal) {
                 closeSignatureModal();
@@ -971,7 +970,7 @@
         // ESC tuşu ile modal kapat
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
-                closeOrdersModal();
+                closeDeliveryNotesModal();
                 closeSignatureModal();
             }
         });
@@ -982,7 +981,8 @@
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/status`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({ status: 'in_transit' })
                 });
@@ -990,227 +990,71 @@
                 if (response.ok) {
                     alert('✅ Sipariş sevkiyata alındı!');
                 } else {
-                    alert('✅ Sipariş sevkiyata alındı! (Demo)');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'İşlem başarısız oldu.');
                 }
                 
                 closeDeliveryNotesModal();
-                loadDeliveryStatus();
+                await loadDeliveryStatus();
             } catch (error) {
                 console.error('Sevkiyat başlatma hatası:', error);
-                alert('✅ Sipariş sevkiyata alındı! (Demo)');
-                closeDeliveryNotesModal();
-                loadDeliveryStatus();
+                alert('Sevkiyat başlatılamadı: ' + error.message);
             }
         }
         
-        async function completeShipping(deliveryNoteId) {
-            showSignatureModal(deliveryNoteId);
-        }
-        
-        function showSignatureModal(orderId) {
-            const signatureHtml = `
-                <div id="signatureModal" class="modal-overlay">
-                    <div class="modal-content" style="max-width: 500px;">
-                        <div class="modal-header">
-                            <h3>Müşteri İmzası</h3>
-                            <button class="close-btn" onclick="closeSignatureModal()">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <div style="margin-bottom: 15px;">
-                                <label>Müşteri Adı:</label>
-                                <input type="text" id="customerName" placeholder="Müşteri adını girin" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            </div>
-                            <div style="margin-bottom: 15px;">
-                                <label>Görevi:</label>
-                                <input type="text" id="customerTitle" placeholder="Müşteri görevini girin" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                            </div>
-                            <div style="margin-bottom: 15px;">
-                                <label>İmza:</label>
-                                <canvas id="signatureCanvas" width="400" height="150" style="border: 2px solid #ddd; border-radius: 4px; background: white; cursor: crosshair; display: block; margin-top: 5px;"></canvas>
-                                <div style="margin-top: 10px; text-align: center;">
-                                    <button onclick="clearSignature()" style="background: #6c757d; color: white; border: none; padding: 5px 15px; border-radius: 4px; margin-right: 10px;">Temizle</button>
-                                    <small style="color: #666;">Parmak veya kalemle imza atabilirsiniz</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 20px; text-align: right;">
-                            <button onclick="closeSignatureModal()" class="btn btn-secondary" style="margin-right: 10px;">İptal</button>
-                            <button onclick="saveSignatureAndComplete(${orderId})" class="btn" style="background: #28a745;">Teslim Et</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertAdjacentHTML('beforeend', signatureHtml);
-            initSignaturePad();
-        }
-        
-        let isDrawing = false;
-        let canvas, ctx;
-        
-        function initSignaturePad() {
-            canvas = document.getElementById('signatureCanvas');
-            ctx = canvas.getContext('2d');
-            
-            // Mouse events
-            canvas.addEventListener('mousedown', startDrawing);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDrawing);
-            
-            // Touch events
-            canvas.addEventListener('touchstart', handleTouch);
-            canvas.addEventListener('touchmove', handleTouch);
-            canvas.addEventListener('touchend', stopDrawing);
-        }
-        
-        function startDrawing(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            ctx.beginPath();
-            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-        }
-        
-        function draw(e) {
-            if (!isDrawing) return;
-            const rect = canvas.getBoundingClientRect();
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = '#000';
-            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-            ctx.stroke();
-        }
-        
-        function stopDrawing() {
-            isDrawing = false;
-        }
-        
-        function handleTouch(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-        }
-        
-        function clearSignature() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        async function saveSignatureAndComplete(orderId) {
+        async function saveSignatureAndCompleteDelivery() {
+            const completeBtn = document.getElementById('completeDeliveryBtn');
+            const deliveryNoteId = completeBtn.dataset.deliveryNoteId;
+
             const customerName = document.getElementById('customerName').value;
             const customerTitle = document.getElementById('customerTitle').value;
             
             if (!customerName.trim()) {
-                alert('Lütfen müşteri adını girin');
+                alert('Lütfen teslim alan kişinin adını girin.');
                 return;
             }
             
             // İmza kontrolü
+            const canvas = document.getElementById('signatureCanvas');
             const imageData = canvas.toDataURL();
             const isBlank = !ctx.getImageData(0, 0, canvas.width, canvas.height).data.some(channel => channel !== 0);
             
             if (isBlank) {
-                alert('Lütfen imza atın');
+                alert('Lütfen imza atın.');
                 return;
             }
             
             try {
-                console.log('📝 Teslimat tamamlanıyor, İrsaliye ID:', orderId);
-                
-                // İmza verilerini kaydet
-                const signatureData = {
-                    customer_signature: imageData,
-                    customer_name: customerName,
-                    customer_title: customerTitle,
-                    signature_date: new Date().toISOString(),
-                    signature_ip: 'mobile_device'
-                };
+                console.log('📝 Teslimat tamamlanıyor, İrsaliye ID:', deliveryNoteId);
                 
                 // Delivery_notes tablosunu güncelle
-                await fetch(`/api/delivery-notes/${orderId}/status`, {
+                const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/sign`, {
                     method: 'PUT',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         customer_signature: imageData,
                         customer_name: customerName,
-                        customer_title: customerTitle,
-                        signature_date: new Date().toISOString()
+                        customer_title: customerTitle
                     })
                 });
                 
                 if (response.ok) {
-                    alert(`✅ Teslimat başarıyla tamamlandı!\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
+                    alert(`✅ Teslimat başarıyla tamamlandı!`);
                 } else {
-                    alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Teslimat tamamlanamadı.');
                 }
-                
-                // Otomatik mail gönder - müşteri emailini al
-                console.log('📧 Mail gönderimi başlatılıyor...');
-                
-                fetch(`/api/orders/${orderId}`)
-                .then(response => response.json())
-                .then(orderData => {
-                    if (orderData.success && orderData.order && orderData.order.customer_id) {
-                        return fetch(`/api/customers/${orderData.order.customer_id}`);
-                    }
-                    throw new Error('Sipariş bulunamadı');
-                })
-                .then(response => response.json())
-                .then(customerData => {
-                    const customerEmail = customerData.success && customerData.customer && customerData.customer.email 
-                        ? customerData.customer.email 
-                        : 'test@example.com';
-                    
-                    console.log('📧 Müşteri email:', customerEmail);
-                    
-                    return fetch('/api/mail/delivery-completed', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            delivery_note_id: orderId,
-                            order_id: orderId,
-                            customer_email: customerEmail
-                        })
-                    });
-                })
-                .then(response => {
-                    console.log('📧 Mail API response status:', response.status);
-                    return response.json();
-                })
-                .then(result => {
-                    console.log('📧 Mail API result:', result);
-                    if (result.success) {
-                        console.log('✅ Mail başarıyla gönderildi');
-                    } else {
-                        console.error('❌ Mail hatası:', result.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Mail API hatası:', error);
-                });
                 
                 closeSignatureModal();
                 closeDeliveryNotesModal();
-                loadDeliveryStatus();
+                await loadDeliveryStatus();
                 
             } catch (error) {
                 console.error('Teslimat kaydetme hatası:', error);
-                alert(`✅ Teslimat tamamlandı! (Demo)\n\n📝 İmza: ${customerName}\n👤 Görev: ${customerTitle}\n📅 Tarih: ${new Date().toLocaleString('tr-TR')}`);
-                closeSignatureModal();
-                closeDeliveryNotesModal();
-                loadDeliveryStatus();
-            }
-        }
-        
-        function closeSignatureModal() {
-            const modal = document.getElementById('signatureModal');
-            if (modal) {
-                modal.remove();
+                alert('Teslimat kaydedilirken hata oluştu: ' + error.message);
             }
         }
         
