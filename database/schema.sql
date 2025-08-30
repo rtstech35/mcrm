@@ -273,16 +273,47 @@ CREATE TABLE IF NOT EXISTS appointment_participants (
 -- Varsayılan veriler
 INSERT INTO roles (id, name, description, level, is_active, permissions) VALUES
 (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler', 4, true, '{"all": true}'),
-(2, 'Satış Müdürü', 'Satış departmanı yöneticisi', 3, true, '{"customers": ["read", "create", "update", "delete"], "orders": ["read", "create", "update", "delete"], "reports": ["read"]}'),
-(3, 'Satış Personeli', 'Sadece kendi müşterilerini görür ve işlem yapar', 2, true, '{"customers": ["read", "read_own", "create"], "orders": ["read", "read_own", "create"]}'),
-(4, 'Depo Müdürü', 'Depo ve envanter yönetimi yöneticisi', 3, true, '{"inventory": ["read", "create", "update", "delete"]}'),
-(5, 'Depo Personeli', 'Depo ve envanter işlemleri', 2, true, '{"inventory": ["read", "update"]}'),
-(6, 'Sevkiyat Sorumlusu', 'Sevkiyat yöneticisi, kendisine atanan sevkiyatları yönetir', 3, true, '{"delivery": ["read", "create", "update", "delete"]}'),
-(7, 'Sevkiyatçı', 'Kendisine atanan sevkiyatları görür ve işlem yapar', 2, true, '{"delivery": ["read_own", "update"]}'),
-(8, 'Üretim Müdürü', 'Üretim yöneticisi, tüm siparişleri görür ve işlem yapar', 3, true, '{"production": ["read", "create", "update", "delete"]}'),
-(9, 'Üretim Personeli', 'Tüm siparişleri görür ve üretim işlemlerini yapar', 2, true, '{"production": ["read", "update"]}'),
-(10, 'Muhasebe Müdürü', 'Muhasebe departmanı yöneticisi', 3, true, '{"accounting": ["read", "create", "update", "delete"]}'),
-(11, 'Muhasebe Personeli', 'Mali işler ve muhasebe işlemleri', 2, true, '{"accounting": ["read", "create", "update"]}')
+(2, 'Satış Müdürü', 'Satış departmanı yöneticisi', 3, true, '{
+    "customers": ["read", "create", "update", "delete"], "orders": ["read", "create", "update", "delete"], "delivery": ["read"], "appointments": ["read", "create", "update", "delete"], "accounting": ["read"],
+    "admin_customers": true, "admin_orders": true, "admin_appointments": true,
+    "sales_dashboard": true, "sales_customers": true, "sales_orders": true, "sales_delivery_notes": true, "sales_appointments": true, "sales_accounts": true, "sales_invoices": true, "sales_map": true
+}'),
+(3, 'Satış Personeli', 'Sadece kendi müşterilerini görür ve işlem yapar', 2, true, '{
+    "customers": ["read", "read_own", "create"], "orders": ["read", "read_own", "create"], "appointments": ["read", "read_own", "create"], "visits": ["create"],
+    "sales_dashboard": true, "sales_customers": true, "sales_orders": true, "sales_appointments": true, "sales_new_visit": true, "sales_map": true
+}'),
+(4, 'Depo Müdürü', 'Depo ve envanter yönetimi yöneticisi', 3, true, '{
+    "products": ["read", "create", "update", "delete"], "delivery": ["read"],
+    "admin_products": true, "admin_delivery_notes": true
+}'),
+(5, 'Depo Personeli', 'Depo ve envanter işlemleri', 2, true, '{
+    "products": ["read", "update"],
+    "admin_products": true
+}'),
+(6, 'Sevkiyat Sorumlusu', 'Sevkiyat yöneticisi, kendisine atanan sevkiyatları yönetir', 3, true, '{
+    "delivery": ["read", "create", "update", "delete"],
+    "shipping_dashboard": true, "shipping_delivery_notes": true, "shipping_map": true, "admin_delivery_notes": true
+}'),
+(7, 'Sevkiyatçı', 'Kendisine atanan sevkiyatları görür ve işlem yapar', 2, true, '{
+    "delivery": ["read", "read_own", "update"],
+    "shipping_dashboard": true, "shipping_delivery_notes": true, "shipping_map": true
+}'),
+(8, 'Üretim Müdürü', 'Üretim yöneticisi, tüm siparişleri görür ve işlem yapar', 3, true, '{
+    "orders": ["read", "update"], "production": ["read", "update"],
+    "production_dashboard": true, "production_orders": true, "admin_orders": true
+}'),
+(9, 'Üretim Personeli', 'Tüm siparişleri görür ve üretim işlemlerini yapar', 2, true, '{
+    "orders": ["read", "update"], "production": ["read", "update"],
+    "production_dashboard": true, "production_orders": true
+}'),
+(10, 'Muhasebe Müdürü', 'Muhasebe departmanı yöneticisi', 3, true, '{
+    "accounting": ["read", "create", "update", "delete"], "customers": ["read"], "invoices": ["read", "create", "update", "delete"],
+    "accounting_dashboard": true, "accounting_customers": true, "accounting_invoices": true, "accounting_accounts": true, "accounting_delivery_notes": true, "admin_accounts": true
+}'),
+(11, 'Muhasebe Personeli', 'Mali işler ve muhasebe işlemleri', 2, true, '{
+    "accounting": ["read", "create", "update"], "customers": ["read"], "invoices": ["read", "create", "update"],
+    "accounting_dashboard": true, "accounting_customers": true, "accounting_invoices": true, "accounting_accounts": true
+}')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, level = EXCLUDED.level, permissions = EXCLUDED.permissions;
 
 INSERT INTO departments (id, name, description) VALUES

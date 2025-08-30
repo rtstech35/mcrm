@@ -1441,8 +1441,8 @@ app.delete("/api/roles/:id", async (req, res) => {
 // Rol yetkilerini güncelle
 app.put("/api/roles/:id/permissions", authenticateToken, async (req, res) => {
   try {
-    // Sadece Admin'in yetkisi olmalı
-    if (!req.user.role || !req.user.role.includes('Yönetici')) {
+    // Sadece "all: true" yetkisine sahip Admin'in yetkisi olmalı
+    if (!req.user.permissions || req.user.permissions.all !== true) {
         return res.status(403).json({ success: false, error: 'Bu işlem için yetkiniz yok.' });
     }
 
