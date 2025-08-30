@@ -1249,7 +1249,7 @@ app.post("/api/create-comprehensive-data", async (req, res) => {
 });
 
 // Rol Yönetimi API'leri
-app.get("/api/roles", async (req, res) => {
+app.get("/api/roles", authenticateToken, checkPermission('roles.read'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT r.*,
@@ -1524,7 +1524,7 @@ app.post("/api/migrate-roles", async (req, res) => {
 });
 
 // Departman Yönetimi API'leri
-app.get("/api/departments", async (req, res) => {
+app.get("/api/departments", authenticateToken, checkPermission('departments.read'), async (req, res) => {
   try {
     console.log('🏢 Departments API çağrıldı');
 
@@ -2870,7 +2870,7 @@ app.post("/api/migrate-delivery-notes", async (req, res) => {
 });
 
 // Randevu/Görev Yönetimi API'leri
-app.get("/api/appointments", authenticateToken, async (req, res) => {
+app.get("/api/appointments", authenticateToken, checkPermission('appointments.read'), async (req, res) => {
   try {
     const { type, status, assigned_to, customer_id, start_date } = req.query;
     const { userId, role } = req.user;
@@ -3645,7 +3645,7 @@ async function checkTableExists(tableName) {
 }
 
 // Kullanıcılar API
-app.get("/api/users", async (req, res) => {
+app.get("/api/users", authenticateToken, checkPermission('users.read'), async (req, res) => {
   try {
     console.log('👥 Users API çağrıldı');
 

@@ -1391,7 +1391,12 @@
                 window.departmentsData = departments;
                 
             } catch (error) {
-                console.error('Kullanıcılar yüklenemedi:', error);
+                console.error('Kullanıcılar yüklenemedi:', error.message);
+                document.getElementById('content').innerHTML = `
+                    <div class="card error">
+                        <strong>Kullanıcılar Yüklenemedi:</strong> ${error.message}
+                    </div>
+                `;
             }
         }
 
@@ -1440,7 +1445,12 @@
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
-                console.error('Müşteriler yüklenemedi:', error);
+                console.error('Müşteriler yüklenemedi:', error.message);
+                document.getElementById('content').innerHTML = `
+                    <div class="card error">
+                        <strong>Müşteriler Yüklenemedi:</strong> ${error.message}
+                    </div>
+                `;
             }
         }
 
@@ -1490,7 +1500,7 @@
                 document.getElementById('userModal').style.display = 'block';
                 showTargetFields();
             } catch (error) {
-                console.error('Modal açılırken hata:', error);
+                console.error('Modal açılırken hata:', error.message);
                 alert('Departman ve rol verileri yüklenirken hata oluştu: ' + error.message);
             }
         }
@@ -1578,7 +1588,7 @@
                 document.getElementById('userForm').setAttribute('data-user-id', userId);
 
             } catch (error) {
-                console.error('Kullanıcı düzenleme hatası:', error);
+                console.error('Kullanıcı düzenleme hatası:', error.message);
                 alert('Kullanıcı bilgileri yüklenirken hata oluştu: ' + error.message);
             }
         }
@@ -1596,7 +1606,7 @@
                 alert('Kullanıcı başarıyla silindi!');
                 showUsers();
             } catch (error) {
-                console.error('Kullanıcı silme hatası:', error);
+                console.error('Kullanıcı silme hatası:', error.message);
                 alert('Kullanıcı silinirken hata oluştu: ' + error.message);
             }
         }
@@ -1641,7 +1651,7 @@
                     showProducts();
                 }, 500);
             } catch (error) {
-                console.error('Ürün ekleme hatası:', error);
+                console.error('Ürün ekleme hatası:', error.message);
                 alert('Hata: ' + error.message);
             }
         });
@@ -2328,7 +2338,7 @@
                 document.getElementById('customerModal').style.display = 'block';
                 
             } catch (error) {
-                console.error('Müşteri düzenleme hatası:', error);
+                console.error('Müşteri düzenleme hatası:', error.message);
                 alert('Müşteri bilgileri yüklenirken hata oluştu: ' + error.message);
             }
         }
@@ -2346,7 +2356,7 @@
                 alert('Müşteri başarıyla silindi!');
                 showCustomers();
             } catch (error) {
-                console.error('Müşteri silme hatası:', error);
+                console.error('Müşteri silme hatası:', error.message);
                 alert('Müşteri silinirken hata oluştu: ' + error.message);
             }
         }
@@ -2366,7 +2376,7 @@
                 
                 document.getElementById('customerModal').style.display = 'block';
             } catch (error) {
-                console.error('Müşteri modal açılırken hata:', error);
+                console.error('Müşteri modal açılırken hata:', error.message);
                 alert('Kullanıcı verileri yüklenirken hata oluştu: ' + error.message);
             }
         }
@@ -2772,7 +2782,12 @@
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
-                console.error('Ürünler yüklenemedi:', error);
+                console.error('Ürünler yüklenemedi:', error.message);
+                document.getElementById('content').innerHTML = `
+                    <div class="card error">
+                        <strong>Ürünler Yüklenemedi:</strong> ${error.message}
+                    </div>
+                `;
             }
         }
         
@@ -2826,7 +2841,12 @@
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
-                console.error('Siparişler yüklenemedi:', error);
+                console.error('Siparişler yüklenemedi:', error.message);
+                document.getElementById('content').innerHTML = `
+                    <div class="card error">
+                        <strong>Siparişler Yüklenemedi:</strong> ${error.message}
+                    </div>
+                `;
             }
         }
         
@@ -3282,7 +3302,7 @@
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
-                console.error('Departmanlar yüklenemedi:', error);
+                console.error('Cari hesap verileri yüklenemedi:', error.message);
                 document.getElementById('content').innerHTML = `
                     <div class="card">
                         <h2>🏢 Departman Yönetimi</h2>
