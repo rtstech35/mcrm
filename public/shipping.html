@@ -751,22 +751,28 @@
         });
     </script>
     <script>
-        let currentUser = {};
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚚 Sevkiyat paneli yükleniyor...');
             checkAuth();
-            loadDashboardData();
-            
-            // Sayfa yüklenme durumunu göster
-            showLoadingState();
-            
-            // 2 saniye sonra yükleme durumunu kaldır
-            setTimeout(() => {
-                hideLoadingState();
-            }, 2000);
-            updateDateTime();
-            setInterval(updateDateTime, 60000);
-            setupMenuVisibility();
+
+            // Yetki kontrolü başarılıysa devam et
+            if (authToken) {
+                loadDashboardData();
+                
+                // Sayfa yüklenme durumunu göster
+                showLoadingState();
+                
+                // 2 saniye sonra yükleme durumunu kaldır
+                setTimeout(() => {
+                    hideLoadingState();
+                }, 2000);
+                updateDateTime();
+                setInterval(updateDateTime, 60000);
+                setupMenuVisibility();
+            }
         });
         
         async function loadDashboardData() {
@@ -776,8 +782,7 @@
 
         async function updateShippingTargets() {
             try {
-                const user = JSON.parse(localStorage.getItem('user'));
-                const authToken = localStorage.getItem('token');
+                const user = currentUser;
                 const currentMonth = new Date().getMonth() + 1;
                 const currentYear = new Date().getFullYear();
 
@@ -822,27 +827,25 @@
         }
 
         function checkAuth() {
-            const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
-            
-            if (!token || !user) {
-                console.log('Kimlik doğrulama başarısız, giriş sayfasına yönlendiriliyor');
-                // Demo için yönlendirmeyi kaldırıyoruz
-                // window.location.href = 'index.html';
+            if (!authToken || !currentUser.id) {
+                console.log('Kimlik doğrulama başarısız, giriş sayfasına yönlendiriliyor.');
+                window.location.href = '/';
                 return;
             }
-            
-            try {
-                const currentUser = JSON.parse(user);
-            } catch (error) {
-                console.error('Kullanıcı bilgisi parse hatası:', error);
+
+            // Yetki kontrolü
+            const allowedRoles = ['Sevkiyat', 'Yönetici', 'Admin'];
+            const userRole = currentUser.role_name || '';
+
+            if (!allowedRoles.some(role => userRole.includes(role))) {
+                alert('Bu sayfaya erişim yetkiniz yok.');
+                window.location.href = '/';
             }
         }
 
         async function loadDeliveryStatus() {
             try {
                 console.log('📦 Sevkiyat durumları yükleniyor...');
-                const authToken = localStorage.getItem('authToken');
                 const response = await fetch('/api/delivery-notes', {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
@@ -882,7 +885,6 @@
         async function showDeliveryNotes(status) {
             try {
                 console.log('📋 İrsaliye detayları yükleniyor:', status);
-                const authToken = localStorage.getItem('authToken');
                 const response = await fetch(`/api/delivery-notes?status=${status}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
@@ -977,7 +979,6 @@
         async function startShipping(deliveryNoteId) {
             try {
                 console.log('🚚 Sevkiyat başlatılıyor, İrsaliye ID:', deliveryNoteId);
-                const authToken = localStorage.getItem('authToken');
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/status`, {
                     method: 'PUT',
                     headers: {
@@ -1418,6 +1419,8 @@
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('currentUser');
+                localStorage.removeItem('token'); // Eski anahtarları da temizle
+                localStorage.removeItem('user');   // Eski anahtarları da temizle
                 window.location.href = '/';
             }
         }

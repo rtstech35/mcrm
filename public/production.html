@@ -455,50 +455,41 @@
         }
     </script>
     <script>
-        let currentUser = {};
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
         // Sayfa yüklendiğinde
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
 
-            // Yetki kontrolü
-            const productionAllowedRoles = ['Üretim Personeli', 'Yönetici'];
-            const userRole = currentUser.role_name || '';
-
-            if (!productionAllowedRoles.some(role => userRole.includes(role))) {
-                alert('Bu sayfaya erişim yetkiniz yok. Ana sayfaya yönlendiriliyorsunuz.');
-                window.location.href = '/';
-                // Scriptin geri kalanının çalışmasını engelle
-                throw new Error("Yetkisiz erişim");
+            if (authToken) {
+                loadDashboardData();
+                updateDateTime();
+                setInterval(updateDateTime, 60000);
+                setupMenuVisibility();
             }
-
-            loadDashboardData();
-            updateDateTime();
-            setInterval(updateDateTime, 60000);
-            setupMenuVisibility();
         });
 
         async function loadTargets() {
             try {
-                const token = localStorage.getItem('token');
-                const user = JSON.parse(localStorage.getItem('user'));
+                const user = currentUser;
                 const currentMonth = new Date().getMonth() + 1;
                 const currentYear = new Date().getFullYear();
                 
                 const response = await fetch(`/api/user-targets/${user.id}?year=${currentYear}&month=${currentMonth}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 let productionTarget = 0;
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.target) {
+                    if (data && data.target) {
                         productionTarget = data.target.production_target || 0;
                     }
                 }
                 
                 const ordersResponse = await fetch('/api/orders', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 let productionAchieved = 0;
                 if (ordersResponse.ok) {
@@ -524,16 +515,18 @@
         }
 
         function checkAuth() {
-            const token = localStorage.getItem('authToken');
-            const user = localStorage.getItem('currentUser');
-            
-            if (!token || !user) {
+            if (!authToken || !currentUser.id) {
+                console.log('Kimlik doğrulama başarısız, giriş sayfasına yönlendiriliyor.');
                 window.location.href = '/';
                 return;
             }
-            try {
-                currentUser = JSON.parse(user);
-            } catch(e) {
+
+            // Yetki kontrolü
+            const allowedRoles = ['Üretim', 'Yönetici', 'Admin', 'Depo'];
+            const userRole = currentUser.role_name || '';
+
+            if (!allowedRoles.some(role => userRole.includes(role))) {
+                alert('Bu sayfaya erişim yetkiniz yok.');
                 window.location.href = '/';
             }
         }
@@ -551,9 +544,8 @@
 
         async function loadOrderStatus() {
             try {
-                const token = localStorage.getItem('token');
                 const response = await fetch('/api/orders', {
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
                 if (!response.ok) throw new Error('Siparişler alınamadı');
@@ -587,21 +579,19 @@
 
         async function showOrders(status) {
             try {
-                const token = localStorage.getItem('token');
-                
                 const response = await fetch('/api/orders', {
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (response.ok) {
                     const data = await response.json();
                     const allOrders = data.orders || data || [];
                     
-                    // Her sipariş için ürün bilgilerini al
+                    // Her sipariş için ürün bilgilerini al (N+1 problemi olabilir, dikkat)
                     const ordersWithProducts = await Promise.all(allOrders.map(async (order) => {
                         try {
                             const itemsResponse = await fetch(`/api/orders/${order.id}/items`, {
-                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                                headers: { 'Authorization': `Bearer ${authToken}` }
                             });
                             
                             if (itemsResponse.ok) {
@@ -700,13 +690,8 @@
 
         async function updateOrderStatus(orderId, newStatus) {
             try {
-                const token = localStorage.getItem('token');
+                const token = authToken; // Global authToken kullan
                 
-                if (!token) {
-                    alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
-                    return;
-                }
-
                 const response = await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PUT',
                     headers: {
@@ -735,12 +720,11 @@
 
         async function createDeliveryNote(orderId) {
             try {
-                const token = localStorage.getItem('token');
                 const deliveryNumber = `IRS${new Date().getFullYear().toString().substr(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${orderId.toString().padStart(3, '0')}`;
                 
                 // Önce sipariş bilgilerini al
                 const orderResponse = await fetch(`/api/orders/${orderId}`, {
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 let customerInfo = {};
@@ -768,7 +752,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token || ''}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify(deliveryData)
                 });
@@ -778,7 +762,7 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token || ''}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({ status: 'ready_for_delivery' })
                 });
@@ -874,6 +858,8 @@
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('currentUser');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
                 window.location.href = '/';
             }
         }
