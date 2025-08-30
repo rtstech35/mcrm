@@ -771,21 +771,26 @@ app.get("/api/dashboard-stats", async (req, res) => {
 // Rolleri Türkçeye çevir ve her departman için kullanıcı oluştur
 app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
   try {
-    console.log('🎯 Roller Türkçeye çevriliyor ve test kullanıcıları oluşturuluyor...');
+    console.log('🎯 Roller güncelleniyor ve test kullanıcıları oluşturuluyor...');
 
     const bcrypt = require("bcryptjs");
     
-    // Önce rolleri Türkçeye çevir
-    const turkishRoles = [
-      { id: 1, name: 'Yönetici', description: 'Sistem yöneticisi - Tüm yetkiler' },
-      { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi' },
-      { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları' },
-      { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri' },
-      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe' }
+    // Rolleri güncelle
+    const newRoles = [
+      { id: 1, name: 'Admin', description: 'Sistem yöneticisi - Tüm yetkiler' },
+      { id: 2, name: 'Satış Müdürü', description: 'Satış departmanı yöneticisi' },
+      { id: 3, name: 'Satış Personeli', description: 'Sadece kendi müşterilerini görür ve işlem yapar' },
+      { id: 4, name: 'Depo Müdürü', description: 'Depo ve envanter yönetimi yöneticisi' },
+      { id: 5, name: 'Depo Personeli', description: 'Depo ve envanter işlemleri' },
+      { id: 6, name: 'Sevkiyat Sorumlusu', description: 'Sevkiyat yöneticisi, kendisine atanan sevkiyatları yönetir' },
+      { id: 7, name: 'Sevkiyatçı', description: 'Kendisine atanan sevkiyatları görür ve işlem yapar' },
+      { id: 8, name: 'Üretim Müdürü', description: 'Üretim yöneticisi, tüm siparişleri görür ve işlem yapar' },
+      { id: 9, name: 'Üretim Personeli', description: 'Tüm siparişleri görür ve üretim işlemlerini yapar' },
+      { id: 10, name: 'Muhasebe Müdürü', description: 'Muhasebe departmanı yöneticisi' },
+      { id: 11, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe işlemleri' }
     ];
 
-    // Rolleri güncelle
-    for (const role of turkishRoles) {
+    for (const role of newRoles) {
       await pool.query(`
         INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)
         ON CONFLICT (id) DO UPDATE SET
@@ -794,13 +799,15 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
       `, [role.id, role.name, role.description]);
     }
 
-    // Departmanları kontrol et ve eksikleri ekle
+    // Departmanları güncelle
     const departments = [
-      { id: 1, name: 'Satış Departmanı', description: 'Müşteri ilişkileri ve satış işlemleri' },
-      { id: 2, name: 'Üretim Departmanı', description: 'Üretim planlama ve operasyonları' },
-      { id: 3, name: 'Sevkiyat Departmanı', description: 'Lojistik ve teslimat işlemleri' },
-      { id: 4, name: 'Muhasebe Departmanı', description: 'Mali işler ve muhasebe' },
-      { id: 5, name: 'IT Departmanı', description: 'Bilgi teknolojileri ve sistem yönetimi' }
+      { id: 1, name: 'Yönetim', description: 'Genel Yönetim ve İdari İşler' },
+      { id: 2, name: 'Satış Departmanı', description: 'Müşteri ilişkileri ve satış işlemleri' },
+      { id: 3, name: 'Üretim Departmanı', description: 'Üretim planlama ve operasyonları' },
+      { id: 4, name: 'Sevkiyat Departmanı', description: 'Lojistik ve teslimat işlemleri' },
+      { id: 5, name: 'Muhasebe Departmanı', description: 'Mali işler ve muhasebe' },
+      { id: 6, name: 'Depo Departmanı', description: 'Depo ve envanter yönetimi' },
+      { id: 7, name: 'IT Departmanı', description: 'Bilgi teknolojileri ve sistem yönetimi' }
     ];
 
     for (const dept of departments) {
@@ -812,48 +819,19 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
       `, [dept.id, dept.name, dept.description]);
     }
 
-    // Her departman için test kullanıcısı oluştur
+    // Her rol için test kullanıcısı oluştur
     const testUsers = [
-      {
-        username: 'admin',
-        password: '123456',
-        full_name: 'Yönetici Kullanıcı',
-        email: 'admin@test.com',
-        role_id: 1,
-        department_id: 5
-      },
-      {
-        username: 'satis',
-        password: '123456',
-        full_name: 'Satış Temsilcisi',
-        email: 'satis@test.com',
-        role_id: 2,
-        department_id: 1
-      },
-      {
-        username: 'uretim',
-        password: '123456',
-        full_name: 'Üretim Personeli',
-        email: 'uretim@test.com',
-        role_id: 3,
-        department_id: 2
-      },
-      {
-        username: 'sevkiyat',
-        password: '123456',
-        full_name: 'Sevkiyat Personeli',
-        email: 'sevkiyat@test.com',
-        role_id: 4,
-        department_id: 3
-      },
-      {
-        username: 'muhasebe',
-        password: '123456',
-        full_name: 'Muhasebe Personeli',
-        email: 'muhasebe@test.com',
-        role_id: 5,
-        department_id: 4
-      }
+      { username: 'admin', password: '123456', full_name: 'Admin Kullanıcı', email: 'admin@test.com', role_id: 1, department_id: 1 },
+      { username: 'satismudur', password: '123456', full_name: 'Satış Müdürü', email: 'satismudur@test.com', role_id: 2, department_id: 2 },
+      { username: 'satis', password: '123456', full_name: 'Satış Personeli', email: 'satis@test.com', role_id: 3, department_id: 2 },
+      { username: 'depomudur', password: '123456', full_name: 'Depo Müdürü', email: 'depomudur@test.com', role_id: 4, department_id: 6 },
+      { username: 'depo', password: '123456', full_name: 'Depo Personeli', email: 'depo@test.com', role_id: 5, department_id: 6 },
+      { username: 'sevkiyatsorumlusu', password: '123456', full_name: 'Sevkiyat Sorumlusu', email: 'sevkiyatsorumlusu@test.com', role_id: 6, department_id: 4 },
+      { username: 'sevkiyatci', password: '123456', full_name: 'Sevkiyatçı', email: 'sevkiyatci@test.com', role_id: 7, department_id: 4 },
+      { username: 'uretimmudur', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmudur@test.com', role_id: 8, department_id: 3 },
+      { username: 'uretim', password: '123456', full_name: 'Üretim Personeli', email: 'uretim@test.com', role_id: 9, department_id: 3 },
+      { username: 'muhasebemudur', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemudur@test.com', role_id: 10, department_id: 5 },
+      { username: 'muhasebe', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebe@test.com', role_id: 11, department_id: 5 }
     ];
 
     let createdUsers = [];
@@ -883,9 +861,9 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Roller Türkçeye çevrildi ve test kullanıcıları oluşturuldu',
+      message: 'Roller güncellendi ve test kullanıcıları oluşturuldu',
       created_users: createdUsers,
-      roles_updated: turkishRoles.length,
+      roles_updated: newRoles.length,
       departments_updated: departments.length
     });
 

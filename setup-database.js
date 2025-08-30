@@ -53,29 +53,6 @@ async function setupDatabase() {
     // Temel verileri ekle
     console.log("📝 Temel veriler ekleniyor...");
     
-    // Roller
-    await pool.query(`
-      INSERT INTO roles (id, name, description, level, is_active) VALUES
-      (1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
-      (2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
-      (3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
-      (4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
-      (5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true),
-      (6, 'Depo Personeli', 'Depo ve envanter yönetimi', 2, true)
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    // Departmanlar
-    await pool.query(`
-      INSERT INTO departments (id, name, description) VALUES 
-      (1, 'IT', 'Bilgi Teknolojileri'),
-      (2, 'Sales', 'Satış Departmanı'),
-      (3, 'Production', 'Üretim Departmanı'),
-      (4, 'Shipping', 'Sevkiyat Departmanı'),
-      (5, 'Accounting', 'Muhasebe Departmanı')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
     // Admin kullanıcısı
     const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash("admin123", 10);
@@ -83,7 +60,12 @@ async function setupDatabase() {
     await pool.query(`
       INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
       ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
-      ON CONFLICT (username) DO NOTHING
+      ON CONFLICT (username) DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        full_name = EXCLUDED.full_name,
+        role_id = EXCLUDED.role_id,
+        department_id = EXCLUDED.department_id,
+        is_active = EXCLUDED.is_active
     `, [hashedPassword]);
 
     console.log("✅ Temel veriler başarıyla eklendi");

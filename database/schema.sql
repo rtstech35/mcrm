@@ -271,19 +271,26 @@ CREATE TABLE IF NOT EXISTS appointment_participants (
 );
 
 -- Varsayılan veriler
-INSERT INTO roles (id, name, description, level, is_active) VALUES
-(1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
-(2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
-(3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
-(4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
-(5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true),
-(6, 'Depo Personeli', 'Depo ve envanter yönetimi', 2, true)
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+INSERT INTO roles (id, name, description, level, is_active, permissions) VALUES
+(1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler', 4, true, '{"all": true}'),
+(2, 'Satış Müdürü', 'Satış departmanı yöneticisi', 3, true, '{"sales": ["read", "create", "update", "delete"], "reports": ["read"]}'),
+(3, 'Satış Personeli', 'Sadece kendi müşterilerini görür ve işlem yapar', 2, true, '{"customers": ["read_own", "create"], "orders": ["read_own", "create"]}'),
+(4, 'Depo Müdürü', 'Depo ve envanter yönetimi yöneticisi', 3, true, '{"inventory": ["read", "create", "update", "delete"]}'),
+(5, 'Depo Personeli', 'Depo ve envanter işlemleri', 2, true, '{"inventory": ["read", "update"]}'),
+(6, 'Sevkiyat Sorumlusu', 'Sevkiyat yöneticisi, kendisine atanan sevkiyatları yönetir', 3, true, '{"delivery": ["read", "create", "update", "delete"]}'),
+(7, 'Sevkiyatçı', 'Kendisine atanan sevkiyatları görür ve işlem yapar', 2, true, '{"delivery": ["read_own", "update"]}'),
+(8, 'Üretim Müdürü', 'Üretim yöneticisi, tüm siparişleri görür ve işlem yapar', 3, true, '{"production": ["read", "create", "update", "delete"]}'),
+(9, 'Üretim Personeli', 'Tüm siparişleri görür ve üretim işlemlerini yapar', 2, true, '{"production": ["read", "update"]}'),
+(10, 'Muhasebe Müdürü', 'Muhasebe departmanı yöneticisi', 3, true, '{"accounting": ["read", "create", "update", "delete"]}'),
+(11, 'Muhasebe Personeli', 'Mali işler ve muhasebe işlemleri', 2, true, '{"accounting": ["read", "create", "update"]}')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, level = EXCLUDED.level, permissions = EXCLUDED.permissions;
 
-INSERT INTO departments (name, description) VALUES
-('Yönetim', 'Genel Yönetim ve İdari İşler'),
-('Satış', 'Satış ve Pazarlama Departmanı'),
-('Üretim', 'Üretim Departmanı'),
-('Sevkiyat', 'Sevkiyat ve Lojistik'),
-('Muhasebe', 'Mali İşler ve Muhasebe'),
-('Depo', 'Depo ve Envanter Yönetimi');
+INSERT INTO departments (id, name, description) VALUES
+(1, 'Yönetim', 'Genel Yönetim ve İdari İşler'),
+(2, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
+(3, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
+(4, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
+(5, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
+(6, 'Depo Departmanı', 'Depo ve envanter yönetimi'),
+(7, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
