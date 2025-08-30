@@ -424,8 +424,12 @@
     </div>
 
     <script>
+        // Consolidate all script-level variables at the top to prevent initialization errors.
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let orderProducts = [];
+        let currentBusinesses = [];
+        let selectedDeliveries = [];
         
         // Global profile functions
         window.toggleProfileMenu = function() {
@@ -928,8 +932,6 @@
             document.getElementById(modalId).style.display = 'none';
         }
 
-        let orderProducts = [];
-        
         async function openOrderModal(preselectedCustomer = null) {
             try {
                 const [customersResponse, productsResponse] = await Promise.all([
@@ -1322,30 +1324,26 @@
         }
         
         async function createOrderFromAppointment(customerId, customerName) {
-            try {
-                // Müşteriyi kaydet
-                await apiCall('/api/customers', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        company_name: customerName,
-                        customer_status: 'potential',
-                        assigned_sales_rep: currentUser.id
-                    })
-                });
-                
-                // Sipariş modalını aç
-                document.getElementById('quick_customer_id').value = customerId;
-                document.getElementById('quick_customer_name').value = customerName;
-                closeModal('appointmentDetailModal');
-                document.getElementById('quickOrderModal').style.display = 'block';
-            } catch (error) {
-                console.log('Müşteri zaten mevcut veya hata:', error.message);
-                // Sipariş modalını aç
-                document.getElementById('quick_customer_id').value = customerId;
-                document.getElementById('quick_customer_name').value = customerName;
-                closeModal('appointmentDetailModal');
-                document.getElementById('quickOrderModal').style.display = 'block';
-            }
+             try {
+                 // Müşteriyi kaydet (opsiyonel, belki zaten var)
+                 await apiCall('/api/customers', {
+                     method: 'POST',
+                     body: JSON.stringify({
+                         company_name: customerName,
+                         customer_status: 'potential',
+                         assigned_sales_rep: currentUser.id
+                     })
+                 }).catch(e => console.log("Müşteri zaten mevcut olabilir:", e.message)); // Hata durumunda devam et
+ 
+                 const customerForModal = { id: customerId, name: customerName };
+ 
+                 // Sipariş modalını aç
+                 closeModal('appointmentDetailModal');
+                 openOrderModal(customerForModal);
+             } catch (error) {
+                 console.error('Sipariş oluşturma sürecinde hata:', error.message);
+                 alert('Sipariş formu açılırken bir hata oluştu.');
+             }
         }
         
         async function scheduleFollowUp(customerId, customerName) {
@@ -2328,8 +2326,6 @@
             window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
         }
         
-        let currentBusinesses = [];
-        
         function setupBusinessEventListeners() {
             document.querySelectorAll('.visit-btn').forEach(btn => {
                 btn.addEventListener('click', function(e) {
@@ -2721,8 +2717,6 @@
                 console.error('Faturalar yüklenemedi:', error);
             }
         }
-        
-        let selectedDeliveries = [];
         
         async function showPendingDeliveries() {
             try {
