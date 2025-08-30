@@ -188,6 +188,14 @@
         let currentUser = null;
         let authToken = null;
 
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            // Eski anahtarları da temizle
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
@@ -226,8 +234,9 @@
                     } else if (roleName.includes('Muhasebe')) {
                         window.location.href = '/accounting.html';
                     } else {
-                        // Default admin sayfası
-                        window.location.href = '/admin.html';
+                        // Rolü olmayan veya tanınmayan rol
+                        alert('Giriş başarılı ancak rolünüze uygun bir sayfa bulunamadı. Lütfen sistem yöneticinizle iletişime geçin.');
+                        logout(); // Oturumu kapatıp login ekranında kalmasını sağla
                     }
                 } else {
                     alert(data.error || data.message || 'Giriş başarısız');
@@ -259,7 +268,8 @@
                     } else if (roleName.includes('Muhasebe')) {
                         window.location.href = '/accounting.html';
                     } else {
-                        window.location.href = '/admin.html';
+                        // Rolü olmayan veya tanınmayan rol, login ekranında kal
+                        console.warn(`Otomatik yönlendirme için rol bulunamadı: ${roleName}`);
                     }
                 } catch(e) {
                     // JSON parse hatası olursa local storage'ı temizle

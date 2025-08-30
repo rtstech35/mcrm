@@ -204,19 +204,19 @@
                 <h3>Üretim Paneli</h3>
             </div>
             <nav class="sidebar-nav">
-                <a href="production.html" class="nav-link active" data-role="all">
+                <a href="production.html" class="nav-link active" data-key="production_dashboard">
                     <span class="nav-icon">📊</span>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a href="production-orders.html" class="nav-link" data-role="Üretim,Yönetici,Admin">
+                <a href="production-orders.html" class="nav-link" data-key="production_orders">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">Siparişler</span>
                 </a>
-                <a href="production-customers.html" class="nav-link" data-role="Üretim,Yönetici,Admin">
+                <a href="production-customers.html" class="nav-link" data-key="production_customers">
                     <span class="nav-icon">🏢</span>
                     <span class="nav-text">Müşteriler</span>
                 </a>
-                <a href="delivery-notes.html" class="nav-link" data-role="Üretim,Yönetici,Admin,Sevkiyat">
+                <a href="delivery-notes.html" class="nav-link" data-key="production_delivery_notes">
                     <span class="nav-icon">📋</span>
                     <span class="nav-text">İrsaliyeler</span>
                 </a>
@@ -437,21 +437,18 @@
     </script>
     <script>
         function setupMenuVisibility() {
-            const userRole = currentUser.role_name || '';
-            if (!userRole) {
-                console.warn('Kullanıcı rolü bulunamadı, menü gizleme işlemi atlanıyor.');
+            const permissions = currentUser.permissions || {};
+            
+            if (currentUser.role_id === 1) {
+                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
                 return;
             }
             
             const menuItems = document.querySelectorAll('.sidebar-nav a');
 
             menuItems.forEach(item => {
-                const allowedRolesAttr = item.dataset.role;
-                if (!allowedRolesAttr) return;
-
-                const allowedRoles = allowedRolesAttr.split(',');
-                
-                if (allowedRoles[0].trim().toLowerCase() !== 'all' && !allowedRoles.some(role => userRole.includes(role.trim()))) {
+                const key = item.dataset.key;
+                if (key && !permissions[key]) {
                     item.style.display = 'none';
                 }
             });

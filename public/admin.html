@@ -41,23 +41,24 @@
     <div class="container">
         <div class="sidebar" style="background: #007bff; position: fixed; width: 280px; height: 100vh; overflow-y: auto;">
             <h3 style="color: white; padding: 0 1.5rem; margin-bottom: 1rem;">Menü</h3>
-            <ul id="adminMenu" style="list-style: none; padding: 0;">
-                <li data-role="all"><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
-                <li data-role="Admin,Yönetici"><a href="#" onclick="showUsers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">👥 Kullanıcılar</a></li>
-                <li data-role="all"><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
-                <li data-role="Admin,Yönetici,Üretim"><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
-                <li data-role="all"><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
-                <li data-role="Admin,Yönetici"><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
-                <li data-role="Admin,Yönetici"><a href="#" onclick="showRoles()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔐 Roller</a></li>
-                <li data-role="Admin,Yönetici,Sevkiyat,Muhasebe"><a href="#" onclick="showDeliveryNotes()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 İrsaliyeler</a></li>
-                <li data-role="all"><a href="#" onclick="showAppointments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📅 Randevular</a></li>
-                <li data-role="Admin,Yönetici,Muhasebe"><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
-                <li data-role="Admin"><a href="mail-settings.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📧 Mail Ayarları</a></li>
-                <li data-role="Admin"><a href="setup.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔧 Sistem Kurulumu</a></li>
-                <li data-role="all"><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
-                <li data-role="Admin"><a href="#" onclick="testAPI()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🧪 API Test</a></li>
-                <li data-role="Admin"><a href="#" onclick="createTestData()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Test Verilerini Oluştur</a></li>
-                <li data-role="all"><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
+            <ul id="adminMenu" style="list-style: none; padding: 0; padding-left: 1.5rem;">
+                <li data-key="admin_dashboard"><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
+                <li data-key="admin_users"><a href="#" onclick="showUsers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">👥 Kullanıcılar</a></li>
+                <li data-key="admin_customers"><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
+                <li data-key="admin_products"><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
+                <li data-key="admin_orders"><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
+                <li data-key="admin_departments"><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
+                <li data-key="admin_roles"><a href="#" onclick="showRoles()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔐 Roller</a></li>
+                <li data-key="admin_permissions"><a href="#" onclick="showPermissions()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔑 Yetki Yönetimi</a></li>
+                <li data-key="admin_delivery_notes"><a href="#" onclick="showDeliveryNotes()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 İrsaliyeler</a></li>
+                <li data-key="admin_appointments"><a href="#" onclick="showAppointments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📅 Randevular</a></li>
+                <li data-key="admin_accounts"><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
+                <li data-key="admin_mail_settings"><a href="mail-settings.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📧 Mail Ayarları</a></li>
+                <li data-key="admin_setup"><a href="setup.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔧 Sistem Kurulumu</a></li>
+                <li data-key="admin_map"><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
+                <li data-key="admin_api_test"><a href="#" onclick="testAPI()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🧪 API Test</a></li>
+                <li data-key="admin_test_data"><a href="#" onclick="createTestData()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Test Verilerini Oluştur</a></li>
+                <li data-key="logout"><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
             </ul>
             
         </div>
@@ -828,21 +829,19 @@
     </script>
     <script>
         function setupMenuVisibility() {
-            const userRole = currentUser.role_name || '';
-            if (!userRole) {
-                console.warn('Kullanıcı rolü bulunamadı, menü gizleme işlemi atlanıyor.');
+            const permissions = currentUser.permissions || {};
+            
+            // Admin (role_id: 1) her şeyi görür
+            if (currentUser.role_id === 1) {
+                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
                 return;
             }
             
-            const menuItems = document.querySelectorAll('#adminMenu li');
+            const menuItems = document.querySelectorAll('[data-key]');
 
             menuItems.forEach(item => {
-                const allowedRolesAttr = item.dataset.role;
-                if (!allowedRolesAttr) return;
-
-                const allowedRoles = allowedRolesAttr.split(',');
-                
-                if (allowedRoles[0].trim().toLowerCase() !== 'all' && !allowedRoles.some(role => userRole.includes(role.trim()))) {
+                const key = item.dataset.key;
+                if (key && !permissions[key]) {
                     item.style.display = 'none';
                 }
             });
@@ -965,6 +964,143 @@
             } catch (error) {
                 console.error('❌ Test verileri oluşturulamadı:', error);
                 alert('❌ Kapsamlı test verileri oluşturulamadı: ' + error.message);
+            }
+        }
+
+        // Yetki Yönetimi Fonksiyonları
+        const allMenuItems = {
+            admin: [
+                { key: 'admin_dashboard', text: 'Dashboard' },
+                { key: 'admin_users', text: 'Kullanıcılar' },
+                { key: 'admin_customers', text: 'Müşteriler' },
+                { key: 'admin_products', text: 'Ürünler' },
+                { key: 'admin_orders', text: 'Siparişler' },
+                { key: 'admin_departments', text: 'Departmanlar' },
+                { key: 'admin_roles', text: 'Roller' },
+                { key: 'admin_permissions', text: 'Yetki Yönetimi' },
+                { key: 'admin_delivery_notes', text: 'İrsaliyeler' },
+                { key: 'admin_appointments', text: 'Randevular' },
+                { key: 'admin_accounts', text: 'Cari Hesap' },
+                { key: 'admin_mail_settings', text: 'Mail Ayarları' },
+                { key: 'admin_setup', text: 'Sistem Kurulumu' },
+                { key: 'admin_map', text: 'Harita' },
+                { key: 'admin_api_test', text: 'API Test' },
+                { key: 'admin_test_data', text: 'Test Verileri Oluştur' },
+            ],
+            sales: [
+                { key: 'sales_dashboard', text: 'Dashboard' },
+                { key: 'sales_customers', text: 'Müşteriler' },
+                { key: 'sales_orders', text: 'Siparişler' },
+                { key: 'sales_delivery_notes', text: 'İrsaliyeler' },
+                { key: 'sales_appointments', text: 'Randevu & Görevler' },
+                { key: 'sales_new_visit', text: 'Yeni Ziyaret' },
+                { key: 'sales_accounts', text: 'Cari Hesap' },
+                { key: 'sales_invoices', text: 'Faturalar' },
+                { key: 'sales_map', text: 'Harita' },
+            ],
+            production: [
+                { key: 'production_dashboard', text: 'Dashboard' },
+                { key: 'production_orders', text: 'Siparişler' },
+                { key: 'production_customers', text: 'Müşteriler' },
+                { key: 'production_delivery_notes', text: 'İrsaliyeler' },
+            ],
+            shipping: [
+                { key: 'shipping_dashboard', text: 'Dashboard' },
+                { key: 'shipping_delivery_notes', text: 'İrsaliyeler' },
+                { key: 'shipping_map', text: 'Harita' },
+            ],
+            accounting: [
+                { key: 'accounting_dashboard', text: 'Dashboard' },
+                { key: 'accounting_customers', text: 'Müşteriler' },
+                { key: 'accounting_invoices', text: 'Faturalar' },
+                { key: 'accounting_accounts', text: 'Cari Hesap' },
+                { key: 'accounting_delivery_notes', text: 'İrsaliyeler' },
+            ]
+        };
+
+        async function showPermissions() {
+            try {
+                const rolesResponse = await apiCall('/api/roles');
+                const roles = rolesResponse.roles.filter(role => role.id !== 1); // Admin rolünü hariç tut
+
+                let html = `
+                    <div class="card">
+                        <h2>🔑 Yetki Yönetimi</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Rollerin hangi menüleri görebileceğini buradan ayarlayabilirsiniz.</p>
+                        <div class="form-group">
+                            <label for="permissionRoleSelect">Rol Seçin:</label>
+                            <select id="permissionRoleSelect" onchange="loadPermissionsForRole(this.value)">
+                                <option value="">Rol Seçiniz...</option>
+                                ${roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div id="permissionsContainer" style="display: none; margin-top: 2rem;"></div>
+                        <button id="savePermissionsBtn" class="btn" style="display: none; margin-top: 2rem;" onclick="savePermissions()">Yetkileri Kaydet</button>
+                    </div>
+                `;
+                document.getElementById('content').innerHTML = html;
+            } catch (error) {
+                alert('Roller yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function loadPermissionsForRole(roleId) {
+            const container = document.getElementById('permissionsContainer');
+            const saveBtn = document.getElementById('savePermissionsBtn');
+            if (!roleId) {
+                container.style.display = 'none';
+                saveBtn.style.display = 'none';
+                return;
+            }
+
+            try {
+                const roleResponse = await apiCall(`/api/roles/${roleId}`);
+                const currentPermissions = roleResponse.role.permissions || {};
+                
+                let html = '';
+                for (const panel in allMenuItems) {
+                    html += `<h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">${panel.charAt(0).toUpperCase() + panel.slice(1)} Paneli</h4>`;
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem;">';
+                    allMenuItems[panel].forEach(item => {
+                        const isChecked = currentPermissions[item.key] ? 'checked' : '';
+                        html += `
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                                    <input type="checkbox" class="permission-checkbox" data-key="${item.key}" ${isChecked}>
+                                    ${item.text}
+                                </label>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                container.style.display = 'block';
+                saveBtn.style.display = 'block';
+            } catch (error) {
+                alert(`Yetkiler yüklenemedi: ${error.message}`);
+            }
+        }
+
+        async function savePermissions() {
+            const roleId = document.getElementById('permissionRoleSelect').value;
+            if (!roleId) return;
+
+            const newPermissions = {};
+            document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+                if (checkbox.checked) {
+                    newPermissions[checkbox.dataset.key] = true;
+                }
+            });
+
+            try {
+                await apiCall(`/api/roles/${roleId}/permissions`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ permissions: newPermissions })
+                });
+                alert('Yetkiler başarıyla güncellendi!');
+            } catch (error) {
+                alert(`Yetkiler kaydedilemedi: ${error.message}`);
             }
         }
 

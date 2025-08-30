@@ -254,7 +254,7 @@ app.post("/api/login", async (req, res) => {
     
     // Kullanıcıyı ara
     const result = await pool.query(`
-      SELECT u.*, r.name as role_name, d.name as department_name
+      SELECT u.*, r.name as role_name, r.permissions, d.name as department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN departments d ON u.department_id = d.id
@@ -292,7 +292,8 @@ app.post("/api/login", async (req, res) => {
           role_id: user.role_id,
           role_name: user.role_name,
           department_id: user.department_id,
-          department_name: user.department_name
+          department_name: user.department_name,
+          permissions: user.permissions || {}
         }
       });
     }
@@ -321,7 +322,8 @@ app.post("/api/login", async (req, res) => {
             role_id: user.role_id,
             role_name: user.role_name,
             department_id: user.department_id,
-            department_name: user.department_name
+            department_name: user.department_name,
+            permissions: user.permissions || {}
           }
         });
       }
@@ -1378,7 +1380,7 @@ app.get("/api/roles/:id", async (req, res) => {
       FROM roles r
       LEFT JOIN users u ON r.id = u.role_id
       WHERE r.id = $1
-      GROUP BY r.id, r.name, r.description, r.created_at
+      GROUP BY r.id, r.name, r.description, r.created_at, r.level, r.is_active, r.permissions
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -1531,6 +1533,36 @@ app.delete("/api/roles/:id", async (req, res) => {
   }
 });
 
+// Rol yetkilerini güncelle
+app.put("/api/roles/:id/permissions", authenticateToken, async (req, res) => {
+  try {
+    // Sadece Admin'in yetkisi olmalı
+    if (!req.user.role || !req.user.role.includes('Admin')) {
+        return res.status(403).json({ success: false, error: 'Bu işlem için yetkiniz yok.' });
+    }
+
+    const { id } = req.params;
+    const { permissions } = req.body;
+
+    if (id === '1') {
+        return res.status(403).json({ success: false, error: 'Admin rolünün yetkileri değiştirilemez.' });
+    }
+
+    const result = await pool.query(
+        'UPDATE roles SET permissions = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+        [permissions, id]
+    );
+
+    if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Rol bulunamadı' });
+    }
+
+    res.json({ success: true, message: 'Rol yetkileri başarıyla güncellendi.', role: result.rows[0] });
+  } catch (error) {
+    console.error('Role permissions update error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 // Rol sistemi migration
 app.post("/api/migrate-roles", async (req, res) => {
   try {
