@@ -828,31 +828,33 @@
         });
     </script>
     <script>
-        function setupMenuVisibility() {
-            const permissions = currentUser.permissions || {};
-            
-            // Admin (role_id: 1) her şeyi görür
-            if (currentUser.role_id === 1) {
-                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
-                return;
-            }
-            
-            const menuItems = document.querySelectorAll('[data-key]');
-
-            menuItems.forEach(item => {
-                const key = item.dataset.key;
-                if (key && !permissions[key]) {
-                    item.style.display = 'none';
-                }
-            });
-        }
-    </script>
-    <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
         if (!authToken) {
             window.location.href = '/';
+        }
+
+        function setupMenuVisibility() {
+            const permissions = currentUser.permissions || {};
+
+            // Admin (permissions.all: true) her şeyi görür
+            if (permissions.all === true) {
+                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
+                return;
+            }
+
+            console.log('Kullanıcı yetkileri kontrol ediliyor:', permissions);
+            const menuItems = document.querySelectorAll('#adminMenu [data-key]');
+
+            menuItems.forEach(item => {
+                const key = item.dataset.key;
+                // 'logout' gibi anahtar kelimeleri her zaman göster
+                if (key && key !== 'logout' && !permissions[key]) {
+                    console.log(`🚫 Menü gizleniyor: ${key}`);
+                    item.style.display = 'none';
+                }
+            });
         }
 
         async function apiCall(url, options = {}) {
@@ -4683,18 +4685,20 @@
             }
         }
 
-        // Sayfa yüklendiğinde dashboard'u göster
-        showDashboard();
-        
-        // Kullanıcı bilgilerini güncelle
-        setTimeout(() => {
-            updateUserInfo();
-            drawConversionChart();
-            drawDeliveryChart();
-        }, 100);
-        
-        // Her dakika kullanıcı bilgilerini güncelle
-        setInterval(updateUserInfo, 60000);
+        // Sayfa yüklendiğinde yapılacaklar
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!authToken) return;
+
+            // Kullanıcı bilgilerini ve menüyü ayarla
+            updateDateTime();
+            setupMenuVisibility();
+
+            // Dashboard'u göster
+            showDashboard();
+            
+            // Tarih/saat bilgisini her saniye güncelle
+            setInterval(updateDateTime, 1000);
+        });
     </script>
     <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">
         <!-- JavaScript ile doldurulacak -->

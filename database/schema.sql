@@ -287,10 +287,10 @@ ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.desc
 
 INSERT INTO departments (id, name, description) VALUES
 (1, 'Yönetim', 'Genel Yönetim ve İdari İşler'),
-(2, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
-(3, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
-(4, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
-(5, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
-(6, 'Depo Departmanı', 'Depo ve envanter yönetimi'),
-(7, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi')
+(2, 'Satış', 'Satış ve Pazarlama Departmanı'),
+(3, 'Depo', 'Depo ve Envanter Yönetimi'),
+(4, 'Sevkiyat', 'Sevkiyat ve Lojistik'),
+(5, 'Üretim', 'Üretim Departmanı'),
+(6, 'Muhasebe', 'Mali İşler ve Muhasebe'),
+(7, 'IT', 'Bilgi Teknolojileri ve Sistem Yönetimi')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;

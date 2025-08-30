@@ -277,7 +277,12 @@ app.post("/api/login", async (req, res) => {
       
       // JWT token oluştur
       const token = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role_name },
+        { 
+          userId: user.id, 
+          username: user.username, 
+          role: user.role_name,
+          permissions: user.permissions || {} // Yetkileri token'a ekle
+        },
         process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
         { expiresIn: "24h" }
       );
@@ -307,7 +312,12 @@ app.post("/api/login", async (req, res) => {
         console.log("✅ bcrypt şifre eşleşti!");
         
         const token = jwt.sign(
-          { userId: user.id, username: user.username, role: user.role_name },
+          { 
+            userId: user.id, 
+            username: user.username, 
+            role: user.role_name,
+            permissions: user.permissions || {} // Yetkileri token'a ekle
+          },
           process.env.JWT_SECRET || "fallback_secret_key_change_in_production",
           { expiresIn: "24h" }
         );
@@ -358,6 +368,34 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// ---------------- PERMISSION MIDDLEWARE ---------------- //
+const checkPermission = (requiredPermission) => {
+  return (req, res, next) => {
+    // req.user, authenticateToken middleware'i tarafından eklenir ve yetkileri içermelidir.
+    const permissions = req.user.permissions || {};
+
+    // Admin (permissions.all: true) tüm yetkilere sahiptir ve kontrolü geçer.
+    if (permissions.all === true) {
+      return next();
+    }
+
+    const [module, action] = requiredPermission.split('.');
+    const userModulePermissions = permissions[module];
+
+    // Kullanıcının ilgili modül için yetkisi var mı kontrol et.
+    // 'read_own' gibi özel yetkiler, genel 'read' yetkisini de karşılar.
+    if (userModulePermissions && (userModulePermissions === true || userModulePermissions.includes(action) || userModulePermissions.includes(action.replace('_own', '')))) {
+      return next();
+    }
+
+    // Yetki yoksa 403 Forbidden hatası döndür.
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Bu işlem için yetkiniz yok.' 
+    });
+  };
+};
+
 // ---------------- USER PROFILE ---------------- //
 app.get("/api/profile", authenticateToken, async (req, res) => {
   try {
@@ -383,8 +421,8 @@ app.get("/api/profile", authenticateToken, async (req, res) => {
 });
 
 // ---------------- ÜRÜNLER ---------------- //
-// Ürün ekleme
-app.post("/api/products", async (req, res) => {
+// Ürün ekleme (Yetki kontrolü eklendi)
+app.post("/api/products", authenticateToken, checkPermission('products.create'), async (req, res) => {
   try {
     const { name, description, unit_price, vat_rate, unit, category, stock_quantity, min_stock_level } = req.body;
 
@@ -440,8 +478,8 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// Ürün güncelleme
-app.put("/api/products/:id", async (req, res) => {
+// Ürün güncelleme (Yetki kontrolü eklendi)
+app.put("/api/products/:id", authenticateToken, checkPermission('products.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, unit_price, vat_rate, unit, category, stock_quantity, min_stock_level, is_active } = req.body;
@@ -516,8 +554,8 @@ app.put("/api/products/:id", async (req, res) => {
   }
 });
 
-// Tek ürün getir
-app.get("/api/products/:id", async (req, res) => {
+// Tek ürün getir (Yetki kontrolü eklendi)
+app.get("/api/products/:id", authenticateToken, checkPermission('products.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
@@ -542,8 +580,8 @@ app.get("/api/products/:id", async (req, res) => {
   }
 });
 
-// Ürün sil
-app.delete("/api/products/:id", async (req, res) => {
+// Ürün sil (Yetki kontrolü eklendi)
+app.delete("/api/products/:id", authenticateToken, checkPermission('products.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -569,8 +607,8 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
-// Ürün kategorileri
-app.get("/api/product-categories", async (req, res) => {
+// Ürün kategorileri (Yetki kontrolü eklendi)
+app.get("/api/product-categories", authenticateToken, checkPermission('products.read'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT category
@@ -802,12 +840,12 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
     // Departmanları güncelle
     const departments = [
       { id: 1, name: 'Yönetim', description: 'Genel Yönetim ve İdari İşler' },
-      { id: 2, name: 'Satış Departmanı', description: 'Müşteri ilişkileri ve satış işlemleri' },
-      { id: 3, name: 'Üretim Departmanı', description: 'Üretim planlama ve operasyonları' },
-      { id: 4, name: 'Sevkiyat Departmanı', description: 'Lojistik ve teslimat işlemleri' },
-      { id: 5, name: 'Muhasebe Departmanı', description: 'Mali işler ve muhasebe' },
-      { id: 6, name: 'Depo Departmanı', description: 'Depo ve envanter yönetimi' },
-      { id: 7, name: 'IT Departmanı', description: 'Bilgi teknolojileri ve sistem yönetimi' }
+      { id: 2, name: 'Satış', description: 'Satış ve Pazarlama Departmanı' },
+      { id: 3, name: 'Depo', description: 'Depo ve Envanter Yönetimi' },
+      { id: 4, name: 'Sevkiyat', description: 'Sevkiyat ve Lojistik' },
+      { id: 5, name: 'Üretim', description: 'Üretim Departmanı' },
+      { id: 6, 'name': 'Muhasebe', 'description': 'Mali İşler ve Muhasebe' },
+      { id: 7, 'name': 'IT', 'description': 'Bilgi Teknolojileri ve Sistem Yönetimi' }
     ];
 
     for (const dept of departments) {
@@ -824,14 +862,14 @@ app.post("/api/setup/update-roles-and-create-users", async (req, res) => {
       { username: 'admin', password: '123456', full_name: 'Admin Kullanıcı', email: 'admin@test.com', role_id: 1, department_id: 1 },
       { username: 'satismudur', password: '123456', full_name: 'Satış Müdürü', email: 'satismudur@test.com', role_id: 2, department_id: 2 },
       { username: 'satis', password: '123456', full_name: 'Satış Personeli', email: 'satis@test.com', role_id: 3, department_id: 2 },
-      { username: 'depomudur', password: '123456', full_name: 'Depo Müdürü', email: 'depomudur@test.com', role_id: 4, department_id: 6 },
-      { username: 'depo', password: '123456', full_name: 'Depo Personeli', email: 'depo@test.com', role_id: 5, department_id: 6 },
+      { username: 'depomudur', password: '123456', full_name: 'Depo Müdürü', email: 'depomudur@test.com', role_id: 4, department_id: 3 },
+      { username: 'depo', password: '123456', full_name: 'Depo Personeli', email: 'depo@test.com', role_id: 5, department_id: 3 },
       { username: 'sevkiyatsorumlusu', password: '123456', full_name: 'Sevkiyat Sorumlusu', email: 'sevkiyatsorumlusu@test.com', role_id: 6, department_id: 4 },
       { username: 'sevkiyatci', password: '123456', full_name: 'Sevkiyatçı', email: 'sevkiyatci@test.com', role_id: 7, department_id: 4 },
-      { username: 'uretimmudur', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmudur@test.com', role_id: 8, department_id: 3 },
-      { username: 'uretim', password: '123456', full_name: 'Üretim Personeli', email: 'uretim@test.com', role_id: 9, department_id: 3 },
-      { username: 'muhasebemudur', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemudur@test.com', role_id: 10, department_id: 5 },
-      { username: 'muhasebe', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebe@test.com', role_id: 11, department_id: 5 }
+      { username: 'uretimmudur', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmudur@test.com', role_id: 8, department_id: 5 },
+      { username: 'uretim', password: '123456', full_name: 'Üretim Personeli', email: 'uretim@test.com', role_id: 9, department_id: 5 },
+      { username: 'muhasebemudur', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemudur@test.com', role_id: 10, department_id: 6 },
+      { username: 'muhasebe', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebe@test.com', role_id: 11, department_id: 6 }
     ];
 
     let createdUsers = [];
@@ -2298,7 +2336,7 @@ app.get("/api/cash-registers", async (req, res) => {
 });
 
 // İrsaliye Yönetimi API'leri
-app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
+app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read'), async (req, res) => {
   try {
     // Önce delivery_notes tablosunun varlığını kontrol et
     const tableExists = await checkTableExists('delivery_notes');
@@ -2337,7 +2375,7 @@ app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
     }
 
     const { status, customer_id } = req.query;
-    const { userId, role } = req.user;
+    const { userId, permissions } = req.user;
  
     let query = `
       SELECT dn.*,
@@ -2362,12 +2400,14 @@ app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
       whereClauses.push(`dn.customer_id = $${params.push(customer_id)}`);
     }
 
-    // Admin/Yönetici tümünü görür, diğerleri sadece kendilerine atanmış olanları
-    if (role === 'Sevkiyat Personeli') {
-        whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
-    } else if (role === 'Satış Temsilcisi') {
-        whereClauses.push(`c.assigned_sales_rep = $${params.push(userId)}`);
-    }
+    // Yetkiye göre filtrele: 'read_own' yetkisi varsa sadece kendine atananları gösterir.
+    const canReadAll = permissions.all || (permissions.delivery && permissions.delivery.includes('read'));
+    const canReadOwn = permissions.delivery && permissions.delivery.includes('read_own');
+
+    if (canReadOwn && !canReadAll) {
+      // Sevkiyatçı veya Sorumlu sadece kendine atananları görür
+      whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
+    } 
 
     if (whereClauses.length > 0) {
         query += ` WHERE ${whereClauses.join(' AND ')}`;
@@ -2394,7 +2434,7 @@ app.get("/api/delivery-notes", authenticateToken, async (req, res) => {
 });
 
 // Tek irsaliye getir
-app.get("/api/delivery-notes/:id", async (req, res) => {
+app.get("/api/delivery-notes/:id", authenticateToken, checkPermission('delivery.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -2430,7 +2470,7 @@ app.get("/api/delivery-notes/:id", async (req, res) => {
   }
 });
 
-app.get("/api/delivery-notes/generate-number", async (req, res) => {
+app.get("/api/delivery-notes/generate-number", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
   try {
     const now = new Date();
     const year = now.getFullYear().toString().substr(-2);
@@ -2454,7 +2494,7 @@ app.get("/api/delivery-notes/generate-number", async (req, res) => {
   }
 });
 
-app.post("/api/delivery-notes", async (req, res) => {
+app.post("/api/delivery-notes", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
   try {
     const {
       delivery_number, order_id, customer_id, delivered_by,
@@ -2497,7 +2537,7 @@ app.post("/api/delivery-notes", async (req, res) => {
 });
 
 // İrsaliye güncelle
-app.put("/api/delivery-notes/:id", async (req, res) => {
+app.put("/api/delivery-notes/:id", authenticateToken, checkPermission('delivery.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -2556,7 +2596,7 @@ app.put("/api/delivery-notes/:id", async (req, res) => {
 });
 
 // İrsaliye durumu güncelle
-app.put("/api/delivery-notes/:id/status", async (req, res) => {
+app.put("/api/delivery-notes/:id/status", authenticateToken, checkPermission('delivery.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, delivered_by } = req.body;
@@ -2782,7 +2822,7 @@ app.put("/api/delivery-notes/:id/sign", authenticateToken, async (req, res) => {
 });
 
 // İrsaliye sil
-app.delete("/api/delivery-notes/:id", async (req, res) => {
+app.delete("/api/delivery-notes/:id", authenticateToken, checkPermission('delivery.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -3910,7 +3950,7 @@ app.delete("/api/users/:id", async (req, res) => {
 });
 
 // Müşteriler API
-app.get("/api/customers", authenticateToken, async (req, res) => {
+app.get("/api/customers", authenticateToken, checkPermission('customers.read'), async (req, res) => {
   try {
     console.log('🏢 Customers API çağrıldı');
 
@@ -3932,7 +3972,7 @@ app.get("/api/customers", authenticateToken, async (req, res) => {
       });
     }
 
-    const { userId, role } = req.user;
+    const { userId, permissions } = req.user;
 
     let query = `
       SELECT c.*,
@@ -3941,12 +3981,16 @@ app.get("/api/customers", authenticateToken, async (req, res) => {
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
     `;
     const params = [];
+    
+    // Yetkiye göre filtrele: 'read_own' yetkisi varsa sadece kendine atananları gösterir.
+    const canReadAll = permissions.all || (permissions.customers && permissions.customers.includes('read'));
+    const canReadOwn = permissions.customers && permissions.customers.includes('read_own');
 
-    // Admin tüm müşterileri görebilir, diğerleri sadece kendininkini
-    if (role !== 'Yönetici') {
-        params.push(userId);
-        query += ` WHERE c.assigned_sales_rep = $1`;
-    }
+    if (canReadOwn && !canReadAll) {
+      // Satış Personeli sadece kendi müşterilerini görür
+      query += ` WHERE c.assigned_sales_rep = $1`;
+      params.push(userId);
+    } 
 
     query += ` ORDER BY c.created_at DESC`;
 
@@ -3968,7 +4012,7 @@ app.get("/api/customers", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/customers", async (req, res) => {
+app.post("/api/customers", authenticateToken, checkPermission('customers.create'), async (req, res) => {
   try {
     const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
     
@@ -4253,7 +4297,7 @@ app.post("/api/invoices/:id/payment", async (req, res) => {
 });
 
 // Tek sipariş getir
-app.get("/api/orders/:id", async (req, res) => {
+app.get("/api/orders/:id", authenticateToken, checkPermission('orders.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -4274,7 +4318,7 @@ app.get("/api/orders/:id", async (req, res) => {
 });
 
 // Sipariş kalemlerini getir
-app.get("/api/orders/:id/items", async (req, res) => {
+app.get("/api/orders/:id/items", authenticateToken, checkPermission('orders.read'), async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`🔍 Sipariş ${id} için kalemler isteniyor...`);
@@ -4335,7 +4379,7 @@ app.get("/api/orders/:id/items", async (req, res) => {
 });
 
 // Sipariş durumu güncelle
-app.put("/api/orders/:id/status", async (req, res) => {
+app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -4355,7 +4399,7 @@ app.put("/api/orders/:id/status", async (req, res) => {
 });
 
 // Tek müşteri getir
-app.get("/api/customers/:id", async (req, res) => {
+app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -4386,7 +4430,7 @@ app.get("/api/customers/:id", async (req, res) => {
 });
 
 // Müşteri güncelle
-app.put("/api/customers/:id", async (req, res) => {
+app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
@@ -4424,7 +4468,7 @@ app.put("/api/customers/:id", async (req, res) => {
 });
 
 // Müşteri sil
-app.delete("/api/customers/:id", async (req, res) => {
+app.delete("/api/customers/:id", authenticateToken, checkPermission('customers.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -4453,7 +4497,7 @@ app.delete("/api/customers/:id", async (req, res) => {
 });
 
 // Ürünler API
-app.get("/api/products", async (req, res) => {
+app.get("/api/products", authenticateToken, checkPermission('products.read'), async (req, res) => {
   try {
     console.log('📋 Products API çağrıldı');
 
@@ -4478,7 +4522,7 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-app.post("/api/products", async (req, res) => {
+app.post("/api/products", authenticateToken, checkPermission('products.create'), async (req, res) => {
   try {
     const { name, description, unit_price, vat_rate, price_with_vat, unit } = req.body;
 
@@ -4523,7 +4567,7 @@ app.post("/api/products", async (req, res) => {
 });
 
 // Ziyaretler API
-app.get("/api/visits", async (req, res) => {
+app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async (req, res) => {
   try {
     const { customer_id } = req.query;
     let query = `
@@ -4666,7 +4710,7 @@ app.get("/api/dashboard/stats", async (req, res) => {
 });
 
 // Siparişler API
-app.get("/api/orders", authenticateToken, async (req, res) => {
+app.get("/api/orders", authenticateToken, checkPermission('orders.read'), async (req, res) => {
   try {
     console.log('📦 Orders API çağrıldı');
 
@@ -4688,7 +4732,7 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
       });
     }
 
-    const { customer_id, sales_rep_id } = req.query;
+    const { customer_id } = req.query;
     let query = `
       SELECT o.*,
              COALESCE(c.company_name, 'Müşteri Yok') as company_name,
@@ -4705,11 +4749,20 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
       whereClauses.push(`o.customer_id = $${params.length}`);
     }
     
-    if (sales_rep_id) {
-      params.push(sales_rep_id);
+    // Yetkiye göre filtrele
+    const { userId, permissions } = req.user;
+    const canReadAll = permissions.all || 
+                       (permissions.orders && permissions.orders.includes('read')) ||
+                       (permissions.production && permissions.production.includes('read')); // Üretim de tüm siparişleri görür
+    const canReadOwn = permissions.orders && permissions.orders.includes('read_own');
+
+    if (canReadOwn && !canReadAll) {
+      // Satış Personeli sadece kendi siparişlerini görür
+      params.push(userId);
       whereClauses.push(`o.sales_rep_id = $${params.length}`);
     }
-    
+
+
     if (whereClauses.length > 0) {
       query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
@@ -4734,7 +4787,7 @@ app.get("/api/orders", authenticateToken, async (req, res) => {
   }
 });
 
-app.post("/api/orders", authenticateToken, async (req, res) => {
+app.post("/api/orders", authenticateToken, checkPermission('orders.create'), async (req, res) => {
   try {
     console.log('📦 Sipariş oluşturma isteği:', req.body);
     
