@@ -271,16 +271,14 @@ CREATE TABLE IF NOT EXISTS appointment_participants (
 );
 
 -- Varsayılan veriler
-INSERT INTO roles (name, description, level, is_active, permissions) VALUES
-('Admin', 'Sistem Yöneticisi - Tüm yetkilere sahip', 4, true, '{"all": true}'),
-('Manager', 'Departman Yöneticisi - Yönetim yetkileri', 3, true, '{"department": ["read", "create", "update"], "reports": ["read"]}'),
-('Employee', 'Çalışan - Temel işlem yetkileri', 2, true, '{"basic": ["read", "create", "update"]}'),
-('Viewer', 'Görüntüleyici - Sadece okuma yetkisi', 1, true, '{"all": ["read"]}'),
-('Sales Rep', 'Satış Temsilcisi', 2, true, '{"customers": ["read", "create", "update"], "orders": ["read", "create"]}'),
-('Production', 'Üretim Personeli', 2, true, '{"orders": ["read", "update"], "production": ["read", "create", "update"]}'),
-('Shipping', 'Sevkiyat Personeli', 2, true, '{"orders": ["read"], "delivery": ["read", "create", "update"]}'),
-('Accounting', 'Muhasebe Personeli', 2, true, '{"all": ["read"], "accounting": ["read", "create", "update"]}'),
-('Warehouse', 'Depo Personeli', 2, true, '{"orders": ["read"], "delivery": ["read"], "inventory": ["read", "create", "update"]}');
+INSERT INTO roles (id, name, description, level, is_active) VALUES
+(1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
+(2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
+(3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
+(4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
+(5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true),
+(6, 'Depo Personeli', 'Depo ve envanter yönetimi', 2, true)
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 INSERT INTO departments (name, description) VALUES
 ('Yönetim', 'Genel Yönetim ve İdari İşler'),

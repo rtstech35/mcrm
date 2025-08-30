@@ -966,11 +966,12 @@ app.post("/api/add-sample-data", async (req, res) => {
     
     // Roller (Yetkiler)
     await pool.query(`
-      INSERT INTO roles (id, name, description) VALUES
-      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
-      (2, 'Manager', 'Yönetici - Departman yönetimi'),
-      (3, 'Employee', 'Çalışan - Temel işlemler'),
-      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
+      INSERT INTO roles (id, name, description, level, is_active) VALUES
+      (1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
+      (2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
+      (3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
+      (4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
+      (5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true)
       ON CONFLICT (id) DO NOTHING
     `);
 
@@ -981,9 +982,7 @@ app.post("/api/add-sample-data", async (req, res) => {
       (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
       (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
       (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
-      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
-      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
-      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
+      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi')
       ON CONFLICT (id) DO NOTHING
     `);
 
@@ -992,8 +991,8 @@ app.post("/api/add-sample-data", async (req, res) => {
     const hashedPassword = await bcrypt.hash("admin123", 10);
     
     await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES
+      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 5, true)
       ON CONFLICT (username) DO NOTHING
     `, [hashedPassword]);
 
@@ -1537,7 +1536,7 @@ app.delete("/api/roles/:id", async (req, res) => {
 app.put("/api/roles/:id/permissions", authenticateToken, async (req, res) => {
   try {
     // Sadece Admin'in yetkisi olmalı
-    if (!req.user.role || !req.user.role.includes('Admin')) {
+    if (!req.user.role || !req.user.role.includes('Yönetici')) {
         return res.status(403).json({ success: false, error: 'Bu işlem için yetkiniz yok.' });
     }
 
@@ -1568,33 +1567,17 @@ app.post("/api/migrate-roles", async (req, res) => {
   try {
     console.log('🔄 Rol sistemi migration başlatılıyor...');
 
-    // Level kolonu ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'level') THEN
-              ALTER TABLE roles ADD COLUMN level INTEGER DEFAULT 2;
-          END IF;
-      END $$;
-    `);
-
-    // is_active kolonu ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'roles' AND column_name = 'is_active') THEN
-              ALTER TABLE roles ADD COLUMN is_active BOOLEAN DEFAULT true;
-          END IF;
-      END $$;
-    `);
+    // Level ve is_active kolonlarını ekle (eğer yoksa)
+    await pool.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 2;`);
+    await pool.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;`);
 
     // Mevcut rolleri güncelle
     await pool.query(`
       UPDATE roles SET
           level = CASE
-              WHEN name ILIKE '%admin%' THEN 4
-              WHEN name ILIKE '%manager%' THEN 3
-              WHEN name ILIKE '%employee%' OR name ILIKE '%sales%' OR name ILIKE '%production%' OR name ILIKE '%shipping%' OR name ILIKE '%accounting%' OR name ILIKE '%warehouse%' THEN 2
+              WHEN name ILIKE '%yönetici%' THEN 4
+              WHEN name ILIKE '%temsilcisi%' THEN 2
+              WHEN name ILIKE '%personeli%' THEN 2
               ELSE 1
           END,
           is_active = true
@@ -1603,18 +1586,18 @@ app.post("/api/migrate-roles", async (req, res) => {
 
     // Temel rollerin varlığını kontrol et ve eksikleri ekle
     const basicRoles = [
-      { name: 'Admin', description: 'Sistem Yöneticisi - Tüm yetkilere sahip', level: 4, permissions: '{"all": true}' },
-      { name: 'Manager', description: 'Departman Yöneticisi - Yönetim yetkileri', level: 3, permissions: '{"department": ["read", "create", "update"], "reports": ["read"]}' },
-      { name: 'Employee', description: 'Çalışan - Temel işlem yetkileri', level: 2, permissions: '{"basic": ["read", "create", "update"]}' },
-      { name: 'Viewer', description: 'Görüntüleyici - Sadece okuma yetkisi', level: 1, permissions: '{"all": ["read"]}' }
+      { id: 1, name: 'Yönetici', description: 'Sistem yöneticisi - Tüm yetkiler', level: 4, permissions: '{"all": true}' },
+      { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi', level: 2, permissions: '{}' },
+      { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları', level: 2, permissions: '{}' },
+      { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri', level: 2, permissions: '{}' },
+      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe', level: 2, permissions: '{}' }
     ];
 
     for (const role of basicRoles) {
       await pool.query(`
-        INSERT INTO roles (name, description, level, is_active, permissions)
-        SELECT $1, $2, $3, true, $4::jsonb
-        WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = $1)
-      `, [role.name, role.description, role.level, role.permissions]);
+        INSERT INTO roles (id, name, description, level, is_active, permissions) VALUES ($1, $2, $3, $4, true, $5::jsonb)
+        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, level = EXCLUDED.level;
+      `, [role.id, role.name, role.description, role.level, role.permissions]);
     }
 
     console.log('✅ Rol sistemi migration tamamlandı');
@@ -3015,7 +2998,7 @@ app.get("/api/appointments", authenticateToken, async (req, res) => {
     }
 
     // Admin tüm randevuları görebilir, diğerleri sadece kendininkini
-    if (role !== 'Yönetici' && role !== 'Admin') {
+    if (role !== 'Yönetici') {
       whereClauses.push(`a.assigned_to = $${params.push(userId)}`);
     } else if (assigned_to) { // Admin ise ve belirli bir kullanıcıyı filtrelemek istiyorsa
       whereClauses.push(`a.assigned_to = $${params.push(parseInt(assigned_to))}`);
@@ -3030,7 +3013,7 @@ app.get("/api/appointments", authenticateToken, async (req, res) => {
     const result = await pool.query(query, params);
 
     // Eğer whereClauses boşsa ve rol admin değilse, yine de filtrele
-    if (whereClauses.length === 0 && role !== 'Yönetici' && role !== 'Admin') {
+    if (whereClauses.length === 0 && role !== 'Yönetici') {
         const filteredResults = result.rows.filter(apt => apt.user_id === userId);
         return res.json({ success: true, appointments: filteredResults });
     }
@@ -3981,7 +3964,7 @@ app.get("/api/customers", authenticateToken, async (req, res) => {
     const params = [];
 
     // Admin tüm müşterileri görebilir, diğerleri sadece kendininkini
-    if (role !== 'Yönetici' && role !== 'Admin') {
+    if (role !== 'Yönetici') {
         params.push(userId);
         query += ` WHERE c.assigned_sales_rep = $1`;
     }

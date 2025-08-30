@@ -525,7 +525,7 @@
         console.log('👤 Current user:', currentUser);
 
         // Yetki kontrolü
-        const salesAllowedRoles = ['Satış Temsilcisi', 'Yönetici', 'Admin'];
+        const salesAllowedRoles = ['Satış Temsilcisi', 'Yönetici'];
         const userRole = currentUser.role_name || '';
         
         if (!salesAllowedRoles.some(role => userRole.includes(role))) {

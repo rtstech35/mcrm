@@ -100,7 +100,7 @@
         }
 
         // Yetki kontrolü
-        const shippingAllowedRoles = ['Sevkiyat Personeli', 'Yönetici', 'Admin'];
+        const shippingAllowedRoles = ['Sevkiyat Personeli', 'Yönetici'];
         const userRole = currentUser.role_name || '';
 
         if (!shippingAllowedRoles.some(role => userRole.includes(role))) {

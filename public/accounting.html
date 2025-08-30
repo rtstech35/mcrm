@@ -257,7 +257,7 @@
         }
 
         // Yetki kontrolü
-        const accountingAllowedRoles = ['Muhasebe Personeli', 'Yönetici', 'Admin'];
+        const accountingAllowedRoles = ['Muhasebe Personeli', 'Yönetici'];
         const userRole = currentUser.role_name || '';
 
         if (!accountingAllowedRoles.some(role => userRole.includes(role))) {

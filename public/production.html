@@ -462,7 +462,7 @@
             checkAuth();
 
             // Yetki kontrolü
-            const productionAllowedRoles = ['Üretim Personeli', 'Yönetici', 'Admin'];
+            const productionAllowedRoles = ['Üretim Personeli', 'Yönetici'];
             const userRole = currentUser.role_name || '';
 
             if (!productionAllowedRoles.some(role => userRole.includes(role))) {
