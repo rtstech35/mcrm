@@ -2,6 +2,7 @@ require("dotenv").config();
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
+const bcrypt = require("bcryptjs");
 
 async function setupDatabase() {
   console.log("🚀 Database setup başlatılıyor...");
@@ -23,25 +24,18 @@ async function setupDatabase() {
 
     // Önce tüm tabloları sil (temiz başlangıç için)
     console.log("🗑️ Mevcut tablolar temizleniyor...");
-    const dropQueries = [
-      "DROP TABLE IF EXISTS account_transactions CASCADE",
-      "DROP TABLE IF EXISTS delivery_notes CASCADE",
-      "DROP TABLE IF EXISTS customer_visits CASCADE",
-      "DROP TABLE IF EXISTS order_items CASCADE", 
-      "DROP TABLE IF EXISTS orders CASCADE",
-      "DROP TABLE IF EXISTS products CASCADE",
-      "DROP TABLE IF EXISTS customers CASCADE",
-      "DROP TABLE IF EXISTS users CASCADE",
-      "DROP TABLE IF EXISTS departments CASCADE",
-      "DROP TABLE IF EXISTS roles CASCADE"
+    const tablesToDrop = [
+        'account_transactions', 'delivery_note_items', 'delivery_notes', 'customer_visits', 
+        'order_items', 'orders', 'products', 'user_targets', 'appointments', 
+        'appointment_participants', 'users', 'customers', 'departments', 'roles'
     ];
 
-    for (const query of dropQueries) {
+    for (const table of tablesToDrop) {
       try {
-        await pool.query(query);
-        console.log(`✅ ${query.split(' ')[2]} tablosu silindi`);
+        await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
+        console.log(`✅ ${table} tablosu silindi`);
       } catch (error) {
-        console.log(`⚠️ ${query.split(' ')[2]} tablosu zaten yok`);
+        console.log(`⚠️ ${table} tablosu zaten yok veya silinemedi`);
       }
     }
 
@@ -50,27 +44,36 @@ async function setupDatabase() {
     await pool.query(schemaSQL);
     console.log("✅ Database schema başarıyla oluşturuldu");
 
-    // Temel verileri ekle
-    console.log("📝 Temel veriler ekleniyor...");
+    // Test kullanıcılarını ekle
+    console.log("📝 Test kullanıcıları ekleniyor...");
     
-    // Admin kullanıcısı
-    const bcrypt = require("bcryptjs");
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    
-    await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
-      ON CONFLICT (username) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        full_name = EXCLUDED.full_name,
-        role_id = EXCLUDED.role_id,
-        department_id = EXCLUDED.department_id,
-        is_active = EXCLUDED.is_active
-    `, [hashedPassword]);
+    const testUsers = [
+      { username: 'admin', password: 'admin123', full_name: 'Admin Kullanıcı', email: 'admin@sahacrm.com', role_id: 1, department_id: 1 },
+      { username: 'satismudur', password: '123456', full_name: 'Satış Müdürü', email: 'satismudur@test.com', role_id: 2, department_id: 2 },
+      { username: 'satis', password: '123456', full_name: 'Satış Personeli', email: 'satis@test.com', role_id: 3, department_id: 2 },
+      { username: 'depomudur', password: '123456', full_name: 'Depo Müdürü', email: 'depomudur@test.com', role_id: 4, department_id: 3 },
+      { username: 'depo', password: '123456', full_name: 'Depo Personeli', email: 'depo@test.com', role_id: 5, department_id: 3 },
+      { username: 'sevkiyatsorumlusu', password: '123456', full_name: 'Sevkiyat Sorumlusu', email: 'sevkiyatsorumlusu@test.com', role_id: 6, department_id: 4 },
+      { username: 'sevkiyatci', password: '123456', full_name: 'Sevkiyatçı', email: 'sevkiyatci@test.com', role_id: 7, department_id: 4 },
+      { username: 'uretimmudur', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmudur@test.com', role_id: 8, department_id: 5 },
+      { username: 'uretim', password: '123456', full_name: 'Üretim Personeli', email: 'uretim@test.com', role_id: 9, department_id: 5 },
+      { username: 'muhasebemudur', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemudur@test.com', role_id: 10, department_id: 6 },
+      { username: 'muhasebe', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebe@test.com', role_id: 11, department_id: 6 }
+    ];
 
-    console.log("✅ Temel veriler başarıyla eklendi");
+    for (const user of testUsers) {
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        await pool.query(`
+            INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
+            ($1, $2, $3, $4, $5, $6, true)
+            ON CONFLICT (username) DO NOTHING
+        `, [user.username, user.email, hashedPassword, user.full_name, user.role_id, user.department_id]);
+    }
+
+    console.log(`✅ ${testUsers.length} test kullanıcısı başarıyla eklendi`);
     console.log("🎉 Database setup tamamlandı!");
     console.log("📧 Admin kullanıcısı: admin / admin123");
+    console.log("🔑 Diğer kullanıcıların şifresi: 123456");
 
   } catch (error) {
     console.error("❌ Database setup hatası:", error);
