@@ -4216,21 +4216,69 @@ app.get("/api/orders/:id/items", authenticateToken, checkPermission('orders.read
 
 // Sipariş durumu güncelle
 app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.update'), async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const { id } = req.params;
     const { status } = req.body;
     
-    const result = await pool.query(`
-      UPDATE orders SET status = $1 WHERE id = $2 RETURNING *
+    const result = await client.query(`
+      UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *
     `, [status, id]);
     
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
     }
+
+    const updatedOrder = result.rows[0];
+
+    // Eğer üretim tamamlandıysa (status='completed'), sevkiyat için otomatik irsaliye oluştur
+    if (status === 'completed') {
+      // Bu sipariş için zaten bir irsaliye var mı kontrol et
+      const existingNote = await client.query('SELECT id FROM delivery_notes WHERE order_id = $1', [id]);
+      
+      if (existingNote.rows.length === 0) {
+        // Müşteri adresini al
+        const customerResult = await client.query('SELECT address FROM customers WHERE id = $1', [updatedOrder.customer_id]);
+        const deliveryAddress = customerResult.rows[0]?.address || 'Adres bulunamadı';
+
+        // İrsaliye numarası oluştur
+        const now = new Date();
+        const year = now.getFullYear().toString().substr(-2);
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
+        const randomNum = Math.floor(Math.random() * 9999) + 1;
+        const sequenceNumber = randomNum.toString().padStart(4, '0');
+        const deliveryNumber = `IRS${year}${month}${day}${sequenceNumber}`;
+
+        // İrsaliye oluştur
+        await client.query(`
+          INSERT INTO delivery_notes (
+            delivery_number, order_id, customer_id, delivery_date, 
+            delivery_address, status, created_by
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+        `, [
+          deliveryNumber,
+          id,
+          updatedOrder.customer_id,
+          updatedOrder.delivery_date || new Date(),
+          deliveryAddress,
+          req.user.userId
+        ]);
+        console.log(`✅ Sipariş ${id} için otomatik irsaliye oluşturuldu.`);
+      }
+    }
     
-    res.json({ success: true, order: result.rows[0] });
+    await client.query('COMMIT');
+    res.json({ success: true, order: updatedOrder });
   } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Sipariş durumu güncelleme hatası:', error);
     res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
   }
 });
 
