@@ -1,5 +1,25 @@
 -- Saha CRM Sistemi Veritabanı Şeması
 
+-- ----------------------------------------------------------------
+-- ⚠️ DİKKAT: Bu script, veritabanındaki TÜM TABLOLARI SİLER.
+-- Sadece geliştirme ortamında temiz bir başlangıç için kullanılmalıdır.
+-- ----------------------------------------------------------------
+
+DROP TABLE IF EXISTS appointment_participants CASCADE;
+DROP TABLE IF EXISTS appointments CASCADE;
+DROP TABLE IF EXISTS user_targets CASCADE;
+DROP TABLE IF EXISTS account_transactions CASCADE;
+DROP TABLE IF EXISTS delivery_note_items CASCADE;
+DROP TABLE IF EXISTS delivery_notes CASCADE;
+DROP TABLE IF EXISTS customer_visits CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS customers CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS roles CASCADE;
+
 -- Roller tablosu
 CREATE TABLE IF NOT EXISTS roles (
     id SERIAL PRIMARY KEY,
@@ -8,7 +28,8 @@ CREATE TABLE IF NOT EXISTS roles (
     level INTEGER DEFAULT 2, -- 1: Viewer, 2: Employee, 3: Manager, 4: Admin
     is_active BOOLEAN DEFAULT true,
     permissions JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Departmanlar tablosu
