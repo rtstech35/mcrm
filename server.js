@@ -21,7 +21,19 @@ try {
 }
 
 const app = express();
-app.use(cors());
+
+// Production için güvenli CORS ayarları
+const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? (process.env.FRONTEND_URL || 'https://your-frontend-app.onrender.com') // Render'daki frontend adresiniz
+    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5500', 'http://127.0.0.1:5500']; // Yerel geliştirme adresleri
+
+const corsOptions = {
+    origin: allowedOrigins,
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+console.log(`✅ CORS ayarlandı. İzin verilen origin(ler): ${allowedOrigins}`);
+
 app.use(express.json());
 console.log('✅ Express app yapılandırıldı');
 
@@ -1319,7 +1331,8 @@ app.put("/api/roles/:id", async (req, res) => {
         name = $1,
         description = $2,
         level = $3,
-        is_active = $4
+        is_active = $4,
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
       RETURNING *
     `, [name, description, level || 2, is_active !== false, id]);

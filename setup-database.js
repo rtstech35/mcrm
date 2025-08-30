@@ -4,6 +4,11 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 
+// ⚠️ DİKKAT: Bu script, veritabanındaki TÜM TABLOLARI SİLER ve yeniden oluşturur.
+// Sadece geliştirme (development) ortamında ilk kurulum için kullanılmalıdır.
+// Production (Render gibi) ortamında ASLA çalıştırılmamalıdır.
+// Production ortamında veritabanı değişiklikleri için "migration" araçları kullanılmalıdır.
+
 async function setupDatabase() {
   console.log("🚀 Database setup başlatılıyor...");
   
