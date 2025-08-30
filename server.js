@@ -391,9 +391,13 @@ const checkPermission = (requiredPermission) => {
     const [module, action] = requiredPermission.split('.');
     const userModulePermissions = permissions[module];
 
-    // Kullanıcının ilgili modül için yetkisi var mı kontrol et.
-    // 'read_own' gibi özel yetkiler, genel 'read' yetkisini de karşılar.
-    if (userModulePermissions && (userModulePermissions === true || userModulePermissions.includes(action) || userModulePermissions.includes(action.replace('_own', '')))) {
+    // If the required action is 'read', also allow if the user has 'read_own'.
+    // The endpoint itself is responsible for filtering the data.
+    if (action === 'read' && userModulePermissions && Array.isArray(userModulePermissions) && userModulePermissions.includes('read_own')) {
+        return next();
+    }
+
+    if (userModulePermissions && (userModulePermissions === true || (Array.isArray(userModulePermissions) && userModulePermissions.includes(action)))) {
       return next();
     }
 
@@ -644,74 +648,6 @@ app.get("/api/product-categories", authenticateToken, checkPermission('products.
     });
   }
 });
-
-// Ürün tablosu migration
-app.post("/api/migrate-products", async (req, res) => {
-  try {
-    console.log('📦 Ürün tablosu migration başlatılıyor...');
-
-    // Yeni kolonları ekle
-    await pool.query(`
-      DO $$
-      BEGIN
-          -- KDV kolonları
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'vat_rate') THEN
-              ALTER TABLE products ADD COLUMN vat_rate DECIMAL(5,2) DEFAULT 20;
-          END IF;
-          
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'price_with_vat') THEN
-              ALTER TABLE products ADD COLUMN price_with_vat DECIMAL(10,2);
-          END IF;
-          
-          -- Stok kolonları
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'stock_quantity') THEN
-              ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT 0;
-          END IF;
-          
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'min_stock_level') THEN
-              ALTER TABLE products ADD COLUMN min_stock_level INTEGER DEFAULT 0;
-          END IF;
-          
-          -- Kategori kolonu
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'category') THEN
-              ALTER TABLE products ADD COLUMN category VARCHAR(100);
-          END IF;
-          
-          -- Ürün kodu kolonu
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'product_code') THEN
-              ALTER TABLE products ADD COLUMN product_code VARCHAR(50) UNIQUE;
-          END IF;
-          
-          -- Tedarikçi kolonu
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'supplier') THEN
-              ALTER TABLE products ADD COLUMN supplier VARCHAR(200);
-          END IF;
-      END $$;
-    `);
-
-    // Mevcut ürünler için KDV dahil fiyatı hesapla
-    await pool.query(`
-      UPDATE products
-      SET price_with_vat = unit_price * (1 + COALESCE(vat_rate, 20) / 100)
-      WHERE price_with_vat IS NULL
-    `);
-
-    console.log('✅ Ürün tablosu migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'Ürün tablosu başarıyla güncellendi'
-    });
-
-  } catch (error) {
-    console.error('Ürün migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
 
 
 // ---------------- SİPARİŞLER (ESKİ - KALDIRILDI) ---------------- //
@@ -2299,11 +2235,9 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
       whereClauses.push(`dn.customer_id = $${params.push(customer_id)}`);
     }
 
-    // Yetkiye göre filtrele: 'read_own' yetkisi varsa sadece kendine atananları gösterir.
-    const canReadAll = permissions.all || (permissions.delivery && permissions.delivery.includes('read'));
-    const canReadOwn = permissions.delivery && permissions.delivery.includes('read_own');
-
-    if (canReadOwn && !canReadAll) {
+    // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
+    const deliveryPerms = permissions.delivery || [];
+    if (deliveryPerms.includes('read_own') && !deliveryPerms.includes('read') && !permissions.all) {
       // Sevkiyatçı veya Sorumlu sadece kendine atananları görür
       whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
     } 
@@ -3881,11 +3815,9 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
     `;
     const params = [];
     
-    // Yetkiye göre filtrele: 'read_own' yetkisi varsa sadece kendine atananları gösterir.
-    const canReadAll = permissions.all || (permissions.customers && permissions.customers.includes('read'));
-    const canReadOwn = permissions.customers && permissions.customers.includes('read_own');
-
-    if (canReadOwn && !canReadAll) {
+    // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
+    const customerPerms = permissions.customers || [];
+    if (customerPerms.includes('read_own') && !customerPerms.includes('read') && !permissions.all) {
       // Satış Personeli sadece kendi müşterilerini görür
       query += ` WHERE c.assigned_sales_rep = $1`;
       params.push(userId);
@@ -4650,15 +4582,10 @@ app.get("/api/orders", authenticateToken, checkPermission('orders.read'), async 
     
     // Yetkiye göre filtrele
     const { userId, permissions } = req.user;
-    const canReadAll = permissions.all || 
-                       (permissions.orders && permissions.orders.includes('read')) ||
-                       (permissions.production && permissions.production.includes('read')); // Üretim de tüm siparişleri görür
-    const canReadOwn = permissions.orders && permissions.orders.includes('read_own');
-
-    if (canReadOwn && !canReadAll) {
+    const orderPerms = permissions.orders || [];
+    if (orderPerms.includes('read_own') && !orderPerms.includes('read') && !permissions.all) {
       // Satış Personeli sadece kendi siparişlerini görür
-      params.push(userId);
-      whereClauses.push(`o.sales_rep_id = $${params.length}`);
+      whereClauses.push(`o.sales_rep_id = $${params.push(userId)}`);
     }
 
 

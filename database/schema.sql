@@ -62,9 +62,16 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
+    product_code VARCHAR(50) UNIQUE,
     description TEXT,
+    category VARCHAR(100),
     unit_price DECIMAL(10,2) NOT NULL,
+    vat_rate DECIMAL(5,2) DEFAULT 20,
+    price_with_vat DECIMAL(10,2),
     unit VARCHAR(20) DEFAULT 'adet',
+    stock_quantity INTEGER DEFAULT 0,
+    min_stock_level INTEGER DEFAULT 0,
+    supplier VARCHAR(200),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
