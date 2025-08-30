@@ -4244,6 +4244,18 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
         const customerResult = await client.query('SELECT address FROM customers WHERE id = $1', [updatedOrder.customer_id]);
         const deliveryAddress = customerResult.rows[0]?.address || 'Adres bulunamadı';
 
+        // Otomatik atama için bir sevkiyatçı bul (rol_id = 7)
+        const deliveryPersonResult = await client.query(
+            `SELECT id FROM users WHERE role_id = 7 AND is_active = true ORDER BY id LIMIT 1`
+        );
+        const deliveryPersonId = deliveryPersonResult.rows.length > 0 ? deliveryPersonResult.rows[0].id : null;
+
+        if (deliveryPersonId) {
+            console.log(`🚚 Otomatik atama: İrsaliye, sevkiyatçı ID ${deliveryPersonId} üzerine atandı.`);
+        } else {
+            console.log(`⚠️ Otomatik atama için aktif sevkiyatçı bulunamadı. İrsaliye atama bekleyecek.`);
+        }
+
         // İrsaliye numarası oluştur
         const now = new Date();
         const year = now.getFullYear().toString().substr(-2);
@@ -4257,15 +4269,16 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
         await client.query(`
           INSERT INTO delivery_notes (
             delivery_number, order_id, customer_id, delivery_date, 
-            delivery_address, status, created_by
-          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+            delivery_address, status, created_by, delivered_by
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
         `, [
           deliveryNumber,
           id,
           updatedOrder.customer_id,
           updatedOrder.delivery_date || new Date(),
           deliveryAddress,
-          req.user.userId
+          req.user.userId,
+          deliveryPersonId
         ]);
         console.log(`✅ Sipariş ${id} için otomatik irsaliye oluşturuldu.`);
       }
