@@ -971,73 +971,98 @@
 
         // Yetki Yönetimi Fonksiyonları
         const allMenuItems = {
-            admin: [
-                { key: 'admin_dashboard', text: 'Dashboard' },
-                { key: 'admin_users', text: 'Kullanıcılar' },
-                { key: 'admin_customers', text: 'Müşteriler' },
-                { key: 'admin_products', text: 'Ürünler' },
-                { key: 'admin_orders', text: 'Siparişler' },
-                { key: 'admin_departments', text: 'Departmanlar' },
-                { key: 'admin_roles', text: 'Roller' },
-                { key: 'admin_permissions', text: 'Yetki Yönetimi' },
-                { key: 'admin_delivery_notes', text: 'İrsaliyeler' },
-                { key: 'admin_appointments', text: 'Randevular' },
-                { key: 'admin_accounts', text: 'Cari Hesap' },
-                { key: 'admin_mail_settings', text: 'Mail Ayarları' },
-                { key: 'admin_setup', text: 'Sistem Kurulumu' },
-                { key: 'admin_map', text: 'Harita' },
-                { key: 'admin_api_test', text: 'API Test' },
-                { key: 'admin_test_data', text: 'Test Verileri Oluştur' },
-            ],
-            sales: [
-                { key: 'sales_dashboard', text: 'Dashboard' },
-                { key: 'sales_customers', text: 'Müşteriler' },
-                { key: 'sales_orders', text: 'Siparişler' },
-                { key: 'sales_delivery_notes', text: 'İrsaliyeler' },
-                { key: 'sales_appointments', text: 'Randevu & Görevler' },
-                { key: 'sales_new_visit', text: 'Yeni Ziyaret' },
-                { key: 'sales_accounts', text: 'Cari Hesap' },
-                { key: 'sales_invoices', text: 'Faturalar' },
-                { key: 'sales_map', text: 'Harita' },
-            ],
-            production: [
-                { key: 'production_dashboard', text: 'Dashboard' },
-                { key: 'production_orders', text: 'Siparişler' },
-                { key: 'production_customers', text: 'Müşteriler' },
-                { key: 'production_delivery_notes', text: 'İrsaliyeler' },
-            ],
-            shipping: [
-                { key: 'shipping_dashboard', text: 'Dashboard' },
-                { key: 'shipping_delivery_notes', text: 'İrsaliyeler' },
-                { key: 'shipping_map', text: 'Harita' },
-            ],
-            accounting: [
-                { key: 'accounting_dashboard', text: 'Dashboard' },
-                { key: 'accounting_customers', text: 'Müşteriler' },
-                { key: 'accounting_invoices', text: 'Faturalar' },
-                { key: 'accounting_accounts', text: 'Cari Hesap' },
-                { key: 'accounting_delivery_notes', text: 'İrsaliyeler' },
-            ]
+            "Admin Paneli": {
+                icon: "👑",
+                permissions: [
+                    { key: 'admin_dashboard', text: 'Dashboard' },
+                    { key: 'admin_users', text: 'Kullanıcılar' },
+                    { key: 'admin_customers', text: 'Müşteriler' },
+                    { key: 'admin_products', text: 'Ürünler' },
+                    { key: 'admin_orders', text: 'Siparişler' },
+                    { key: 'admin_departments', text: 'Departmanlar' },
+                    { key: 'admin_roles', text: 'Roller' },
+                    { key: 'admin_permissions', text: 'Yetki Yönetimi' },
+                    { key: 'admin_delivery_notes', text: 'İrsaliyeler' },
+                    { key: 'admin_appointments', text: 'Randevular' },
+                    { key: 'admin_accounts', text: 'Cari Hesap' },
+                    { key: 'admin_mail_settings', text: 'Mail Ayarları' },
+                    { key: 'admin_setup', text: 'Sistem Kurulumu' },
+                    { key: 'admin_map', text: 'Harita' },
+                    { key: 'admin_api_test', text: 'API Test' },
+                    { key: 'admin_test_data', text: 'Test Verileri Oluştur' },
+                ]
+            },
+            "Satış Paneli": {
+                icon: "💼",
+                permissions: [
+                    { key: 'sales_dashboard', text: 'Dashboard' },
+                    { key: 'sales_customers', text: 'Müşteriler' },
+                    { key: 'sales_orders', text: 'Siparişler' },
+                    { key: 'sales_delivery_notes', text: 'İrsaliyeler' },
+                    { key: 'sales_appointments', text: 'Randevu & Görevler' },
+                    { key: 'sales_new_visit', text: 'Yeni Ziyaret' },
+                    { key: 'sales_accounts', text: 'Cari Hesap' },
+                    { key: 'sales_invoices', text: 'Faturalar' },
+                    { key: 'sales_map', text: 'Harita' },
+                ]
+            },
+            "Üretim Paneli": {
+                icon: "🏭",
+                permissions: [
+                    { key: 'production_dashboard', text: 'Dashboard' },
+                    { key: 'production_orders', text: 'Siparişler' },
+                    { key: 'production_customers', text: 'Müşteriler' },
+                    { key: 'production_delivery_notes', text: 'İrsaliyeler' },
+                ]
+            },
+            "Sevkiyat Paneli": {
+                icon: "🚚",
+                permissions: [
+                    { key: 'shipping_dashboard', text: 'Dashboard' },
+                    { key: 'shipping_delivery_notes', text: 'İrsaliyeler' },
+                    { key: 'shipping_map', text: 'Harita' },
+                ]
+            },
+            "Muhasebe Paneli": {
+                icon: "💰",
+                permissions: [
+                    { key: 'accounting_dashboard', text: 'Dashboard' },
+                    { key: 'accounting_customers', text: 'Müşteriler' },
+                    { key: 'accounting_invoices', text: 'Faturalar' },
+                    { key: 'accounting_accounts', text: 'Cari Hesap' },
+                    { key: 'accounting_delivery_notes', text: 'İrsaliyeler' },
+                ]
+            }
         };
 
         async function showPermissions() {
             try {
                 const rolesResponse = await apiCall('/api/roles');
                 const roles = rolesResponse.roles.filter(role => role.id !== 1); // Admin rolünü hariç tut
-
                 let html = `
                     <div class="card">
-                        <h2>🔑 Yetki Yönetimi</h2>
-                        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Rollerin hangi menüleri görebileceğini buradan ayarlayabilirsiniz.</p>
-                        <div class="form-group">
-                            <label for="permissionRoleSelect">Rol Seçin:</label>
-                            <select id="permissionRoleSelect" onchange="loadPermissionsForRole(this.value)">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h2>🔑 Yetki Yönetimi</h2>
+                                <p style="color: var(--text-secondary); margin-top: 0.5rem;">Rollerin hangi menüleri ve özellikleri kullanabileceğini buradan ayarlayabilirsiniz.</p>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="max-width: 400px; margin-bottom: 2rem;">
+                            <label for="permissionRoleSelect" style="font-weight: 600;">Rol Seçin:</label>
+                            <select id="permissionRoleSelect" onchange="loadPermissionsForRole(this.value)" class="form-control">
                                 <option value="">Rol Seçiniz...</option>
                                 ${roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('')}
                             </select>
                         </div>
-                        <div id="permissionsContainer" style="display: none; margin-top: 2rem;"></div>
-                        <button id="savePermissionsBtn" class="btn" style="display: none; margin-top: 2rem;" onclick="savePermissions()">Yetkileri Kaydet</button>
+                        
+                        <div id="permissionsContainer" style="display: none; margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 2rem;"></div>
+                        
+                        <div id="permissionsActions" style="display: none; margin-top: 2rem; text-align: right;">
+                            <button id="savePermissionsBtn" class="btn btn-success" onclick="savePermissions()">
+                                💾 Yetkileri Kaydet
+                            </button>
+                        </div>
                     </div>
                 `;
                 document.getElementById('content').innerHTML = html;
@@ -1048,37 +1073,51 @@
 
         async function loadPermissionsForRole(roleId) {
             const container = document.getElementById('permissionsContainer');
-            const saveBtn = document.getElementById('savePermissionsBtn');
+            const actionsDiv = document.getElementById('permissionsActions');
             if (!roleId) {
                 container.style.display = 'none';
-                saveBtn.style.display = 'none';
+                actionsDiv.style.display = 'none';
                 return;
             }
 
             try {
                 const roleResponse = await apiCall(`/api/roles/${roleId}`);
                 const currentPermissions = roleResponse.role.permissions || {};
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">';
                 
-                let html = '';
                 for (const panel in allMenuItems) {
-                    html += `<h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">${panel.charAt(0).toUpperCase() + panel.slice(1)} Paneli</h4>`;
-                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem;">';
-                    allMenuItems[panel].forEach(item => {
+                    const panelData = allMenuItems[panel];
+                    html += `
+                        <div class="permission-panel" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <h4 style="margin-top: 0; margin-bottom: 1rem; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-size: 1.2rem;">${panelData.icon}</span>
+                                ${panel} Yetkileri
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    `;
+                    panelData.permissions.forEach(item => {
                         const isChecked = currentPermissions[item.key] ? 'checked' : '';
                         html += `
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
-                                    <input type="checkbox" class="permission-checkbox" data-key="${item.key}" ${isChecked}>
-                                    ${item.text}
-                                </label>
-                            </div>
+                            <label class="permission-label" style="display: flex; align-items: center; gap: 0.75rem; font-weight: normal; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background-color 0.2s;">
+                                <input type="checkbox" class="permission-checkbox" data-key="${item.key}" ${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary);">
+                                <span>${item.text}</span>
+                            </label>
                         `;
                     });
-                    html += '</div>';
+                    html += '</div></div>';
                 }
+                html += '</div>';
+
                 container.innerHTML = html;
                 container.style.display = 'block';
-                saveBtn.style.display = 'block';
+                actionsDiv.style.display = 'block';
+
+                // Add hover effect to labels
+                document.querySelectorAll('.permission-label').forEach(label => {
+                    label.addEventListener('mouseover', () => label.style.backgroundColor = '#e9ecef');
+                    label.addEventListener('mouseout', () => label.style.backgroundColor = 'transparent');
+                });
+
             } catch (error) {
                 alert(`Yetkiler yüklenemedi: ${error.message}`);
             }
