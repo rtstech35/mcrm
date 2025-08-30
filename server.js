@@ -1042,23 +1042,28 @@ app.post("/api/create-comprehensive-data", async (req, res) => {
     const rolesResult = await pool.query('SELECT * FROM roles ORDER BY id');
     const departmentsResult = await pool.query('SELECT * FROM departments ORDER BY id');
 
-    // 2. Her departman ve rol kombinasyonu için kullanıcı oluştur
-    const hashedPassword = await bcrypt.hash('123456', 10);
+    // 2. Belirtilen test kullanıcılarını oluştur
+    const testUsers = [
+      { username: 'admin', password: 'admin123', full_name: 'Admin', email: 'admin@sahacrm.com', role_id: 1, department_id: 1 },
+      { username: 'satismuduru', password: '123456', full_name: 'Satış Müdürü', email: 'satismuduru@test.com', role_id: 2, department_id: 2 },
+      { username: 'satispersoneli', password: '123456', full_name: 'Satış Personeli', email: 'satispersoneli@test.com', role_id: 3, department_id: 2 },
+      { username: 'depomuduru', password: '123456', full_name: 'Depo Müdürü', email: 'depomuduru@test.com', role_id: 4, department_id: 3 },
+      { username: 'depopersoneli', password: '123456', full_name: 'Depo Personeli', email: 'depopersoneli@test.com', role_id: 5, department_id: 3 },
+      { username: 'sevkiyatsorumlusu', password: '123456', full_name: 'Sevkiyat Sorumlusu', email: 'sevkiyatsorumlusu@test.com', role_id: 6, department_id: 4 },
+      { username: 'sevkiyatci', password: '123456', full_name: 'Sevkiyatçı', email: 'sevkiyatci@test.com', role_id: 7, department_id: 4 },
+      { username: 'uretimmeduru', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmeduru@test.com', role_id: 8, department_id: 5 },
+      { username: 'uretimpersoneli', password: '123456', full_name: 'Üretim Personeli', email: 'uretimpersoneli@test.com', role_id: 9, department_id: 5 },
+      { username: 'muhasebemuduru', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemuduru@test.com', role_id: 10, department_id: 6 },
+      { username: 'muhasebepersoneli', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebepersoneli@test.com', role_id: 11, department_id: 6 }
+    ];
 
-    for (const dept of departmentsResult.rows) {
-      for (const role of rolesResult.rows) {
-        const username = `${dept.name.toLowerCase().replace(/\s+/g, '')}_${role.name.toLowerCase()}`;
-        const fullName = `${dept.name} ${role.name}`;
-        const email = `${username}@example.com`;
-
-        await pool.query(`
-          INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active)
-          VALUES ($1, $2, $3, $4, $5, $6, true)
-          ON CONFLICT (username) DO NOTHING
-        `, [username, hashedPassword, fullName, email, role.id, dept.id]);
-
-        stats.users++;
-      }
+    for (const user of testUsers) {
+        const hashedPassword = await bcrypt.hash(user.password, 10);
+        const result = await pool.query(`
+            INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES ($1, $2, $3, $4, $5, $6, true)
+            ON CONFLICT (username) DO NOTHING
+        `, [user.username, user.email, hashedPassword, user.full_name, user.role_id, user.department_id]);
+        if (result.rowCount > 0) stats.users++;
     }
 
     // 3. 5 adet müşteri oluştur
