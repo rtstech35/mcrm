@@ -257,10 +257,10 @@
         }
 
         // Yetki kontrolü
-        const accountingAllowedRoles = ['Muhasebe Personeli', 'Yönetici'];
+    const accountingAllowedRoles = ['Muhasebe', 'Yönetici', 'Admin'];
         const userRole = currentUser.role_name || '';
 
-        if (!accountingAllowedRoles.some(role => userRole.includes(role))) {
+    if (!accountingAllowedRoles.some(role => userRole.includes(role))) { // 'Muhasebe' kelimesi hem 'Muhasebe Personeli' hem de 'Muhasebe Müdürü'nü kapsar.
             alert('Bu sayfaya erişim yetkiniz yok. Ana sayfaya yönlendiriliyorsunuz.');
             window.location.href = '/';
             // Scriptin geri kalanının çalışmasını engelle
