@@ -233,6 +233,8 @@
                         window.location.href = '/shipping.html';
                     } else if (roleName.includes('Muhasebe')) {
                         window.location.href = '/accounting.html';
+                    } else if (roleName.includes('Depo')) {
+                        window.location.href = '/production.html'; // Depo personeli üretim paneline yönlendirilir
                     } else {
                         // Rolü olmayan veya tanınmayan rol
                         alert('Giriş başarılı ancak rolünüze uygun bir sayfa bulunamadı. Lütfen sistem yöneticinizle iletişime geçin.');
@@ -267,6 +269,8 @@
                         window.location.href = '/shipping.html';
                     } else if (roleName.includes('Muhasebe')) {
                         window.location.href = '/accounting.html';
+                    } else if (roleName.includes('Depo')) {
+                        window.location.href = '/production.html'; // Depo personeli üretim paneline yönlendirilir
                     } else {
                         // Rolü olmayan veya tanınmayan rol, login ekranında kal
                         console.warn(`Otomatik yönlendirme için rol bulunamadı: ${roleName}`);

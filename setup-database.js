@@ -55,12 +55,13 @@ async function setupDatabase() {
     
     // Roller
     await pool.query(`
-      INSERT INTO roles (id, name, description) VALUES 
-      (1, 'Admin', 'Sistem yöneticisi'),
-      (2, 'Sales', 'Satış temsilcisi'),
-      (3, 'Production', 'Üretim sorumlusu'),
-      (4, 'Shipping', 'Sevkiyat sorumlusu'),
-      (5, 'Accounting', 'Muhasebe sorumlusu')
+      INSERT INTO roles (id, name, description, level, is_active) VALUES
+      (1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
+      (2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
+      (3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
+      (4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
+      (5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true),
+      (6, 'Depo Personeli', 'Depo ve envanter yönetimi', 2, true)
       ON CONFLICT (id) DO NOTHING
     `);
 

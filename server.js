@@ -1590,7 +1590,8 @@ app.post("/api/migrate-roles", async (req, res) => {
       { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi', level: 2, permissions: '{}' },
       { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları', level: 2, permissions: '{}' },
       { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri', level: 2, permissions: '{}' },
-      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe', level: 2, permissions: '{}' }
+      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe', level: 2, permissions: '{}' },
+      { id: 6, name: 'Depo Personeli', description: 'Depo ve envanter yönetimi', level: 2, permissions: '{}' }
     ];
 
     for (const role of basicRoles) {
