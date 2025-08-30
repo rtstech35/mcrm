@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Müşteriler tablosu
 CREATE TABLE IF NOT EXISTS customers (
     id SERIAL PRIMARY KEY,
-    company_name VARCHAR(200) NOT NULL,
+    company_name VARCHAR(200) UNIQUE NOT NULL,
     contact_person VARCHAR(100),
     phone VARCHAR(20),
     email VARCHAR(100),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- Ürünler tablosu
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
+    name VARCHAR(200) UNIQUE NOT NULL,
     product_code VARCHAR(50) UNIQUE,
     description TEXT,
     category VARCHAR(100),
