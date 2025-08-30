@@ -273,8 +273,8 @@ CREATE TABLE IF NOT EXISTS appointment_participants (
 -- Varsayılan veriler
 INSERT INTO roles (id, name, description, level, is_active, permissions) VALUES
 (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler', 4, true, '{"all": true}'),
-(2, 'Satış Müdürü', 'Satış departmanı yöneticisi', 3, true, '{"sales": ["read", "create", "update", "delete"], "reports": ["read"]}'),
-(3, 'Satış Personeli', 'Sadece kendi müşterilerini görür ve işlem yapar', 2, true, '{"customers": ["read_own", "create"], "orders": ["read_own", "create"]}'),
+(2, 'Satış Müdürü', 'Satış departmanı yöneticisi', 3, true, '{"customers": ["read", "create", "update", "delete"], "orders": ["read", "create", "update", "delete"], "reports": ["read"]}'),
+(3, 'Satış Personeli', 'Sadece kendi müşterilerini görür ve işlem yapar', 2, true, '{"customers": ["read", "read_own", "create"], "orders": ["read", "read_own", "create"]}'),
 (4, 'Depo Müdürü', 'Depo ve envanter yönetimi yöneticisi', 3, true, '{"inventory": ["read", "create", "update", "delete"]}'),
 (5, 'Depo Personeli', 'Depo ve envanter işlemleri', 2, true, '{"inventory": ["read", "update"]}'),
 (6, 'Sevkiyat Sorumlusu', 'Sevkiyat yöneticisi, kendisine atanan sevkiyatları yönetir', 3, true, '{"delivery": ["read", "create", "update", "delete"]}'),
