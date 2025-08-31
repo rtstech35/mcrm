@@ -3525,7 +3525,7 @@ app.get("/api/production/dashboard/:userId", authenticateToken, async (req, res)
         const requestedUserId = parseInt(req.params.userId, 10);
         const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
 
-        const canViewAll = ['Admin', 'Üretim Müdürü'].includes(loggedInUserRole);
+        const canViewAll = ['Yönetici', 'Üretim Müdürü'].includes(loggedInUserRole);
         if (!canViewAll && loggedInUserId !== requestedUserId) {
             return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
         }
@@ -3577,7 +3577,7 @@ app.get("/api/shipping/dashboard/:userId", authenticateToken, async (req, res) =
         const requestedUserId = parseInt(req.params.userId, 10);
         const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
 
-        const canViewAll = ['Admin', 'Sevkiyat Sorumlusu'].includes(loggedInUserRole);
+        const canViewAll = ['Yönetici', 'Sevkiyat Sorumlusu'].includes(loggedInUserRole);
         if (!canViewAll && loggedInUserId !== requestedUserId) {
             return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
         }
