@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS delivery_note_items (
     delivery_note_id INTEGER REFERENCES delivery_notes(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id),
     product_name VARCHAR(200) NOT NULL, -- Ürün adı (değişebilir)
-    quantity INTEGER NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL,
     unit_price DECIMAL(10,2),
     total_price DECIMAL(10,2),
     unit VARCHAR(20) DEFAULT 'adet',
