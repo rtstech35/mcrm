@@ -3996,6 +3996,10 @@ app.post("/api/customers", authenticateToken, checkPermission('customers.create'
   try {
     const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude } = req.body;
     
+    // Gelen boş string'leri veritabanı için NULL'a çevir
+    const finalLatitude = latitude === '' ? null : latitude;
+    const finalLongitude = longitude === '' ? null : longitude;
+
     // Geçerli bir sales_rep ID'si olup olmadığını kontrol et
     let validSalesRepId = null;
     if (assigned_sales_rep) {
@@ -4014,7 +4018,7 @@ app.post("/api/customers", authenticateToken, checkPermission('customers.create'
       INSERT INTO customers (company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'potential')
       RETURNING *
-    `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, latitude, longitude]);
+    `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, finalLatitude, finalLongitude]);
     
     res.json({
       success: true,
@@ -4486,6 +4490,10 @@ app.put("/api/customers/:id", authenticateToken, checkPermission('customers.upda
     const { id } = req.params;
     const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude } = req.body;
 
+    // Gelen boş string'leri veritabanı için NULL'a çevir
+    const finalLatitude = latitude === '' ? null : latitude;
+    const finalLongitude = longitude === '' ? null : longitude;
+
     const result = await pool.query(`
       UPDATE customers SET
         company_name = $1,
@@ -4496,10 +4504,11 @@ app.put("/api/customers/:id", authenticateToken, checkPermission('customers.upda
         address = $6,
         assigned_sales_rep = $7,
         latitude = $8,
-        longitude = $9
+        longitude = $9,
+        updated_at = CURRENT_TIMESTAMP
       WHERE id = $10
       RETURNING *
-    `, [company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, id]);
+    `, [company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, finalLatitude, finalLongitude, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yeni Müşteri Kaydı - Saha CRM</title>
     <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <div class="container" style="min-height: 100vh; padding: 2rem;">
@@ -54,6 +56,15 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Konum Seçimi</label>
+                        <div id="address-search-container" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="address-search-input" placeholder="Adres arayın veya haritadan seçin..." style="flex-grow: 1;">
+                            <button type="button" class="btn" onclick="searchAddress()">Ara</button>
+                        </div>
+                        <div id="map" style="height: 300px; border-radius: 8px; border: 1px solid #ddd;"></div>
+                    </div>
+
+                    <div class="form-group">
                         <label>Harita Konumu (Otomatik)</label>
                         <input type="text" id="coordinates" readonly style="background: #f8f9fa; color: #666;">
                     </div>
@@ -85,6 +96,8 @@
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         let currentLocation = null;
+        let map;
+        let marker;
 
         if (!authToken) {
             window.location.href = '/';
@@ -108,29 +121,80 @@
             return response.json();
         }
 
-        // URL'den konum parametrelerini al
+        function initMap() {
+            map = L.map('map').setView([41.0082, 28.9784], 10); // Default to Istanbul
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            map.on('click', function(e) {
+                updateLocation(e.latlng.lat, e.latlng.lng);
+            });
+
+            // Check for URL params after map is initialized
+            getLocationFromURL();
+        }
+
+        function updateLocation(lat, lng, address = null) {
+            currentLocation = { lat: lat, lng: lng };
+            document.getElementById('coordinates').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+            map.setView([lat, lng], 16);
+
+            if (address) {
+                document.getElementById('address').value = address;
+                marker.bindPopup(address).openPopup();
+            } else {
+                getAddressFromCoordinates(lat, lng);
+            }
+        }
+
         function getLocationFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const lat = urlParams.get('lat');
             const lng = urlParams.get('lng');
             
             if (lat && lng) {
-                currentLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
-                getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
-                document.getElementById('coordinates').value = `${lat}, ${lng}`;
+                updateLocation(parseFloat(lat), parseFloat(lng));
             }
         }
 
-        // Koordinatlardan adres bilgisi al (basit örnek)
         async function getAddressFromCoordinates(lat, lng) {
             try {
-                // Gerçek uygulamada Google Maps API veya başka bir servis kullanılabilir
-                // Şimdilik basit bir adres oluşturalım
-                const address = `Enlem: ${lat.toFixed(6)}, Boylam: ${lng.toFixed(6)}`;
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                const data = await response.json();
+                const address = data && data.display_name ? data.display_name : `Konum: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
                 document.getElementById('address').value = address;
+                if (marker) {
+                    marker.bindPopup(address).openPopup();
+                }
             } catch (error) {
                 console.error('Adres alınamadı:', error);
                 document.getElementById('address').value = `Konum: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            }
+        }
+
+        async function searchAddress() {
+            const query = document.getElementById('address-search-input').value;
+            if (!query) return;
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    const firstResult = data[0];
+                    updateLocation(parseFloat(firstResult.lat), parseFloat(firstResult.lon), firstResult.display_name);
+                } else {
+                    alert('Adres bulunamadı.');
+                }
+            } catch (error) {
+                console.error('Adres arama hatası:', error);
+                alert('Adres aranırken bir hata oluştu.');
             }
         }
 
@@ -181,7 +245,7 @@
         }
 
         // Sayfa yüklendiğinde konum parametrelerini kontrol et
-        getLocationFromURL();
+        initMap();
     </script>
 </body>
 </html>
