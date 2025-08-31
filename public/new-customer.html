@@ -160,7 +160,26 @@
             const lng = urlParams.get('lng');
             
             if (lat && lng) {
+                // URL'den gelen konumu kullan
+                console.log(`URL'den konum alındı: ${lat}, ${lng}`);
                 updateLocation(parseFloat(lat), parseFloat(lng));
+            } else {
+                // URL'de konum yoksa, cihazın mevcut konumunu almayı dene
+                console.log("URL'de konum yok, cihaz konumu deneniyor...");
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            console.log('Cihaz konumu başarıyla alındı.');
+                            updateLocation(position.coords.latitude, position.coords.longitude);
+                        },
+                        (error) => {
+                            console.warn('Cihaz konumu alınamadı, harita İstanbul merkezli başlatıldı.', error.message);
+                            // Hata durumunda harita İstanbul'da kalır, kullanıcı manuel seçebilir.
+                        }
+                    );
+                } else {
+                    console.warn('Tarayıcı konum servisini desteklemiyor.');
+                }
             }
         }
 
