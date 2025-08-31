@@ -3384,6 +3384,32 @@ app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async 
 // Satış personeli dashboard stats
 app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
     try {
+        // Defansif Programlama: Dashboard için gerekli tabloların varlığını kontrol et ve yoksa oluştur.
+        // Bu, veritabanı migration'ları eksik olsa bile sistemin çökmesini engeller.
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_targets (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                target_year INTEGER NOT NULL,
+                target_month INTEGER NOT NULL,
+                sales_target DECIMAL(12,2) DEFAULT 0,
+                visit_target INTEGER DEFAULT 0,
+                collection_target DECIMAL(12,2) DEFAULT 0,
+                UNIQUE(user_id, target_year, target_month)
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS customer_visits (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES customers(id),
+                sales_rep_id INTEGER REFERENCES users(id),
+                visit_date TIMESTAMP NOT NULL,
+                visit_type VARCHAR(50),
+                result VARCHAR(50),
+                notes TEXT
+            );
+        `);
+
         const requestedUserId = parseInt(req.params.userId, 10);
         const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
 

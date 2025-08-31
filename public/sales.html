@@ -790,12 +790,20 @@
         
         function showDashboardFallback() {
             document.getElementById('content').innerHTML = `
-                <div class="card">
-                    <h2>Satış Dashboard</h2>
-                    <p>Hoş geldiniz, ${currentUser.full_name}</p>
-                    <div style="margin-top: 2rem;">
-                        <button class="btn" onclick="window.location.href='/order-detail.html'">📝 Yeni Sipariş</button>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h2>Dashboard Yüklenemedi</h2>
+                    <p style="color: #666; margin: 1rem 0 1.5rem 0;">
+                        Dashboard verileri yüklenirken bir sorun oluştu. Bu durum genellikle eksik veritabanı tablolarından veya geçici bir sunucu hatasından kaynaklanabilir.
+                    </p>
+                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: left; font-size: 0.875rem;">
+                        <strong>Olası Çözümler:</strong>
+                        <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                            <li>Sayfayı yenilemeyi deneyin.</li>
+                            <li>Sorun devam ederse, lütfen sistem yöneticinizle iletişime geçin.</li>
+                        </ul>
                     </div>
+                    <button class="btn" onclick="showDashboard()" style="margin-top: 1.5rem; background: #007bff;">Tekrar Dene</button>
                 </div>
             `;
         }
