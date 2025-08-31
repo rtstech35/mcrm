@@ -2281,17 +2281,20 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
 
     // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
     const deliveryPerms = permissions.delivery || [];
-    if (deliveryPerms.includes('read_own') && !deliveryPerms.includes('read') && !permissions.all) {
-      // Sevkiyatçı:
-      // - Tüm 'pending' durumundaki irsaliyeleri görebilir (kendine atamak için).
-      // - Diğer durumlardaki ('in_transit', 'delivered') sadece kendine atananları görebilir.
-      // - Eğer durum filtresi yoksa (dashboard gibi), hem bekleyenleri hem de kendine atananları görür.
-      if (status && status !== 'pending') {
-        whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
-      } else if (!status) { // Dashboard'dan gelen genel istek (status filtresi yok)
-        whereClauses.push(`(dn.status = 'pending' OR dn.delivered_by = $${params.push(userId)})`);
-      }
-      // status === 'pending' ise ekstra bir filtre uygulanmaz, tümü listelenir.
+    const isShipper = deliveryPerms.includes('read_own') && !deliveryPerms.includes('read') && !permissions.all;
+
+    if (isShipper) {
+        // This is a shipper user. Apply special filtering.
+        if (status === 'pending') {
+            // Shippers can see all pending items to take one.
+            // The `dn.status = 'pending'` clause is already added. No extra filter needed.
+        } else if (status) { // 'in_transit', 'delivered', etc.
+            // For any other specific status, they only see their own.
+            whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
+        } else { // status is undefined or empty string (dashboard or "All my shipments" view)
+            // They see all pending items AND their own items of other statuses.
+            whereClauses.push(`(dn.status = 'pending' OR dn.delivered_by = $${params.push(userId)})`);
+        }
     }
 
     if (whereClauses.length > 0) {
