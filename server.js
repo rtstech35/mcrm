@@ -3989,6 +3989,7 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
     }
 
     const { userId, permissions } = req.user;
+    const { north, south, east, west } = req.query;
 
     let query = `
       SELECT c.*,
@@ -3997,20 +3998,36 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
       LEFT JOIN users u ON c.assigned_sales_rep = u.id
     `;
     const params = [];
+    const whereClauses = [];
     
     // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
     const customerPerms = permissions.customers || [];
     if (customerPerms.includes('read_own') && !customerPerms.includes('read') && !permissions.all) {
       // Satış Personeli sadece kendi müşterilerini görür
-      query += ` WHERE c.assigned_sales_rep = $1`;
+      whereClauses.push(`c.assigned_sales_rep = $${params.length + 1}`);
       params.push(userId);
-    } 
+    }
+
+    // Bounding box filter for map
+    if (north && south && east && west) {
+        whereClauses.push(`c.latitude IS NOT NULL AND c.longitude IS NOT NULL`);
+        whereClauses.push(`c.latitude <= $${params.length + 1}`);
+        params.push(parseFloat(north));
+        whereClauses.push(`c.latitude >= $${params.length + 1}`);
+        params.push(parseFloat(south));
+        whereClauses.push(`c.longitude <= $${params.length + 1}`);
+        params.push(parseFloat(east));
+        whereClauses.push(`c.longitude >= $${params.length + 1}`);
+        params.push(parseFloat(west));
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
 
     query += ` ORDER BY c.created_at DESC`;
 
     const result = await pool.query(query, params);
-
-    console.log('✅ Customers API - Bulunan müşteri sayısı:', result.rows.length);
 
     res.json({
       success: true,

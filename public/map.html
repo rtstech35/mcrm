@@ -61,6 +61,9 @@
 
         <div class="map-container">
             <div id="map"></div>
+            <button id="searchAreaBtn" class="btn" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; display: none; background: #28a745;">
+                Bu Alanda Ara
+            </button>
             <div class="legend">
                 <h4>Müşteri Durumu</h4>
                 <div class="legend-item">
@@ -121,6 +124,19 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
             
+            // Harita hareket ettiğinde butonu göster
+            map.on('moveend', function() {
+                document.getElementById('searchAreaBtn').style.display = 'block';
+            });
+            
+            // "Bu Alanda Ara" butonu için event listener
+            document.getElementById('searchAreaBtn').addEventListener('click', function() {
+                const bounds = map.getBounds();
+                this.style.display = 'none'; // Butonu gizle
+                document.getElementById('customerList').innerHTML = '<p style="text-align: center; padding: 1rem; color: #666;">Müşteriler yükleniyor...</p>';
+                loadCustomersInBounds(bounds.getNorth(), bounds.getSouth(), bounds.getEast(), bounds.getWest());
+            });
+
             setupSidebar();
             loadCustomers();
             getCurrentLocation();
@@ -158,6 +174,25 @@
                 displayCustomersOnMap(customers);
             } catch (error) {
                 console.error('Müşteriler yüklenemedi:', error);
+            }
+        }
+
+        async function loadCustomersInBounds(north, south, east, west) {
+            try {
+                const url = `/api/customers?north=${north}&south=${south}&east=${east}&west=${west}`;
+                const customersResponse = await apiCall(url);
+                const customers = customersResponse.customers || [];
+                
+                const listContainer = document.getElementById('customerList');
+                if (customers.length === 0) {
+                    listContainer.innerHTML = '<p style="text-align: center; padding: 1rem; color: #666;">Bu alanda müşteri bulunamadı.</p>';
+                } else {
+                    displayCustomerList(customers);
+                }
+                displayCustomersOnMap(customers);
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+                document.getElementById('customerList').innerHTML = `<p style="text-align: center; padding: 1rem; color: red;">Hata: ${error.message}</p>`;
             }
         }
 

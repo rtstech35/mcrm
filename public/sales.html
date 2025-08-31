@@ -2357,12 +2357,10 @@
             });
         }
         
-        function openManualBusinessEntry() {
-            document.getElementById('map_company_name').value = '';
-            document.getElementById('map_address').value = '';
-            document.getElementById('map_lat').value = '';
-            document.getElementById('map_lng').value = '';
-            document.getElementById('newCustomerFromMapModal').style.display = 'block';
+        function openManualBusinessEntry(lat, lng) {
+            // Konum bilgisini URL parametresi olarak ekleyerek yeni müşteri sayfasına yönlendir.
+            const locationParam = (lat && lng) ? `?lat=${lat}&lng=${lng}` : '';
+            window.location.href = `/new-customer.html${locationParam}`;
         }
         
         document.getElementById('visit_result').addEventListener('change', function() {
