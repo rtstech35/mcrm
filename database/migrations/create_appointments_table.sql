@@ -98,16 +98,16 @@ BEGIN
                 priorities[((appointment_count - 1) % 4) + 1],
                 CURRENT_DATE + (appointment_count || ' days')::INTERVAL,
                 CASE 
-                    WHEN appointment_count % 3 = 1 THEN '09:00:00'
-                    WHEN appointment_count % 3 = 2 THEN '14:00:00'
-                    ELSE '16:30:00'
+                    WHEN appointment_count % 3 = 1 THEN '09:00:00'::TIME
+                    WHEN appointment_count % 3 = 2 THEN '14:00:00'::TIME
+                    ELSE '16:30:00'::TIME
                 END,
                 CASE 
                     WHEN appointment_types[((appointment_count - 1) % 5) + 1] = 'meeting' THEN CURRENT_DATE + (appointment_count || ' days')::INTERVAL
                     ELSE NULL
                 END,
                 CASE 
-                    WHEN appointment_types[((appointment_count - 1) % 5) + 1] = 'meeting' THEN '17:00:00'
+                    WHEN appointment_types[((appointment_count - 1) % 5) + 1] = 'meeting' THEN '17:00:00'::TIME
                     ELSE NULL
                 END,
                 false,
@@ -150,7 +150,7 @@ BEGIN
             'task',
             'medium',
             CURRENT_DATE + 1,
-            '10:00:00',
+            '10:00:00'::TIME,
             false,
             user_record.id,
             'Ofis',
