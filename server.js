@@ -2497,6 +2497,49 @@ app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async 
   }
 });
 
+// ---------------- ZİYARETLER API ---------------- //
+app.post("/api/visits", authenticateToken, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { customer_id, visit_type, result, notes, next_contact_date, visit_date } = req.body;
+    const sales_rep_id = req.user.userId;
+    console.log('📝 Yeni ziyaret kaydı:', req.body);
+
+    const newVisit = await client.query(
+      `INSERT INTO customer_visits (customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date || null]
+    );
+
+    // Müşteri durumunu güncelle
+    let newStatus = 'potential'; // Varsayılan
+    if (result === 'sale' || result === 'positive') {
+        newStatus = 'active';
+    } else if (result === 'not_interested' || result === 'negative') {
+        newStatus = 'not_interested';
+    }
+
+    await client.query(
+        'UPDATE customers SET customer_status = $1 WHERE id = $2',
+        [newStatus, customer_id]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json({
+      success: true,
+      visit: newVisit.rows[0]
+    });
+  } catch (error)
+  {
+    await client.query('ROLLBACK');
+    console.error('Visit create hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    client.release();
+  }
+});
 // ---------------- MÜŞTERİLER API ---------------- //
 app.get("/api/customers", authenticateToken, checkPermission('customers.read'), async (req, res) => {
   try {
@@ -3036,6 +3079,25 @@ app.put("/api/orders/:id/production-complete", authenticateToken, checkPermissio
     }
 });
 
+// Üretimi tamamla
+app.put("/api/orders/:id/production-complete", authenticateToken, checkPermission('orders.update'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE orders SET status = 'production_ready', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
+        }
+
+        res.json({ success: true, message: 'Üretim tamamlandı, sipariş sevkiyata hazır.', order: result.rows[0] });
+    } catch (error) {
+        console.error('Production complete error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 // Siparişten irsaliye oluştur
 app.post("/api/delivery-notes/from-order/:orderId", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
     const client = await pool.connect();

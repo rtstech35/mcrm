@@ -8,6 +8,8 @@
     <title>Satış Paneli - Saha CRM</title>
     <link rel="stylesheet" href="/theme.css">
     <link rel="stylesheet" href="/mobile.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 </head>
 <body>
@@ -49,7 +51,7 @@
                 <li data-key="sales_orders"><a href="#" onclick="showOrders()">📋 Siparişler</a></li>
                 <li data-key="sales_delivery_notes"><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
                 <li data-key="sales_appointments"><a href="#" onclick="showAppointments()">📅 Randevu & Görevler</a></li>
-                <li data-key="sales_new_visit"><a href="/visit-nearby.html">🆕 Yeni Ziyaret</a></li>
+                <li data-key="sales_new_visit"><a href="#" onclick="showNewVisit()">🆕 Yeni Ziyaret</a></li>
                 <li data-key="sales_accounts"><a href="#" onclick="showAccounting()">💰 Cari Hesap</a></li>
                 <li data-key="sales_map"><a href="/map.html">🗺️ Harita</a></li>
                 <li data-key="logout"><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
@@ -811,24 +813,40 @@
         }
 
         async function initCustomerMap() {
-            const mapElement = document.getElementById('customerMap');
-            if (!mapElement) return;
-
-            try {
-                const customersResponse = await apiCall(`/api/customers?sales_rep_id=${currentUser.id}`);
-                const customers = customersResponse.customers || [];
-
-                // Basit bir liste olarak göster
-                if (customers.length > 0) {
-                    mapElement.innerHTML = `
-                        <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.875rem;">
-                            ${customers.slice(0, 5).map(c => `<li style="padding: 0.25rem 0; border-bottom: 1px solid #f1f5f9;">📍 ${c.company_name}</li>`).join('')}
-                        </ul>
-                    `;
+             const mapElement = document.getElementById('customerMap');
+             if (!mapElement) return;
+ 
+             // Clear previous content and ensure it has a height
+             mapElement.innerHTML = ''; 
+             mapElement.style.height = '200px';
+ 
+             try {
+                 // Initialize map on the element
+                 const map = L.map(mapElement).setView([41.0082, 28.9784], 10); // Default to Istanbul
+                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                     attribution: '© OpenStreetMap contributors'
+                 }).addTo(map);
+ 
+                 const customersResponse = await apiCall(`/api/customers?sales_rep_id=${currentUser.id}`);
+                 const customers = customersResponse.customers || [];
+ 
+                 if (customers.length > 0) {
+                     const validCustomers = customers.filter(c => c.latitude && c.longitude);
+                     if (validCustomers.length > 0) {
+                         const bounds = L.latLngBounds(validCustomers.map(c => [c.latitude, c.longitude]));
+                         map.fitBounds(bounds.pad(0.1));
+                     }
+ 
+                     validCustomers.forEach(c => {
+                         L.marker([c.latitude, c.longitude])
+                             .addTo(map)
+                             .bindPopup(`<b>${c.company_name}</b><br>${c.address || ''}`);
+                     });
                 } else {
-                    mapElement.innerHTML = '<p style="text-align: center; color: #666;">Müşteri bulunamadı.</p>';
+                     mapElement.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Haritada gösterilecek müşteri bulunamadı.</p>';
                 }
             } catch (error) {
+                console.error('Harita yüklenemedi:', error);
                 mapElement.innerHTML = '<p style="text-align: center; color: red;">Harita yüklenemedi.</p>';
             }
         }
@@ -1378,26 +1396,15 @@
         }
         
         async function createOrderFromAppointment(customerId, customerName) {
-             try {
-                 // Müşteriyi kaydet (opsiyonel, belki zaten var)
-                 await apiCall('/api/customers', {
-                     method: 'POST',
-                     body: JSON.stringify({
-                         company_name: customerName,
-                         customer_status: 'potential',
-                         assigned_sales_rep: currentUser.id
-                     })
-                 }).catch(e => console.log("Müşteri zaten mevcut olabilir:", e.message)); // Hata durumunda devam et
- 
-                 const customerForModal = { id: customerId, name: customerName };
- 
-                 // Sipariş modalını aç
-                 closeModal('appointmentDetailModal');
-                 openOrderModal(customerForModal);
-             } catch (error) {
-                 console.error('Sipariş oluşturma sürecinde hata:', error.message);
-                 alert('Sipariş formu açılırken bir hata oluştu.');
-             }
+            try {
+                const customerForModal = { id: customerId, name: customerName };
+                // Sipariş modalını aç
+                closeModal('appointmentDetailModal');
+                openOrderModal(customerForModal);
+            } catch (error) {
+                console.error('Sipariş formu açılırken hata:', error.message);
+                alert('Sipariş formu açılırken bir hata oluştu.');
+            }
         }
         
         async function scheduleFollowUp(customerId, customerName) {
@@ -2477,24 +2484,43 @@
                     })
                 });
 
-                if (visitFormData.visit_result === 'positive') {
-                    // Detaylı sipariş modalını aç
-                    closeModal('newCustomerFromMapModal');
-                    openOrderModal({ id: newCustomer.id, name: newCustomer.company_name });
-                } else {
-                    alert(`Müşteri kaydı oluşturuldu! Ziyaret sonucu: ${visitFormData.visit_result === 'potential' ? 'Potansiyel' : 'Olumsuz'}`);
-                    
-                    if (visitFormData.next_action && visitFormData.next_date) {
-                        try {
-                            // ... (randevu oluşturma mantığı aynı kalabilir, sadece customerId'yi newCustomer.id ile değiştir)
-                        } catch (error) {
-                            // ...
+                // Ziyaret sonucuna göre sonraki adımı belirle
+                switch (visitFormData.visit_result) {
+                    case 'positive': // Satış Yapıldı
+                        closeModal('newCustomerFromMapModal');
+                        openOrderModal({ id: newCustomer.id, name: newCustomer.company_name });
+                        break;
+                    case 'potential': // Takip Gerekli
+                        alert(`Müşteri '${newCustomer.company_name}' potansiyel olarak kaydedildi.`);
+                        if (visitFormData.next_action && visitFormData.next_date) {
+                            try {
+                                await apiCall('/api/appointments', {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        title: `${visitFormData.next_action} - ${newCustomer.company_name}`,
+                                        description: `Yeni müşteri ziyareti sonrası takip.`,
+                                        type: visitFormData.next_action,
+                                        priority: 'medium',
+                                        start_date: visitFormData.next_date,
+                                        start_time: visitFormData.next_time || null,
+                                        assigned_to: currentUser.id,
+                                        customer_id: newCustomer.id
+                                    })
+                                });
+                                alert('Takip randevusu başarıyla oluşturuldu!');
+                            } catch (error) {
+                                alert('Takip randevusu oluşturulurken hata oluştu: ' + error.message);
+                            }
                         }
-                    }
-                    
-                    document.getElementById('newCustomerFromMapForm').reset();
-                    closeModal('newCustomerFromMapModal');
-                    showNewVisit(); // Listeyi yenile
+                        closeModal('newCustomerFromMapModal');
+                        showDashboard(); // Dashboard'a dön
+                        break;
+                    case 'negative': // İlgilenmiyor
+                    default:
+                        alert(`Müşteri '${newCustomer.company_name}' ilgilenmiyor olarak kaydedildi.`);
+                        closeModal('newCustomerFromMapModal');
+                        showNewVisit(); // Listeyi yenile
+                        break;
                 }
             } catch (error) {
                 alert('Hata: ' + error.message);
