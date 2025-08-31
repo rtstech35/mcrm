@@ -4444,7 +4444,7 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
         const deliveryNumber = `IRS${year}${month}${day}${sequenceNumber}`;
 
         // İrsaliye oluştur
-        await client.query(`
+        const deliveryNoteResult = await client.query(`
           INSERT INTO delivery_notes (
             delivery_number, order_id, customer_id, delivery_date,
             delivery_address, status, created_by, delivered_by
