@@ -557,7 +557,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>👤 Profil Bilgileri</h3>
-                <button class="close-btn" onclick="closeOrdersModal()">&times;</button>
+                <button class="close-btn" onclick="closeModal('profileModal')">&times;</button>
             </div>
             <form id="profileForm" style="padding: 1rem;">
                 <div class="form-group">
@@ -752,6 +752,13 @@
     </script>
     <script>
         let authToken = localStorage.getItem('authToken');
+
+        // Generic modal closer
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+        }
+
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -1079,7 +1086,92 @@
                 alert('Sevkiyat başlatılamadı: ' + error.message);
             }
         }
-        
+
+        // --- İmza Modal Fonksiyonları ---
+        let canvas, ctx, isDrawing = false;
+
+        function initSignaturePad() {
+            canvas = document.getElementById('signatureCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = container.clientWidth * ratio;
+                canvas.height = 200 * ratio; // Sabit yükseklik
+                canvas.style.width = `${container.clientWidth}px`;
+                canvas.style.height = `200px`;
+                ctx.scale(ratio, ratio);
+            }
+            
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+            
+            canvas.addEventListener('touchstart', handleTouch, { passive: false });
+            canvas.addEventListener('touchmove', handleTouch, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function getMousePos(canvasDom, event) {
+            const rect = canvasDom.getBoundingClientRect();
+            const scaleX = canvasDom.width / rect.width;
+            const scaleY = canvasDom.height / rect.height;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getMousePos(canvas, e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getMousePos(canvas, e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type.replace('touch', 'mouse'), {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearSignature() {
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function closeSignatureModal() {
+            const modal = document.getElementById('signatureModal');
+            if (modal) modal.style.display = 'none';
+            clearSignature();
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerTitle').value = '';
+        }
+
         async function saveSignatureAndCompleteDelivery() {
             const completeBtn = document.getElementById('completeDeliveryBtn');
             const deliveryNoteId = completeBtn.dataset.deliveryNoteId;
