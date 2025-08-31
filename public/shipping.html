@@ -794,6 +794,13 @@
                 updateDateTime();
                 setInterval(updateDateTime, 60000);
                 setupMenuVisibility();
+                
+                // Add event listener for profile form
+                document.getElementById('profileForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    alert('Profil güncelleme özelliği yakında eklenecek.');
+                    closeModal('profileModal');
+                });
             }
         });
         
@@ -832,6 +839,24 @@
             }
         }
         
+        function setupMenuVisibility() {
+            const permissions = currentUser.permissions || {};
+
+            if (currentUser.role_id === 1) {
+                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
+                return;
+            }
+            
+            const menuItems = document.querySelectorAll('.sidebar-nav a');
+
+            menuItems.forEach(item => {
+                const key = item.dataset.key;
+                if (key && !permissions[key]) {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
         function showLoadingState() {
             const statusCards = document.querySelectorAll('.status-card');
             statusCards.forEach(card => {
@@ -904,7 +929,7 @@
             document.getElementById('deliveredCount').textContent = '0';
         }
 
-        async function showDeliveryNotes(status) {
+        window.showDeliveryNotes = async function(status) {
             try {
                 console.log('📋 İrsaliye detayları yükleniyor:', status);
                 const response = await fetch(`/api/delivery-notes?status=${status}&include=items`, {
@@ -997,13 +1022,6 @@
             }
         }
         
-        function closeDeliveryNotesModal() {
-            const modal = document.getElementById('deliveryNotesModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-        
         // Modal dışına tıklandığında kapat
         document.addEventListener('click', function(event) {
             const deliveryNotesModal = document.getElementById('deliveryNotesModal');
@@ -1058,7 +1076,7 @@
             }
         }
 
-        async function startShipping(deliveryNoteId, address, lat, lng) { // Fonksiyonu async olarak işaretle
+        window.startShipping = async function(deliveryNoteId, address, lat, lng) {
             const wantsNavigation = confirm('Navigasyon başlatmak istiyor musunuz?');
 
             try {
@@ -1094,7 +1112,7 @@
             }
         }
 
-        async function viewSignedNote(deliveryNoteId) {
+        window.viewSignedNote = async function(deliveryNoteId) {
             try {
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
@@ -1127,7 +1145,7 @@
             }
         }
 
-        async function showSignatureModal(deliveryNoteId) {
+        window.showSignatureModal = async function(deliveryNoteId) {
             try {
                 const authToken = localStorage.getItem('authToken');
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}`, {
@@ -1150,8 +1168,7 @@
         }
 
         // --- İmza Modal Fonksiyonları ---
-        let canvas, ctx, isDrawing = false;
-
+        
         function initSignaturePad() {
             canvas = document.getElementById('signatureCanvas');
             if (!canvas) return;
@@ -1222,19 +1239,7 @@
             canvas.dispatchEvent(mouseEvent);
         }
 
-        function clearSignature() {
-            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function closeSignatureModal() {
-            const modal = document.getElementById('signatureModal');
-            if (modal) modal.style.display = 'none';
-            clearSignature();
-            document.getElementById('customerName').value = '';
-            document.getElementById('customerTitle').value = '';
-        }
-
-        async function saveSignatureAndCompleteDelivery() {
+        window.saveSignatureAndCompleteDelivery = async function() {
             const completeBtn = document.getElementById('completeDeliveryBtn');
             const deliveryNoteId = completeBtn.dataset.deliveryNoteId;
 
@@ -1290,7 +1295,7 @@
             }
         }
         
-        function loadCustomerMap() {
+        window.loadCustomerMap = function() {
             const mapContainer = document.getElementById('customerMap');
             
             // Yükleme animasyonu göster
@@ -1476,14 +1481,14 @@
             }, 300);
         }
 
-        function toggleMobileMenu() {
+        window.toggleMobileMenu = function() {
             const sidebar = document.querySelector('.sidebar');
             let overlay = document.querySelector('.mobile-overlay');
             
             if (!overlay) {
                 overlay = document.createElement('div');
                 overlay.className = 'mobile-overlay';
-                overlay.onclick = toggleMobileMenu;
+                overlay.onclick = window.toggleMobileMenu;
                 document.body.appendChild(overlay);
             }
             
@@ -1491,15 +1496,23 @@
             overlay.classList.toggle('active');
         }
 
-        function logout() {
-            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('token'); // Eski anahtarları da temizle
-                localStorage.removeItem('user');   // Eski anahtarları da temizle
-                window.location.href = '/';
+        window.updateDateTime = function() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('tr-TR');
+            const timeStr = now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            
+            const userNameEl = document.getElementById('userName');
+            const dateTimeEl = document.getElementById('currentDateTime');
+            
+            if (userNameEl) {
+                let welcomeName = currentUser.full_name || 'Kullanıcı';
+                if (currentUser.role_name && !currentUser.role_name.includes('Sevkiyat')) {
+                    welcomeName += ` (${currentUser.role_name})`;
+                }
+                userNameEl.textContent = welcomeName;
             }
-        }
+            if (dateTimeEl) dateTimeEl.textContent = `${dateStr} - ${timeStr}`;
+        };
     </script>
 
     <style>
