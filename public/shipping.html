@@ -1053,19 +1053,21 @@
             }
         }
 
-        async function startShipping(deliveryNoteId, address, lat, lng) {
+        async function startShipping(deliveryNoteId, address, lat, lng) { // Fonksiyonu async olarak işaretle
             const wantsNavigation = confirm('Navigasyon başlatmak istiyor musunuz?');
 
             try {
                 console.log('🚚 Sevkiyat başlatılıyor, İrsaliye ID:', deliveryNoteId);
-
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ status: 'in_transit' })
+                    body: JSON.stringify({ 
+                        status: 'in_transit',
+                        delivered_by: currentUser.id // İrsaliyeyi mevcut kullanıcıya ata
+                    })
                 });
 
                 if (!response.ok) {

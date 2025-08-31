@@ -2567,11 +2567,13 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
     const deliveryResult = await pool.query(`
       SELECT dn.*, 
              c.company_name, c.contact_person, c.email as customer_email, c.phone as customer_phone, c.address as customer_address,
+             u_signer.full_name as signer_name,
              o.order_number,
              u_creator.full_name as created_by_name
       FROM delivery_notes dn
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN orders o ON dn.order_id = o.id
+      LEFT JOIN users u_signer ON dn.delivered_by = u_signer.id
       LEFT JOIN users u_creator ON dn.created_by = u_creator.id
       WHERE dn.id = $1
     `, [deliveryNoteId]);
@@ -2683,25 +2685,15 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
                 <tbody>
                     ${deliveryItems.map(item => `
                         <tr>
-                            <td>${item.product_name || 'Ürün'}</td>
+                            <td>${item.product_name || 'Ürün Adı Bilinmiyor'}</td>
                             <td>${item.quantity}</td>
                             <td>${item.unit || 'adet'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
-            
-            ${delivery.customer_signature ? `
-                <div class="signature-section">
-                    <h3>Teslim Alındı Onayı</h3>
-                    <div class="signature-box">
-                        <p><strong>Dijital İmza ile Teslim Alınmıştır</strong></p>
-                        <img src="${delivery.customer_signature}" alt="Dijital İmza" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; margin: 10px 0;">
-                        <p>Tarih: ${new Date(delivery.signature_date).toLocaleDateString('tr-TR')}</p>
-                        <p>Teslim Alan: ${delivery.customer_name || 'Yetkili Kişi'}</p>
-                    </div>
-                </div>
-            ` : `
+            <div class="signature-section">
+                <h3>Teslimat Onayı</h3>
                 <div class="signature-section">
                     <div class="signature-box">
                         <p><strong>Teslim Alındı</strong></p>
@@ -2710,7 +2702,7 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
                         <p>İmza: ________________</p>
                     </div>
                 </div>
-            `}
+            </div>
             
             <div class="footer">
                 <p>Bu irsaliye otomatik olarak oluşturulmuştur.</p>
@@ -2779,6 +2771,21 @@ app.put("/api/delivery-notes/:id/sign", authenticateToken, async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'İrsaliye bulunamadı' });
+    }
+
+    const updatedDeliveryNote = result.rows[0];
+
+    // İlgili siparişin durumunu da 'delivered' olarak güncelle
+    if (updatedDeliveryNote.order_id) {
+        try {
+            await pool.query(
+                `UPDATE orders SET status = 'delivered', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                [updatedDeliveryNote.order_id]
+            );
+            console.log(`✅ Sipariş durumu (ID: ${updatedDeliveryNote.order_id}) 'delivered' olarak güncellendi.`);
+        } catch (orderUpdateError) {
+            console.error(`Sipariş durumu güncellenirken hata (ID: ${updatedDeliveryNote.order_id}):`, orderUpdateError.message);
+        }
     }
 
     // Teslimat tamamlandığında mail gönder
@@ -4414,9 +4421,9 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
         // İrsaliye oluştur
         await client.query(`
           INSERT INTO delivery_notes (
-            delivery_number, order_id, customer_id, delivery_date, 
+            delivery_number, order_id, customer_id, delivery_date,
             delivery_address, status, created_by, delivered_by
-          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7) RETURNING id
         `, [
           deliveryNumber,
           id,
@@ -4426,7 +4433,18 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
           req.user.userId,
           deliveryPersonId
         ]);
-        console.log(`✅ Sipariş ${id} için otomatik irsaliye oluşturuldu.`);
+        const newDeliveryNoteId = deliveryNoteResult.rows[0].id;
+        console.log(`✅ Sipariş ${id} için otomatik irsaliye oluşturuldu. ID: ${newDeliveryNoteId}`);
+
+        // Sipariş kalemlerini irsaliye kalemlerine kopyala
+        const orderItemsResult = await client.query('SELECT * FROM order_items WHERE order_id = $1', [id]);
+        for (const item of orderItemsResult.rows) {
+            await client.query(`
+                INSERT INTO delivery_note_items (delivery_note_id, product_id, product_name, quantity, unit_price, total_price, unit)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [newDeliveryNoteId, item.product_id, item.product_name, item.quantity, item.unit_price, item.total_price, item.unit]);
+        }
+        console.log(`✅ ${orderItemsResult.rows.length} kalem irsaliyeye kopyalandı.`);
       }
     }
     
