@@ -31,16 +31,18 @@ UPDATE roles SET
 WHERE level IS NULL OR is_active IS NULL;
 
 -- Temel rollerin varlığını kontrol et ve eksikleri ekle
-INSERT INTO roles (name, description, level, is_active, permissions) 
-SELECT * FROM (VALUES
+-- ON CONFLICT (name) DO UPDATE kullanarak script'i idempotent (tekrarlanabilir) yapıyoruz.
+-- Bu, rol zaten varsa hata vermek yerine güncelleme yapar.
+INSERT INTO roles (name, description, level, is_active, permissions) VALUES
     ('Admin', 'Sistem Yöneticisi - Tüm yetkilere sahip', 4, true, '{"all": true}'::jsonb),
     ('Manager', 'Departman Yöneticisi - Yönetim yetkileri', 3, true, '{"department": ["read", "create", "update"], "reports": ["read"]}'::jsonb),
     ('Employee', 'Çalışan - Temel işlem yetkileri', 2, true, '{"basic": ["read", "create", "update"]}'::jsonb),
     ('Viewer', 'Görüntüleyici - Sadece okuma yetkisi', 1, true, '{"all": ["read"]}'::jsonb)
-) AS new_roles(name, description, level, is_active, permissions)
-WHERE NOT EXISTS (
-    SELECT 1 FROM roles WHERE roles.name = new_roles.name
-);
+ON CONFLICT (name) DO UPDATE SET
+    description = EXCLUDED.description,
+    level = EXCLUDED.level,
+    is_active = EXCLUDED.is_active,
+    permissions = EXCLUDED.permissions;
 
 -- Başarı mesajı
 DO $$ 
