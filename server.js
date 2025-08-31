@@ -2221,30 +2221,60 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
     // API endpoint'i içinde tablo oluşturmak hatalara yol açabilir ve kodun okunabilirliğini düşürür.
     // Bu nedenle on-the-fly tablo oluşturma mantığı kaldırıldı.
 
-    const { status, customer_id } = req.query;
+    const { status, customer_id, include } = req.query;
     const { userId, permissions } = req.user;
  
-    let query = `
-      SELECT dn.*,
-            c.company_name as customer_name,
-            c.address as customer_address,
-            c.latitude, 
-            c.longitude,
-            u.full_name as delivered_by_name,
-            o.order_number
-      FROM delivery_notes dn
-      LEFT JOIN customers c ON dn.customer_id = c.id
-      LEFT JOIN users u ON dn.delivered_by = u.id
-      LEFT JOIN orders o ON dn.order_id = o.id
-    `;
-
+    let query;
     const params = [];
     const whereClauses = [];
+
+    if (include === 'items') {
+      // N+1 problemini çözmek için JOIN ve JSON Aggregation kullanan sorgu
+      query = `
+        SELECT 
+          dn.*,
+          c.company_name as customer_name,
+          c.address as customer_address,
+          c.latitude, 
+          c.longitude,
+          u.full_name as delivered_by_name,
+          o.order_number,
+          COALESCE(json_agg(
+            json_build_object(
+              'id', dni.id,
+              'product_id', dni.product_id,
+              'product_name', COALESCE(dni.product_name, p.name, 'Bilinmeyen Ürün'),
+              'quantity', dni.quantity,
+              'unit', dni.unit
+            )
+          ) FILTER (WHERE dni.id IS NOT NULL), '[]'::jsonb) as items
+        FROM delivery_notes dn
+        LEFT JOIN customers c ON dn.customer_id = c.id
+        LEFT JOIN users u ON dn.delivered_by = u.id
+        LEFT JOIN orders o ON dn.order_id = o.id
+        LEFT JOIN delivery_note_items dni ON dni.delivery_note_id = dn.id
+        LEFT JOIN products p ON dni.product_id = p.id
+      `;
+    } else {
+      // Orijinal, daha basit sorgu
+      query = `
+        SELECT dn.*,
+              c.company_name as customer_name,
+              c.address as customer_address,
+              c.latitude, 
+              c.longitude,
+              u.full_name as delivered_by_name,
+              o.order_number
+        FROM delivery_notes dn
+        LEFT JOIN customers c ON dn.customer_id = c.id
+        LEFT JOIN users u ON dn.delivered_by = u.id
+        LEFT JOIN orders o ON dn.order_id = o.id
+      `;
+    }
 
     if (status) {
       whereClauses.push(`dn.status = $${params.push(status)}`);
     }
-    
     if (customer_id) {
       whereClauses.push(`dn.customer_id = $${params.push(customer_id)}`);
     }
@@ -2254,10 +2284,14 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
     if (deliveryPerms.includes('read_own') && !deliveryPerms.includes('read') && !permissions.all) {
       // Sevkiyatçı veya Sorumlu sadece kendine atananları görür
       whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
-    } 
+    }
 
     if (whereClauses.length > 0) {
         query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    if (include === 'items') {
+      query += ` GROUP BY dn.id, c.id, u.id, o.id`;
     }
 
     query += ` ORDER BY dn.created_at DESC`;

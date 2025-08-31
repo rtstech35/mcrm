@@ -630,7 +630,7 @@
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             alert('Profil güncelleme özelliği yakında eklenecek.');
-            closeOrdersModal();
+            closeModal('profileModal');
         });
 
         function setupMenuVisibility() {
@@ -763,7 +763,7 @@
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
-        });
+        };
     </script>
     <script>
         let authToken = localStorage.getItem('authToken');
@@ -907,7 +907,7 @@
         async function showDeliveryNotes(status) {
             try {
                 console.log('📋 İrsaliye detayları yükleniyor:', status);
-                const response = await fetch(`/api/delivery-notes?status=${status}`, {
+                const response = await fetch(`/api/delivery-notes?status=${status}&include=items`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
@@ -942,35 +942,19 @@
                 listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Ürün bilgileri yükleniyor...</div>';
 
                 const notesHtmlPromises = notes.map(async note => {
-                    let productsHtml = '';
-                    if (note.order_id) {
-                        try {
-                            const itemsResponse = await fetch(`/api/delivery-notes/${note.id}/items`, {
-                                headers: { 'Authorization': `Bearer ${authToken}` }
-                            });
-                            if (itemsResponse.ok) {
-                                const itemsData = await itemsResponse.json();
-                                const items = itemsData.items || [];
-                                if (items.length > 0) {
-                                    productsHtml = `
-                                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-                                            <strong style="font-size: 13px;">Ürünler:</strong>
-                                            <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px; font-size: 12px;">
-                                                ${items.map(item => `<li>${item.product_name} - ${item.quantity} ${item.unit || 'adet'}</li>`).join('')}
-                                            </ul>
-                                        </div>
-                                    `;
-                                } else {
-                                    productsHtml = '<div style="font-size: 12px; color: #666; margin-top: 5px;">Bu irsaliyeye ait ürün bulunamadı.</div>';
-                                }
-                            } else {
-                                 productsHtml = '<div style="font-size: 12px; color: #999; margin-top: 5px;">Ürünler yüklenemedi.</div>';
-                            }
-                        } catch (e) {
-                            productsHtml = '<div style="font-size: 12px; color: #999; margin-top: 5px;">Ürünler yüklenemedi.</div>';
-                        }
+                    const items = note.items || [];
+                    let productsHtml;
+                    if (items.length > 0) {
+                        productsHtml = `
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                <strong style="font-size: 13px;">Ürünler:</strong>
+                                <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px; font-size: 12px;">
+                                    ${items.map(item => `<li>${item.product_name} - ${item.quantity} ${item.unit || 'adet'}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
                     } else {
-                        productsHtml = '<div style="font-size: 12px; color: #666; margin-top: 5px;">Sipariş ilişkisi yok.</div>';
+                        productsHtml = '<div style="font-size: 12px; color: #666; margin-top: 5px;">Bu irsaliyeye ait ürün bulunamadı.</div>';
                     }
 
                     const address = (note.delivery_address || note.customer_address || '').replace(/'/g, "\\'");
