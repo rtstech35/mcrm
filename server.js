@@ -302,10 +302,10 @@ app.post("/api/register", async (req, res) => {
 // ---------------- LOGIN ENDPOINT (DÜZELME TESTİ) ---------------- //
 app.post("/api/login", async (req, res) => {
   try {
-    console.log("🔍 BASIT TEST - Login isteği:", req.body);
     const { username, password } = req.body;
+    console.log(`🔒 Login attempt for user: ${username}`);
     
-    // Kullanıcıyı ara
+    // 1. Kullanıcıyı ve ilişkili rollerini/departmanlarını bul
     const result = await pool.query(`
       SELECT u.*, r.name as role_name, r.permissions, d.name as department_name
       FROM users u
@@ -315,53 +315,41 @@ app.post("/api/login", async (req, res) => {
     `, [username]);
     
     if (result.rows.length === 0) {
-      console.log("❌ Kullanıcı bulunamadı");
+      console.log(`❌ Login failed: User '${username}' not found.`);
       return res.status(401).json({ error: "Kullanıcı adı veya şifre hatalı" });
     }
     
     const user = result.rows[0];
-    console.log("✅ Kullanıcı bulundu:", user.username);
     
-    // bcrypt dene
-    try {
-      const isMatch = await bcrypt.compare(password, user.password_hash);
-      console.log("bcrypt sonucu:", isMatch);
-      
-      if (isMatch) {
-        console.log("✅ bcrypt şifre eşleşti!");
-        
-        const token = jwt.sign(
-          { 
-            userId: user.id, 
-            username: user.username, 
-            role: user.role_name,
-            permissions: user.permissions || {} // Yetkileri token'a ekle
-          },
-          JWT_SECRET || "fallback_secret_key_change_in_production",
-          { expiresIn: "24h" }
-        );
-        
-        return res.json({ 
-          success: true,
-          token,
-          user: {
-            id: user.id,
-            username: user.username,
-            full_name: user.full_name,
-            role_id: user.role_id,
-            role_name: user.role_name,
-            department_id: user.department_id,
-            department_name: user.department_name,
-            permissions: user.permissions || {}
-          }
-        });
-      }
-    } catch (bcryptError) {
-      console.log("bcrypt hatası:", bcryptError.message);
+    // 2. Kullanıcının aktif olup olmadığını kontrol et
+    if (!user.is_active) {
+        console.log(`❌ Login failed: User '${username}' is not active.`);
+        return res.status(403).json({ error: "Kullanıcı hesabınız pasif durumdadır. Lütfen yönetici ile iletişime geçin." });
     }
-    
-    console.log("❌ Hiçbir şifre yöntemi çalışmadı");
-    return res.status(401).json({ error: "Kullanıcı adı veya şifre hatalı" });
+
+    // 3. Kullanıcının bir rolü olup olmadığını kontrol et
+    if (!user.role_name) {
+        console.log(`❌ Login failed: User '${username}' has no assigned role.`);
+        return res.status(403).json({ error: "Hesabınıza bir rol atanmamış. Lütfen yönetici ile iletişime geçin." });
+    }
+
+    // 4. Şifreyi karşılaştır
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      console.log(`❌ Login failed: Password mismatch for user '${username}'.`);
+      return res.status(401).json({ error: "Kullanıcı adı veya şifre hatalı" });
+    }
+
+    // 5. Başarılı giriş, JWT oluştur
+    console.log(`✅ Login successful for user: ${username}, Role: ${user.role_name}`);
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role_name, permissions: user.permissions || {} },
+      JWT_SECRET || "fallback_secret_key_change_in_production",
+      { expiresIn: "24h" }
+    );
+
+    // 6. Token ve kullanıcı bilgilerini döndür
+    res.json({ success: true, token, user: { id: user.id, username: user.username, full_name: user.full_name, role_id: user.role_id, role_name: user.role_name, department_id: user.department_id, department_name: user.department_name, permissions: user.permissions || {} } });
     
   } catch (err) {
     console.error("Login hatası:", err);
@@ -4457,6 +4445,119 @@ app.get("/api/orders/:id/items", authenticateToken, checkPermission('orders.read
     console.error('❌ Order items API hatası:', error);
     res.status(500).json({ success: false, error: error.message, items: [] });
   }
+});
+
+// Sipariş kalemini güncelle (üretim için)
+app.put("/api/order-items/:itemId", authenticateToken, checkPermission('orders.update'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { itemId } = req.params;
+        const { quantity } = req.body;
+
+        if (isNaN(quantity) || quantity < 0) {
+            return res.status(400).json({ success: false, error: 'Geçersiz miktar' });
+        }
+
+        // 1. Get order_id before any modification
+        const itemResult = await client.query('SELECT order_id FROM order_items WHERE id = $1', [itemId]);
+        if (itemResult.rows.length === 0) {
+            throw new Error('Sipariş kalemi bulunamadı');
+        }
+        const { order_id } = itemResult.rows[0];
+
+        // 2. Update or delete the item
+        if (quantity == 0) {
+            await client.query('DELETE FROM order_items WHERE id = $1', [itemId]);
+        } else {
+            await client.query(
+                `UPDATE order_items 
+                 SET quantity = $1, total_price = unit_price * $1 
+                 WHERE id = $2`,
+                [quantity, itemId]
+            );
+        }
+
+        // 3. Recalculate the total amount for the order
+        const totalResult = await client.query(
+            `SELECT COALESCE(SUM(total_price), 0) as new_total FROM order_items WHERE order_id = $1`,
+            [order_id]
+        );
+        const newTotalAmount = totalResult.rows[0].new_total;
+
+        // 4. Update the order's total amount
+        await client.query(
+            `UPDATE orders SET total_amount = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [newTotalAmount, order_id]
+        );
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'Sipariş kalemi güncellendi' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Order item update error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        client.release();
+    }
+});
+
+// Üretimi tamamla
+app.put("/api/orders/:id/production-complete", authenticateToken, checkPermission('orders.update'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            `UPDATE orders SET status = 'production_ready', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
+        }
+
+        res.json({ success: true, message: 'Üretim tamamlandı, sipariş sevkiyata hazır.', order: result.rows[0] });
+    } catch (error) {
+        console.error('Production complete error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Siparişten irsaliye oluştur
+app.post("/api/delivery-notes/from-order/:orderId", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { orderId } = req.params;
+
+        const orderResult = await client.query('SELECT * FROM orders WHERE id = $1', [orderId]);
+        if (orderResult.rows.length === 0) throw new Error('Sipariş bulunamadı');
+        const order = orderResult.rows[0];
+
+        const now = new Date();
+        const deliveryNumber = `IRS${now.getFullYear().toString().slice(-2)}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+
+        const deliveryNoteResult = await client.query(`INSERT INTO delivery_notes (delivery_number, order_id, customer_id, delivery_date, delivery_address, status, created_by) VALUES ($1, $2, $3, $4, (SELECT address FROM customers WHERE id = $3), 'pending', $5) RETURNING id`, [deliveryNumber, order.id, order.customer_id, new Date(), req.user.userId]);
+        const newDeliveryNoteId = deliveryNoteResult.rows[0].id;
+
+        const orderItemsResult = await client.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
+        if (orderItemsResult.rows.length === 0) throw new Error('Siparişte hiç ürün kalemi bulunamadı.');
+
+        for (const item of orderItemsResult.rows) {
+            await client.query(`INSERT INTO delivery_note_items (delivery_note_id, product_id, product_name, quantity, unit_price, total_price, unit) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [newDeliveryNoteId, item.product_id, item.product_name, item.quantity, item.unit_price, item.total_price, item.unit]);
+        }
+
+        await client.query(`UPDATE orders SET status = 'shipping', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [orderId]);
+
+        await client.query('COMMIT');
+        res.status(201).json({ success: true, message: 'İrsaliye başarıyla oluşturuldu.', deliveryNoteNumber: deliveryNumber, deliveryNoteId: newDeliveryNoteId });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Delivery note from order creation error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        client.release();
+    }
 });
 
 // Sipariş durumu güncelle

@@ -188,15 +188,14 @@
                         totalAmount += itemTotal;
                         
                         itemsHtml += `
-                            <div class="item-row">
+                            <div class="item-row" id="item-row-${item.id}">
                                 <div>
                                     <strong>${item.product_name}</strong>
                                     <p style="color: #718096; font-size: 0.875rem;">${item.product_description || ''}</p>
-                                    <p style="color: #718096; font-size: 0.75rem;">Birim: ${item.product_unit || 'adet'} | Birim Fiyat: ${parseFloat(item.unit_price).toFixed(2)} TL</p>
                                 </div>
-                                <div style="text-align: right;">
-                                    <p><strong>${item.quantity} ${item.product_unit || 'adet'}</strong></p>
-                                    <p style="color: #48bb78; font-weight: 600;">${itemTotal.toFixed(2)} TL</p>
+                                <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                                    <input type="number" id="quantity-${item.id}" value="${item.quantity}" min="0" style="width: 80px; padding: 0.5rem; text-align: center; border: 1px solid #ddd; border-radius: 4px;">
+                                    <button class="btn" onclick="updateOrderItem(${item.id})" style="background: #ffc107; padding: 0.5rem 1rem;">Güncelle</button>
                                 </div>
                             </div>
                         `;
@@ -325,6 +324,28 @@
                 } catch (error) {
                     alert('Hata: ' + error.message);
                 }
+            }
+        }
+
+        async function updateOrderItem(itemId) {
+            const quantityInput = document.getElementById(`quantity-${itemId}`);
+            const newQuantity = parseInt(quantityInput.value, 10);
+
+            if (isNaN(newQuantity) || newQuantity < 0) {
+                alert('Lütfen geçerli bir miktar girin.');
+                return;
+            }
+
+            const confirmationMessage = newQuantity === 0 
+                ? 'Bu ürünü siparişten kaldırmak istediğinizden emin misiniz?'
+                : `Ürün miktarını ${newQuantity} olarak güncellemek istediğinizden emin misiniz? Bu işlem siparişin toplam tutarını değiştirecektir.`;
+
+            if (confirm(confirmationMessage)) {
+                try {
+                    await apiCall(`/api/order-items/${itemId}`, { method: 'PUT', body: JSON.stringify({ quantity: newQuantity }) });
+                    alert('Ürün miktarı başarıyla güncellendi!');
+                    loadOrderData(); // Sayfayı ve toplam tutarı yenile
+                } catch (error) { alert('Hata: ' + error.message); }
             }
         }
 
