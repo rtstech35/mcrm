@@ -68,6 +68,10 @@
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslim Alan Kişi:</label>
                         <input type="text" id="receiverName" placeholder="Teslim alanın adı soyadı" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
                     </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Teslim Alan Unvanı:</label>
+                        <input type="text" id="receiverTitle" placeholder="Satın Alma Müdürü" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    </div>
                 </div>
                 
                 <div style="margin-bottom: 1rem;">
@@ -96,8 +100,8 @@
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        let orderId = null;
-        let orderData = null;
+        let deliveryNoteId = null;
+        let deliveryNoteData = null;
         let isDrawing = false;
         let signaturePad = null;
 
@@ -123,37 +127,33 @@
             return response.json();
         }
 
-        function getOrderIdFromURL() {
+        function getDeliveryNoteIdFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            orderId = urlParams.get('id');
+            deliveryNoteId = urlParams.get('id');
             
-            if (orderId) {
-                loadOrderData();
+            if (deliveryNoteId) {
+                loadDeliveryNoteData();
             } else {
-                alert('Sipariş ID bulunamadı');
+                alert('İrsaliye ID bulunamadı');
                 goBack();
             }
         }
 
-        async function loadOrderData() {
+        async function loadDeliveryNoteData() {
             try {
-                // Sipariş bilgilerini al
-                const orderResponse = await apiCall(`/api/orders/${orderId}`);
-                orderData = orderResponse.order || orderResponse;
+                // İrsaliye bilgilerini al
+                const deliveryNoteResponse = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                deliveryNoteData = deliveryNoteResponse.delivery_note || deliveryNoteResponse;
                 
-                if (!orderData) {
-                    throw new Error('Sipariş bulunamadı');
+                if (!deliveryNoteData) {
+                    throw new Error('İrsaliye bulunamadı');
                 }
 
-                // Müşteri bilgilerini al
-                const customerResponse = await apiCall(`/api/customers/${orderData.customer_id}`);
-                const customer = customerResponse.customer || customerResponse;
-                
-                // Sipariş kalemlerini al
-                const itemsResponse = await apiCall(`/api/orders/${orderId}/items`);
+                // İrsaliye kalemlerini al
+                const itemsResponse = await apiCall(`/api/delivery-notes/${deliveryNoteId}/items`);
                 const orderItems = itemsResponse.items || [];
 
-                displayOrderData(orderData, customer, orderItems);
+                displayDeliveryNoteData(deliveryNoteData, orderItems);
 
             } catch (error) {
                 console.error('Sipariş verileri yüklenemedi:', error);
@@ -161,35 +161,35 @@
             }
         }
 
-        function displayOrderData(order, customer, items) {
+        function displayDeliveryNoteData(deliveryNote, items) {
             // Başlık ve durum
-            document.getElementById('orderTitle').textContent = `Sevkiyat - Sipariş #${order.order_number}`;
+            document.getElementById('orderTitle').textContent = `Sevkiyat - İrsaliye #${deliveryNote.delivery_number}`;
             
             const statusText = {
-                'completed': 'Sevkiyat Bekliyor',
-                'shipping': 'Sevkiyatta',
+                'pending': 'Sevkiyat Bekliyor',
+                'in_transit': 'Sevkiyatta',
                 'delivered': 'Teslim Edildi'
             };
             
             document.getElementById('orderStatus').innerHTML = 
-                `<span class="status-badge status-${order.status}">${statusText[order.status] || order.status}</span>`;
+                `<span class="status-badge status-${deliveryNote.status}">${statusText[deliveryNote.status] || deliveryNote.status}</span>`;
 
             // Sipariş bilgileri
             document.getElementById('orderInfo').innerHTML = `
-                <p><strong>Sipariş No:</strong> #${order.order_number}</p>
-                <p><strong>Sipariş Tarihi:</strong> ${new Date(order.order_date).toLocaleDateString('tr-TR')}</p>
-                <p><strong>Satış Temsilcisi:</strong> ${order.sales_rep_name || 'Bilinmiyor'}</p>
-                ${order.notes ? `<p><strong>Sipariş Notları:</strong> ${order.notes}</p>` : ''}
+                <p><strong>İrsaliye No:</strong> #${deliveryNote.delivery_number}</p>
+                <p><strong>Sipariş No:</strong> #${deliveryNote.order_number || 'N/A'}</p>
+                <p><strong>Oluşturma Tarihi:</strong> ${new Date(deliveryNote.created_at).toLocaleDateString('tr-TR')}</p>
+                ${deliveryNote.notes ? `<p><strong>Notlar:</strong> ${deliveryNote.notes}</p>` : ''}
             `;
 
             // Teslimat bilgileri
-            if (customer) {
-                const hasLocation = customer.latitude && customer.longitude;
-                const addressText = customer.address || 'Belirtilmemiş';
+            if (deliveryNote) {
+                const hasLocation = deliveryNote.latitude && deliveryNote.longitude;
+                const addressText = deliveryNote.delivery_address || deliveryNote.customer_address || 'Belirtilmemiş';
                 
                 document.getElementById('deliveryInfo').innerHTML = `
                     <div style="margin-bottom: 1.5rem;">
-                        <h4 style="color: #2d3748; font-size: 1.2rem; margin-bottom: 0.5rem;">${customer.company_name}</h4>
+                        <h4 style="color: #2d3748; font-size: 1.2rem; margin-bottom: 0.5rem;">${deliveryNote.customer_name}</h4>
                     </div>
                     
                     <div style="margin: 1rem 0;">
@@ -197,12 +197,12 @@
                         <p style="margin: 0.5rem 0; padding: 1rem; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #6f42c1; font-size: 1rem; line-height: 1.4;">
                             ${addressText}
                         </p>
-                        ${hasLocation ? 
+                        ${hasLocation ?
                             `<div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                                <button class="btn" onclick="openNavigation(${customer.latitude}, ${customer.longitude})" style="background: #28a745; padding: 0.75rem 1.5rem; font-weight: 600;">
+                                <button class="btn" onclick="openNavigation(${deliveryNote.latitude}, ${deliveryNote.longitude})" style="background: #28a745; padding: 0.75rem 1.5rem; font-weight: 600;">
                                     🗺️ Navigasyonu Başlat
                                 </button>
-                                <button class="btn" onclick="showOnMap(${customer.latitude}, ${customer.longitude})" style="background: #17a2b8; padding: 0.75rem 1.5rem; font-weight: 600;">
+                                <button class="btn" onclick="showOnMap(${deliveryNote.latitude}, ${deliveryNote.longitude})" style="background: #17a2b8; padding: 0.75rem 1.5rem; font-weight: 600;">
                                     📍 Haritada Göster
                                 </button>
                             </div>` : 
@@ -210,7 +210,7 @@
                         }
                     </div>
                     
-                    <p><strong>Planlanan Teslimat:</strong> ${order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</p>
+                    <p><strong>Planlanan Teslimat:</strong> ${deliveryNote.delivery_date ? new Date(deliveryNote.delivery_date).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</p>
                 `;
             }
 
@@ -255,10 +255,10 @@
             }
 
             // Aksiyon butonları ve teslimat bölümü
-            updateActionButtons(order.status);
+            updateActionButtons(deliveryNote.status);
             
             // İmza pad'ini başlat
-            if (order.status === 'shipping') {
+            if (deliveryNote.status === 'in_transit') {
                 initSignaturePad();
             }
         }
@@ -266,20 +266,20 @@
         function updateActionButtons(status) {
             let buttonsHtml = '';
             
-            if (status === 'completed') {
+            if (status === 'pending') {
                 buttonsHtml = `
                     <button class="btn" onclick="startShipping()" style="width: 100%; background: #6f42c1; margin-bottom: 0.5rem;">
                         🚚 Sevkiyata Al
                     </button>
                 `;
-            } else if (status === 'shipping') {
+            } else if (status === 'in_transit') {
                 buttonsHtml = `
                     <div style="background: #e7e3ff; color: #6f42c1; padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1rem;">
                         🚚 Sevkiyatta<br>
                         <small>Teslimat için aşağıdaki formu doldurun</small>
                     </div>
                 `;
-                document.getElementById('deliverySection').style.display = 'block';
+                document.getElementById('deliverySection').style.display = 'grid';
             } else if (status === 'delivered') {
                 buttonsHtml = `
                     <div style="background: #d1ecf1; color: #0c5460; padding: 1rem; border-radius: 8px; text-align: center;">
@@ -295,13 +295,13 @@
         async function startShipping() {
             if (confirm('Bu siparişi sevkiyata almak istediğinizden emin misiniz?')) {
                 try {
-                    await apiCall(`/api/orders/${orderId}/status`, {
+                    await apiCall(`/api/delivery-notes/${deliveryNoteId}/status`, {
                         method: 'PUT',
-                        body: JSON.stringify({ status: 'shipping' })
+                        body: JSON.stringify({ status: 'in_transit' })
                     });
                     
                     alert('Sipariş sevkiyata alındı!');
-                    loadOrderData(); // Sayfayı yenile
+                    loadDeliveryNoteData(); // Sayfayı yenile
                 } catch (error) {
                     alert('Hata: ' + error.message);
                 }
@@ -369,6 +369,7 @@
         async function completeDelivery() {
             const deliveryDate = document.getElementById('deliveryDate').value;
             const receiverName = document.getElementById('receiverName').value;
+            const receiverTitle = document.getElementById('receiverTitle').value;
             const deliveryNotes = document.getElementById('deliveryNotes').value;
             
             if (!deliveryDate) {
@@ -383,20 +384,20 @@
             
             if (confirm(`Teslimatı "${receiverName}" adlı kişiye tamamlamak istediğinizden emin misiniz?`)) {
                 try {
-                    const signatureData = signaturePad ? signaturePad.canvas.toDataURL() : '';
+                    const signatureData = signaturePad ? signaturePad.canvas.toDataURL('image/png') : '';
                     
-                    await apiCall(`/api/orders/${orderId}/deliver`, {
+                    await apiCall(`/api/delivery-notes/${deliveryNoteId}/sign`, {
                         method: 'PUT',
                         body: JSON.stringify({ 
-                            signature: signatureData,
-                            delivery_date: deliveryDate,
-                            receiver_name: receiverName,
-                            notes: deliveryNotes
+                            customer_signature: signatureData,
+                            customer_name: receiverName,
+                            customer_title: receiverTitle,
+                            // notes are not part of this endpoint, but could be added
                         })
                     });
                     
                     alert('Teslimat başarıyla tamamlandı!');
-                    loadOrderData(); // Sayfayı yenile
+                    loadDeliveryNoteData(); // Sayfayı yenile
                 } catch (error) {
                     alert('Hata: ' + error.message);
                 }
@@ -431,7 +432,7 @@
         }
 
         // Sayfa yüklendiğinde sipariş verilerini yükle
-        getOrderIdFromURL();
+        getDeliveryNoteIdFromURL();
     </script>
 </body>
 </html>

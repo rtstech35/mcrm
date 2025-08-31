@@ -35,6 +35,9 @@
                 <div class="signature-section">
                     <label>Teslim Alan Kişi:</label>
                     <input type="text" id="customerName" placeholder="Ad Soyad" required>
+
+                    <label>Unvan (opsiyonel):</label>
+                    <input type="text" id="customerTitle" placeholder="Satın Alma Müdürü">
                     
                     <label>İmza:</label>
                     <canvas id="signatureCanvas" width="400" height="200"></canvas>
@@ -209,6 +212,7 @@
 
         async function completeDelivery() {
             const customerName = document.getElementById('customerName').value.trim();
+            const customerTitle = document.getElementById('customerTitle').value.trim();
             
             if (!customerName) {
                 alert('Lütfen teslim alan kişinin adını giriniz');
@@ -225,18 +229,18 @@
             }
             
             try {
-                const token = localStorage.getItem('token');
-                const signatureData = canvas.toDataURL();
+                const signatureData = canvas.toDataURL('image/png');
                 
                 const response = await fetch(`/api/delivery-notes/${currentDeliveryId}/sign`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
-                        signature: signatureData,
-                        customerName: customerName
+                        customer_signature: signatureData,
+                        customer_name: customerName,
+                        customer_title: customerTitle
                     })
                 });
                 

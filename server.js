@@ -2732,7 +2732,7 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
 }
 
 // İrsaliye imzala ve teslimatı tamamla
-app.put("/api/delivery-notes/:id/sign", authenticateToken, async (req, res) => {
+app.put("/api/delivery-notes/:id/sign", authenticateToken, checkPermission('delivery.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { customer_signature, customer_name, customer_title } = req.body;
