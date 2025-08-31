@@ -100,14 +100,12 @@
         async function loadDeliveryNoteData() {
             try {
                 // İrsaliye bilgilerini doğrudan ID ile al
-                const deliveryNote = await apiCall(`/api/cari/delivery-notes/${deliveryNoteId}`);
-
-                if (!deliveryNote) {
-                    throw new Error('İrsaliye bulunamadı');
-                }
+                const deliveryNoteResponse = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const deliveryNote = deliveryNoteResponse.delivery_note || deliveryNoteResponse;
 
                 // İrsaliye kalemlerini al
-                const items = await apiCall(`/api/cari/delivery-notes/${deliveryNoteId}/items`);
+                const itemsResponse = await apiCall(`/api/delivery-notes/${deliveryNoteId}/items`);
+                const items = itemsResponse.items || [];
 
                 // İrsaliye bilgilerini göster
                 document.getElementById('deliveryInfo').innerHTML = `
@@ -118,9 +116,9 @@
                             <p><strong>Teslimat Tarihi:</strong> ${new Date(deliveryNote.delivery_date).toLocaleDateString('tr-TR')}</p>
                         </div>
                         <div>
-                            <p><strong>Toplam Tutar:</strong> ${deliveryNote.total_amount} TL</p>
+                            <p><strong>Toplam Tutar:</strong> ${deliveryNote.total_amount ? deliveryNote.total_amount + ' TL' : 'Hesaplanmadı'}</p>
                             <p><strong>Oluşturan:</strong> ${deliveryNote.created_by_name || 'Bilinmiyor'}</p>
-                            <p><strong>Durum:</strong> <span class="status-badge ${deliveryNote.is_invoiced ? 'status-invoiced' : 'status-pending'}">${deliveryNote.invoice_status}</span></p>
+                            <p><strong>Durum:</strong> <span class="status-badge status-${deliveryNote.status}">${deliveryNote.status}</span></p>
                         </div>
                     </div>
                 `;
@@ -155,8 +153,8 @@
                                 <td>${item.product_name || 'Bilinmiyor'}</td>
                                 <td>${item.quantity}</td>
                                 <td>${item.unit || 'adet'}</td>
-                                <td>${item.unit_price} TL</td>
-                                <td>${item.total_price} TL</td>
+                                <td>${item.unit_price ? item.unit_price + ' TL' : '-'}</td>
+                                <td>${item.total_price ? item.total_price + ' TL' : '-'}</td>
                             </tr>
                         `;
                     });
@@ -167,7 +165,7 @@
                         <tfoot>
                             <tr style="background: #f8f9fa; font-weight: 600;">
                                 <td colspan="4">GENEL TOPLAM</td>
-                                <td>${deliveryNote.total_amount} TL</td>
+                                <td>${deliveryNote.total_amount ? deliveryNote.total_amount + ' TL' : '-'}</td>
                             </tr>
                         </tfoot>
                     </table>

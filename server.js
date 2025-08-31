@@ -340,40 +340,6 @@ app.post("/api/login", async (req, res) => {
     
     const user = result.rows[0];
     console.log("✅ Kullanıcı bulundu:", user.username);
-    console.log("DB'deki şifre:", user.password_hash);
-    console.log("Girilen şifre:", password);
-    
-    // GEÇICI: Düz metin karşılaştırması
-    if (user.password_hash === password) {
-      console.log("✅ Düz metin şifre eşleşti!");
-      
-      // JWT token oluştur
-      const token = jwt.sign(
-        { 
-          userId: user.id, 
-          username: user.username, 
-          role: user.role_name,
-          permissions: user.permissions || {} // Yetkileri token'a ekle
-        },
-        JWT_SECRET || "fallback_secret_key_change_in_production", // Geliştirme için fallback
-        { expiresIn: "24h" }
-      );
-      
-      return res.json({ 
-        success: true,
-        token,
-        user: {
-          id: user.id,
-          username: user.username,
-          full_name: user.full_name,
-          role_id: user.role_id,
-          role_name: user.role_name,
-          department_id: user.department_id,
-          department_name: user.department_name,
-          permissions: user.permissions || {}
-        }
-      });
-    }
     
     // bcrypt dene
     try {
