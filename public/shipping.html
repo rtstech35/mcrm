@@ -597,6 +597,26 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation (for mobile) -->
+    <div class="bottom-nav">
+        <a href="#" onclick="loadDashboardData(); return false;" class="nav-item active">
+            <span class="nav-icon">📊</span>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" onclick="showDeliveryNotes('')" class="nav-item">
+            <span class="nav-icon">📋</span>
+            <span>İrsaliyeler</span>
+        </a>
+        <a href="#" onclick="loadCustomerMap()" class="nav-item">
+            <span class="nav-icon">🗺️</span>
+            <span>Harita</span>
+        </a>
+        <a href="#" onclick="openProfile()" class="nav-item">
+            <span class="nav-icon">👤</span>
+            <span>Profil</span>
+        </a>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let authToken = localStorage.getItem('authToken');

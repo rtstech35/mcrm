@@ -1353,20 +1353,21 @@
                     <div class="card">
                         <h2>Kullanıcı Yönetimi</h2>
                         <button class="btn" onclick="openUserModal()">Yeni Kullanıcı</button>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Kullanıcı Adı</th>
-                                    <th>Ad Soyad</th>
-                                    <th>E-posta</th>
-                                    <th>Departman</th>
-                                    <th>Rol</th>
-                                    <th>Durum</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Kullanıcı Adı</th>
+                                        <th>Ad Soyad</th>
+                                        <th>E-posta</th>
+                                        <th>Departman</th>
+                                        <th>Rol</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
                 
                 users.forEach(user => {
@@ -1387,7 +1388,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
                 // Modal için seçenekleri hazırla
@@ -1413,19 +1414,20 @@
                     <div class="card">
                         <h2>Müşteri Yönetimi</h2>
                         <button class="btn" onclick="openCustomerModal()">Yeni Müşteri</button>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Şirket Adı</th>
-                                    <th>Yetkili</th>
-                                    <th>Telefon</th>
-                                    <th>Satış Temsilcisi</th>
-                                    <th>Durum</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Şirket Adı</th>
+                                        <th>Yetkili</th>
+                                        <th>Telefon</th>
+                                        <th>Satış Temsilcisi</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
                 
                 customers.forEach(customer => {
@@ -2112,18 +2114,19 @@
                         <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
                         <button class="btn" onclick="openTransactionModal()" style="margin-bottom: 1rem;">Yeni İşlem</button>
 
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Tarih</th>
-                                    <th>Müşteri</th>
-                                    <th>İşlem Tipi</th>
-                                    <th>Tutar</th>
-                                    <th>Açıklama</th>
-                                    <th>Referans No</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Tarih</th>
+                                        <th>Müşteri</th>
+                                        <th>İşlem Tipi</th>
+                                        <th>Tutar</th>
+                                        <th>Açıklama</th>
+                                        <th>Referans No</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                 ${transactions.map(transaction => `
                                     <tr>
                                         <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
@@ -2140,8 +2143,8 @@
                                         <td>${transaction.reference_number || '-'}</td>
                                     </tr>
                                 `).join('')}
-                            </tbody>
-                        </table>
+                            </tbody></table>
+                        </div>
                     </div>
                 `;
                 
@@ -2737,21 +2740,22 @@
                     <div class="card">
                         <h2>Ürün Yönetimi</h2>
                         <button class="btn" onclick="openProductModal()">Yeni Ürün</button>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Ürün Adı</th>
-                                    <th>Açıklama</th>
-                                    <th>Fiyat (KDV Hariç)</th>
-                                    <th>KDV %</th>
-                                    <th>Fiyat (KDV Dahil)</th>
-                                    <th>Birim</th>
-                                    <th>Durum</th>
-                                    <th>İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Ürün Adı</th>
+                                        <th>Açıklama</th>
+                                        <th>Fiyat (KDV Hariç)</th>
+                                        <th>KDV %</th>
+                                        <th>Fiyat (KDV Dahil)</th>
+                                        <th>Birim</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
 
                 if (products.length === 0) {
@@ -2783,7 +2787,7 @@
                     });
                 }
 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
@@ -2827,17 +2831,18 @@
                             </div>
                         </div>
 
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Sipariş No</th>
-                                    <th>Müşteri</th>
-                                    <th>Tarih</th>
-                                    <th>Tutar</th>
-                                    <th>Durum</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Sipariş No</th>
+                                        <th>Müşteri</th>
+                                        <th>Tarih</th>
+                                        <th>Tutar</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
                 
                 orders.forEach(order => {
@@ -2852,7 +2857,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
@@ -3313,7 +3318,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
@@ -3498,7 +3503,7 @@
                     `;
                 });
 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
 
             } catch (error) {
@@ -3608,7 +3613,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
@@ -3666,24 +3671,26 @@
                             </div>
                         </div>
 
-                        <div id="targetsTable">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Kullanıcı</th>
-                                        <th>Departman</th>
-                                        <th>Satış Hedefi</th>
-                                        <th>Ziyaret Hedefi</th>
-                                        <th>Üretim Hedefi</th>
-                                        <th>Ciro Hedefi</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="targetsTableBody">
-                                    <!-- Hedefler buraya yüklenecek -->
-                                </tbody>
-                            </table>
+                        <div id="targetsTable" class="table-responsive">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Kullanıcı</th>
+                                            <th>Departman</th>
+                                            <th>Satış Hedefi</th>
+                                            <th>Ziyaret Hedefi</th>
+                                            <th>Üretim Hedefi</th>
+                                            <th>Ciro Hedefi</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="targetsTableBody">
+                                        <!-- Hedefler buraya yüklenecek -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -3968,23 +3975,25 @@
                         </div>
 
                         <div id="deliveryNotesTable">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>İrsaliye No</th>
-                                        <th>Müşteri</th>
-                                        <th>Sipariş</th>
-                                        <th>Teslimat Tarihi</th>
-                                        <th>Sevkiyat Personeli</th>
-                                        <th>Durum</th>
-                                        <th>İmza</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="deliveryNotesTableBody">
-                                    <!-- İrsaliyeler buraya yüklenecek -->
-                                </tbody>
-                            </table>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>İrsaliye No</th>
+                                            <th>Müşteri</th>
+                                            <th>Sipariş</th>
+                                            <th>Teslimat Tarihi</th>
+                                            <th>Sevkiyat Personeli</th>
+                                            <th>Durum</th>
+                                            <th>İmza</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="deliveryNotesTableBody">
+                                        <!-- İrsaliyeler buraya yüklenecek -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4327,23 +4336,25 @@
                         </div>
 
                         <div id="appointmentsTable">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Başlık</th>
-                                        <th>Tür</th>
-                                        <th>Atanan Kişi</th>
-                                        <th>Müşteri</th>
-                                        <th>Tarih & Saat</th>
-                                        <th>Öncelik</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="appointmentsTableBody">
-                                    <!-- Randevular buraya yüklenecek -->
-                                </tbody>
-                            </table>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Başlık</th>
+                                            <th>Tür</th>
+                                            <th>Atanan Kişi</th>
+                                            <th>Müşteri</th>
+                                            <th>Tarih & Saat</th>
+                                            <th>Öncelik</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="appointmentsTableBody">
+                                        <!-- Randevular buraya yüklenecek -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 `;

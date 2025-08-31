@@ -865,17 +865,18 @@
                     <div class="card">
                         <h2>Siparişlerim</h2>
                         <button class="btn" onclick="openOrderModal()">Yeni Sipariş</button>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Sipariş No</th>
-                                    <th>Müşteri</th>
-                                    <th>Tarih</th>
-                                    <th>Tutar</th>
-                                    <th>Durum</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Sipariş No</th>
+                                        <th>Müşteri</th>
+                                        <th>Tarih</th>
+                                        <th>Tutar</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                 `;
                 
                 myOrders.forEach(order => {
@@ -891,7 +892,7 @@
                     `;
                 });
                 
-                html += '</tbody></table></div>';
+                html += '</tbody></table></div></div>';
                 document.getElementById('content').innerHTML = html;
                 
             } catch (error) {
