@@ -22,14 +22,6 @@ if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
     console.warn("⚠️ UYARI: JWT_SECRET tanımlanmamış. Geliştirme için geçici anahtar kullanılacak. Production'da mutlaka ayarlayın!");
 }
 
-let setupDatabase;
-try {
-  setupDatabase = require("./setup-database");
-  console.log('✅ setup-database.js yüklendi');
-} catch (error) {
-  console.log('⚠️ setup-database.js yüklenemedi:', error.message);
-}
-
 const app = express();
 
 // Production için güvenli CORS ayarları
@@ -126,22 +118,7 @@ if (pool && pool.connect) {
       // Order items tablosunu kontrol et
       await ensureOrderItemsTable();
 
-      // DİKKAT: Production'da otomatik ve yıkıcı database setup'ı engelle!
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          console.log("🔄 Geliştirme ortamı için database setup kontrol ediliyor...");
-          if (setupDatabase) {
-            await setupDatabase();
-            console.log("✅ Geliştirme ortamı için database setup tamamlandı");
-          } else {
-            console.log("⚠️ setupDatabase fonksiyonu bulunamadı, manuel kurulum gerekli");
-          }
-        } catch (error) {
-          console.log("⚠️ Database setup hatası:", error.message);
-        }
-      } else {
-        console.log("✅ Production ortamı, otomatik database setup atlandı.");
-      }
+      console.log("✅ Production ortamı, otomatik database setup atlandı. Kurulum için 'npm run setup-db' komutunu kullanın.");
     })
     .catch(err => {
       console.error("❌ PostgreSQL bağlantı hatası:", err);
