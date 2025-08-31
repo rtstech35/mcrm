@@ -666,9 +666,13 @@
         });
 
         function logout() {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            window.location.href = '/';
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('token'); // Eski anahtarları da temizle
+                localStorage.removeItem('user');   // Eski anahtarları da temizle
+                window.location.href = '/';
+            }
         }
 
         showDashboard();
