@@ -505,6 +505,21 @@
         </div>
     </div>
 
+    <!-- İmzalı İrsaliye Görüntüleme Modal -->
+    <div id="viewSignatureModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>İmzalı İrsaliye Detayı</h3>
+                <button class="close-btn" onclick="closeModal('viewSignatureModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="viewSignatureContent">
+                <!-- Content will be loaded by JS -->
+            </div>
+            <div class="modal-footer" style="text-align: right; padding-top: 15px; border-top: 1px solid #eee;">
+                <button onclick="closeModal('viewSignatureModal')" class="btn btn-secondary">Kapat</button>
+            </div>
+        </div>
+    </div>
     <!-- İrsaliye Listesi Modal -->
     <div id="deliveryNotesModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
@@ -930,7 +945,7 @@
                     let productsHtml = '';
                     if (note.order_id) {
                         try {
-                            const itemsResponse = await fetch(`/api/orders/${note.order_id}/items`, {
+                            const itemsResponse = await fetch(`/api/delivery-notes/${note.id}/items`, {
                                 headers: { 'Authorization': `Bearer ${authToken}` }
                             });
                             if (itemsResponse.ok) {
@@ -976,7 +991,9 @@
                                 <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
                                     ${status === 'pending' ? `<button onclick="startShipping(${note.id}, '${address}', ${lat}, ${lng})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
                                     ${status === 'in_transit' ? `<button onclick="showSignatureModal(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button><button onclick="startNavigation(${lat}, ${lng}, '${address}')" class="btn" style="background: #17a2b8; color: white; font-size: 12px; padding: 8px 12px;">🗺️ Navigasyon Başlat</button>` : ''}
-                                    ${status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : ''}
+                                    ${status === 'delivered' && note.customer_signature ? 
+                                        `<button onclick="viewSignedNote(${note.id})" class="btn" style="background: #007bff; font-size: 12px; padding: 8px 12px;">✍️ İmzalı Gör</button>` : 
+                                        (status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : '')}
                                 </div>
                             </div>
                         </div>
@@ -1007,12 +1024,16 @@
         document.addEventListener('click', function(event) {
             const deliveryNotesModal = document.getElementById('deliveryNotesModal');
             const signatureModal = document.getElementById('signatureModal');
+            const viewSignatureModal = document.getElementById('viewSignatureModal');
             
             if (deliveryNotesModal && event.target === deliveryNotesModal) {
                 closeDeliveryNotesModal();
             }
             if (signatureModal && event.target === signatureModal) {
                 closeSignatureModal();
+            }
+            if (viewSignatureModal && event.target === viewSignatureModal) {
+                closeModal('viewSignatureModal');
             }
         });
         
@@ -1086,6 +1107,39 @@
             } catch (error) {
                 console.error('Sevkiyat başlatma hatası:', error);
                 alert('Sevkiyat başlatılamadı: ' + error.message);
+            }
+        }
+
+        async function viewSignedNote(deliveryNoteId) {
+            try {
+                const response = await fetch(`/api/delivery-notes/${deliveryNoteId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('İrsaliye bilgileri alınamadı.');
+                const data = await response.json();
+                const note = data.delivery_note;
+
+                if (!note.customer_signature) {
+                    alert('Bu irsaliye için imza bulunmuyor.');
+                    return;
+                }
+
+                const contentEl = document.getElementById('viewSignatureContent');
+                contentEl.innerHTML = `
+                    <p><strong>İrsaliye No:</strong> ${note.delivery_number}</p>
+                    <p><strong>Müşteri:</strong> ${note.customer_name}</p>
+                    <hr style="margin: 1rem 0;">
+                    <p><strong>İmzalayan:</strong> ${note.customer_name || 'Bilinmiyor'}</p>
+                    <p><strong>Unvan:</strong> ${note.customer_title || 'Belirtilmemiş'}</p>
+                    <p><strong>Tarih:</strong> ${new Date(note.signature_date).toLocaleString('tr-TR')}</p>
+                    <div style="margin-top: 1rem; border: 1px solid #ccc; padding: 5px; border-radius: 4px; text-align: center;">
+                        <img src="${note.customer_signature}" alt="Müşteri İmzası" style="max-width: 100%; height: auto;">
+                    </div>
+                `;
+                
+                document.getElementById('viewSignatureModal').style.display = 'flex';
+            } catch (error) {
+                alert('Hata: ' + error.message);
             }
         }
 
