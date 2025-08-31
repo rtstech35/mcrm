@@ -3520,28 +3520,36 @@ app.get("/api/test-connection", async (req, res) => {
 });
 
 // Dashboard için eksik endpoint'ler
-app.get("/api/dashboard/monthly-sales", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT COALESCE(SUM(total_amount), 0) as monthlySales 
-      FROM orders 
-      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-    `);
-    
-    res.json({
-      success: true,
-      monthlySales: parseFloat(result.rows[0].monthlysales) || 0,
-      target: 600000
-    });
-  } catch (error) {
-    console.error('Monthly sales hatası:', error);
-    res.status(500).json({
-      success: false,
-      monthlySales: 0,
-      target: 600000
-    });
-  }
+app.get("/api/dashboard/monthly-sales", authenticateToken, async (req, res) => {
+    try {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        // Gerçekleşen aylık satışı al
+        const salesResult = await pool.query(`
+            SELECT COALESCE(SUM(total_amount), 0) as monthlySales 
+            FROM orders 
+            WHERE EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2
+        `, [currentYear, currentMonth]);
+        const monthlySales = parseFloat(salesResult.rows[0].monthlysales) || 0;
+
+        // Aylık toplam hedefi user_targets tablosundan al
+        let monthlyTarget = 0;
+        const tableExists = await checkTableExists('user_targets');
+        if (tableExists) {
+            const targetResult = await pool.query(`
+                SELECT COALESCE(SUM(sales_target), 0) as totalTarget
+                FROM user_targets
+                WHERE target_year = $1 AND target_month = $2
+            `, [currentYear, currentMonth]);
+            monthlyTarget = parseFloat(targetResult.rows[0].totaltarget) || 0;
+        }
+
+        res.json({ success: true, monthlySales: monthlySales, target: monthlyTarget });
+    } catch (error) {
+        console.error('Monthly sales hatası:', error);
+        res.status(500).json({ success: false, monthlySales: 0, target: 0, error: error.message });
+    }
 });
 
 // Hedefler API - Sales.html için
@@ -4835,43 +4843,53 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
 });
 
 // Admin dashboard stats
-app.get("/api/dashboard/stats", async (req, res) => {
-  try {
-    console.log('📊 Admin Dashboard stats isteği geldi');
-    const stats = {};
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
+app.get("/api/dashboard/stats", authenticateToken, async (req, res) => {
+    try {
+        console.log('📊 Admin Dashboard stats isteği geldi');
+        const stats = {};
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
 
-    // General counts
-    const counts = await Promise.all([
-      pool.query('SELECT COUNT(*) FROM users'),
-      pool.query('SELECT COUNT(*) FROM customers'),
-      pool.query('SELECT COUNT(*) FROM orders'),
-      pool.query('SELECT COUNT(*) FROM products')
-    ]);
-    stats.userCount = parseInt(counts[0].rows[0].count);
-    stats.customerCount = parseInt(counts[1].rows[0].count);
-    stats.orderCount = parseInt(counts[2].rows[0].count);
-    stats.productCount = parseInt(counts[3].rows[0].count);
+        // General counts
+        const counts = await Promise.all([
+            pool.query('SELECT COUNT(*) FROM users'),
+            pool.query('SELECT COUNT(*) FROM customers'),
+            pool.query('SELECT COUNT(*) FROM orders'),
+            pool.query('SELECT COUNT(*) FROM products')
+        ]);
+        stats.userCount = parseInt(counts[0].rows[0].count);
+        stats.customerCount = parseInt(counts[1].rows[0].count);
+        stats.orderCount = parseInt(counts[2].rows[0].count);
+        stats.productCount = parseInt(counts[3].rows[0].count);
 
-    // Order statuses
-    const orderStatusResult = await pool.query(`
-      SELECT status, COUNT(*) as count FROM orders GROUP BY status
-    `);
-    const orderStatuses = orderStatusResult.rows.reduce((acc, row) => {
-      acc[row.status] = parseInt(row.count);
-      return acc;
-    }, {});
-    stats.pendingOrders = orderStatuses.pending || 0;
-    stats.productionOrders = orderStatuses.production || 0;
-    stats.completedOrders = orderStatuses.completed || 0;
-    stats.deliveredOrders = orderStatuses.delivered || 0;
+        // Order statuses
+        const orderStatusResult = await pool.query(`SELECT status, COUNT(*) as count FROM orders GROUP BY status`);
+        const orderStatuses = orderStatusResult.rows.reduce((acc, row) => {
+            if (row.status) acc[row.status] = parseInt(row.count);
+            return acc;
+        }, {});
+        stats.pendingOrders = orderStatuses.pending || 0;
+        stats.productionOrders = orderStatuses.production || 0;
+        stats.completedOrders = orderStatuses.completed || 0;
+        stats.deliveredOrders = orderStatuses.delivered || 0;
 
-    res.json({ success: true, stats: stats });
-  } catch (error) {
-    console.error('Admin Dashboard stats API hatası:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+        // Financial stats
+        const financialStats = await Promise.all([
+            pool.query('SELECT COALESCE(SUM(total_amount), 0) as total FROM orders'),
+            pool.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2`, [currentYear, currentMonth]),
+            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM account_transactions WHERE transaction_type = 'credit'`),
+            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM account_transactions WHERE transaction_type = 'debit'`)
+        ]);
+
+        stats.totalRevenue = parseFloat(financialStats[0].rows[0].total);
+        stats.monthlyRevenue = parseFloat(financialStats[1].rows[0].total);
+        stats.accountBalance = parseFloat(financialStats[3].rows[0].total) - parseFloat(financialStats[2].rows[0].total);
+
+        res.json({ success: true, stats: stats });
+    } catch (error) {
+        console.error('Admin Dashboard stats API hatası:', error);
+        res.status(500).json({ success: false, error: error.message, stats: {} });
+    }
 });
 
 // Siparişler API
