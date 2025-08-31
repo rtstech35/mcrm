@@ -40,25 +40,37 @@
 
     <div class="container">
         <div class="sidebar" style="background: #007bff; position: fixed; width: 280px; height: 100vh; overflow-y: auto;">
-            <h3 style="color: white; padding: 0 1.5rem; margin-bottom: 1rem;">Menü</h3>
-            <ul id="adminMenu" style="list-style: none; padding: 0; padding-left: 1.5rem;">
-                <li data-key="admin_dashboard"><a href="#" onclick="showDashboard()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📊 Dashboard</a></li>
-                <li data-key="admin_users"><a href="#" onclick="showUsers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">👥 Kullanıcılar</a></li>
-                <li data-key="admin_customers"><a href="#" onclick="showCustomers()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Müşteriler</a></li>
-                <li data-key="admin_products"><a href="#" onclick="showProducts()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📦 Ürünler</a></li>
-                <li data-key="admin_orders"><a href="#" onclick="showOrders()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 Siparişler</a></li>
-                <li data-key="admin_departments"><a href="#" onclick="showDepartments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🏢 Departmanlar</a></li>
-                <li data-key="admin_roles"><a href="#" onclick="showRoles()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔐 Roller</a></li>
-                <li data-key="admin_permissions"><a href="#" onclick="showPermissions()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔑 Yetki Yönetimi</a></li>
-                <li data-key="admin_delivery_notes"><a href="#" onclick="showDeliveryNotes()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📋 İrsaliyeler</a></li>
-                <li data-key="admin_appointments"><a href="#" onclick="showAppointments()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📅 Randevular</a></li>
-                <li data-key="admin_accounts"><a href="#" onclick="showCariHesap()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">💰 Cari Hesap</a></li>
-                <li data-key="admin_mail_settings"><a href="mail-settings.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">📧 Mail Ayarları</a></li>
-                <li data-key="admin_setup"><a href="setup.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🔧 Sistem Kurulumu</a></li>
-                <li data-key="admin_map"><a href="/map.html" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🗺️ Harita</a></li>
-                <li data-key="admin_api_test"><a href="#" onclick="testAPI()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🧪 API Test</a></li>
-                <li data-key="admin_test_data"><a href="#" onclick="createTestData()" style="color: rgba(255,255,255,0.9); text-decoration: none; display: block; padding: 0.5rem 0;">🎯 Test Verilerini Oluştur</a></li>
-                <li data-key="logout"><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6); text-decoration: none; display: block; padding: 0.5rem 0;">🚺 Çıkış</a></li>
+            <h3 style="color: white; padding: 0 1.5rem; margin-bottom: 1rem;">Yönetim Paneli</h3>
+            <ul id="adminMenu" style="list-style: none; padding: 0;">
+                <li class="menu-header">Genel Yönetim</li>
+                <li data-key="admin_dashboard"><a href="#" onclick="showDashboard()">📊 Dashboard</a></li>
+                <li data-key="admin_users"><a href="#" onclick="showUsers()">👥 Kullanıcılar</a></li>
+                <li data-key="admin_departments"><a href="#" onclick="showDepartments()">🏢 Departmanlar</a></li>
+                <li data-key="admin_roles"><a href="#" onclick="showRoles()">🔐 Roller</a></li>
+                <li data-key="admin_permissions"><a href="#" onclick="showPermissions()">🔑 Yetki Yönetimi</a></li>
+                
+                <li class="menu-header">Satış Yönetimi</li>
+                <li data-key="admin_customers"><a href="#" onclick="showCustomers()">🏢 Müşteriler</a></li>
+                <li data-key="admin_appointments"><a href="#" onclick="showAppointments()">📅 Randevular</a></li>
+                <li data-key="admin_map"><a href="/map.html">🗺️ Harita</a></li>
+
+                <li class="menu-header">Üretim Yönetimi</li>
+                <li data-key="admin_products"><a href="#" onclick="showProducts()">📦 Ürünler</a></li>
+                <li data-key="admin_orders"><a href="#" onclick="showOrders()">📋 Siparişler</a></li>
+
+                <li class="menu-header">Sevkiyat Yönetimi</li>
+                <li data-key="admin_delivery_notes"><a href="#" onclick="showDeliveryNotes()">📋 İrsaliyeler</a></li>
+
+                <li class="menu-header">Muhasebe Yönetimi</li>
+                <li data-key="admin_accounts"><a href="#" onclick="showCariHesap()">💰 Cari Hesap</a></li>
+
+                <li class="menu-header">Sistem</li>
+                <li data-key="admin_mail_settings"><a href="mail-settings.html">📧 Mail Ayarları</a></li>
+                <li data-key="admin_setup"><a href="setup.html">🔧 Sistem Kurulumu</a></li>
+                <li data-key="admin_api_test"><a href="#" onclick="testAPI()">🧪 API Test</a></li>
+                <li data-key="admin_test_data"><a href="#" onclick="createTestData()">🎯 Test Verileri Oluştur</a></li>
+                
+                <li data-key="logout"><a href="#" onclick="logout()" style="margin-top: 2rem; color: rgba(255,255,255,0.6);">🚺 Çıkış</a></li>
             </ul>
             
         </div>
