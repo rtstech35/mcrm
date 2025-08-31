@@ -22,27 +22,13 @@ END $$;
 -- Mevcut rolleri güncelle
 UPDATE roles SET 
     level = CASE 
-        WHEN name ILIKE '%admin%' THEN 4
-        WHEN name ILIKE '%manager%' THEN 3
-        WHEN name ILIKE '%employee%' OR name ILIKE '%sales%' OR name ILIKE '%production%' OR name ILIKE '%shipping%' OR name ILIKE '%accounting%' OR name ILIKE '%warehouse%' THEN 2
+        WHEN name ILIKE '%admin%' THEN 4 -- Admin
+        WHEN name ILIKE '%müdür%' OR name ILIKE '%sorumlusu%' THEN 3 -- Satış Müdürü, Depo Müdürü, Sevkiyat Sorumlusu etc.
+        WHEN name ILIKE '%personeli%' OR name ILIKE '%temsilcisi%' OR name ILIKE '%sevkiyatçı%' THEN 2 -- Satış Personeli, Depo Personeli etc.
         ELSE 1
     END,
     is_active = true
 WHERE level IS NULL OR is_active IS NULL;
-
--- Temel rollerin varlığını kontrol et ve eksikleri ekle
--- ON CONFLICT (name) DO UPDATE kullanarak script'i idempotent (tekrarlanabilir) yapıyoruz.
--- Bu, rol zaten varsa hata vermek yerine güncelleme yapar.
-INSERT INTO roles (name, description, level, is_active, permissions) VALUES
-    ('Admin', 'Sistem Yöneticisi - Tüm yetkilere sahip', 4, true, '{"all": true}'::jsonb),
-    ('Manager', 'Departman Yöneticisi - Yönetim yetkileri', 3, true, '{"department": ["read", "create", "update"], "reports": ["read"]}'::jsonb),
-    ('Employee', 'Çalışan - Temel işlem yetkileri', 2, true, '{"basic": ["read", "create", "update"]}'::jsonb),
-    ('Viewer', 'Görüntüleyici - Sadece okuma yetkisi', 1, true, '{"all": ["read"]}'::jsonb)
-ON CONFLICT (name) DO UPDATE SET
-    description = EXCLUDED.description,
-    level = EXCLUDED.level,
-    is_active = EXCLUDED.is_active,
-    permissions = EXCLUDED.permissions;
 
 -- Başarı mesajı
 DO $$ 
