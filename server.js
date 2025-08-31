@@ -4844,11 +4844,14 @@ app.post("/api/orders", authenticateToken, checkPermission('orders.create'), asy
     // Sipariş numarası oluştur
     const orderNum = `SIP${Date.now()}`;
     
+    // Eğer teslimat tarihi boş gelirse, veritabanına NULL olarak kaydet.
+    const finalDeliveryDate = delivery_date || null;
+
     const result = await pool.query(`
       INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, delivery_date, total_amount, notes, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
       RETURNING *
-    `, [orderNum, customer_id, sales_rep_id, order_date, delivery_date, parseFloat(total_amount), notes]);
+    `, [orderNum, customer_id, sales_rep_id, order_date, finalDeliveryDate, parseFloat(total_amount), notes]);
     
     const orderId = result.rows[0].id;
     console.log(`📦 Sipariş oluşturuldu, ID: ${orderId}`);
