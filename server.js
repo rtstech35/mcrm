@@ -2352,6 +2352,31 @@ app.get("/api/delivery-notes/:id", authenticateToken, checkPermission('delivery.
   }
 });
 
+// İrsaliye kalemlerini getir
+app.get("/api/delivery-notes/:id/items", authenticateToken, checkPermission('delivery.read'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT dni.*, p.name as product_name_from_db
+      FROM delivery_note_items dni
+      LEFT JOIN products p ON dni.product_id = p.id
+      WHERE dni.delivery_note_id = $1
+      ORDER BY dni.id
+    `, [id]);
+
+    // Fallback to product_name from products table if it's not in delivery_note_items
+    const items = result.rows.map(item => ({
+        ...item,
+        product_name: item.product_name || item.product_name_from_db || 'Bilinmeyen Ürün'
+    }));
+
+    res.json({ success: true, items: items });
+  } catch (error) {
+    console.error(`Delivery note items API hatası (ID: ${req.params.id}):`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get("/api/delivery-notes/generate-number", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
   try {
     const now = new Date();
