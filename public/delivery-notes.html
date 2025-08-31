@@ -32,6 +32,21 @@
         </div>
     </div>
 
+    <!-- İrsaliye Detay Modal -->
+    <div id="deliveryDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 id="deliveryDetailTitle">İrsaliye Detayı</h2>
+                <span class="close" onclick="closeModal('deliveryDetailModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="deliveryDetailContent">
+                <!-- Detaylar buraya yüklenecek -->
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('deliveryDetailModal')" class="btn btn-secondary">Kapat</button>
+            </div>
+        </div>
+    </div>
     <!-- Yeni İrsaliye Modal -->
     <div id="newDeliveryModal" class="modal">
         <div class="modal-content">
@@ -176,8 +191,47 @@
             return buttons;
         }
 
-        async function assignShipping(deliveryNoteId) {
+        async function viewDeliveryNote(id) {
             try {
+                const [noteResponse, itemsResponse] = await Promise.all([
+                    apiCall(`/api/delivery-notes/${id}`),
+                    apiCall(`/api/delivery-notes/${id}/items`)
+                ]);
+
+                const note = noteResponse.delivery_note;
+                const items = itemsResponse.items || [];
+
+                document.getElementById('deliveryDetailTitle').textContent = `İrsaliye Detayı: ${note.delivery_number}`;
+
+                let itemsHtml = '<p>Bu irsaliyeye ait ürün bulunamadı.</p>';
+                if (items.length > 0) {
+                    itemsHtml = `
+                        <table class="table">
+                            <thead><tr><th>Ürün</th><th>Miktar</th><th>Birim</th></tr></thead>
+                            <tbody>
+                                ${items.map(item => `<tr><td>${item.product_name}</td><td>${item.quantity}</td><td>${item.unit || 'adet'}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+
+                document.getElementById('deliveryDetailContent').innerHTML = `
+                    <p><strong>Müşteri:</strong> ${note.customer_name}</p>
+                    <p><strong>Tarih:</strong> ${formatDate(note.delivery_date)}</p>
+                    <p><strong>Durum:</strong> ${getStatusText(note.status)}</p>
+                    <p><strong>Adres:</strong> ${note.delivery_address || note.customer_address || 'Belirtilmemiş'}</p>
+                    <hr style="margin: 1rem 0;">
+                    <h4>Ürünler</h4>
+                    ${itemsHtml}
+                `;
+
+                document.getElementById('deliveryDetailModal').style.display = 'block';
+            } catch (error) {
+                alert('Detaylar yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function assignShipping(deliveryNoteId) {            try {
                 // Sevkiyat personelini seç
                 const usersResponse = await fetch('/api/users?role=shipping', {
                     headers: { 'Authorization': `Bearer ${authToken}` }
@@ -215,10 +269,6 @@
                 console.error('Hata:', error);
                 alert('Sevkiyat ataması sırasında hata oluştu');
             }
-        }
-
-        function viewDeliveryNote(id) {
-            window.location.href = `delivery-note-detail.html?id=${id}`;
         }
 
         function createInvoice(deliveryNoteId) {
@@ -263,6 +313,11 @@
         function closeNewDeliveryModal() {
             document.getElementById('newDeliveryModal').style.display = 'none';
             document.getElementById('newDeliveryForm').reset();
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
         }
         
         async function generateDeliveryNumber() {
@@ -348,6 +403,10 @@
             const modal = document.getElementById('newDeliveryModal');
             if (event.target === modal) {
                 closeNewDeliveryModal();
+            }
+            const detailModal = document.getElementById('deliveryDetailModal');
+            if (event.target === detailModal) {
+                closeModal('deliveryDetailModal');
             }
         }
     </script>
