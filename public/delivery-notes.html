@@ -84,11 +84,11 @@
 
     <script>
         let deliveryNotes = [];
+        let authToken = localStorage.getItem('authToken');
 
         async function loadDeliveryNotes() {
             try {
-                const token = localStorage.getItem('token');
-                if (!token) {
+                if (!authToken) {
                     alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
                     window.location.href = 'index.html';
                     return;
@@ -102,11 +102,11 @@
                 }
                 
                 const response = await fetch(url, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (!response.ok) {
-                    if (response.status === 401) {
+                    if (response.status === 401 || response.status === 403) {
                         alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
                         window.location.href = 'index.html';
                         return;
@@ -114,7 +114,8 @@
                     throw new Error('İrsaliyeler yüklenemedi');
                 }
                 
-                deliveryNotes = await response.json();
+                const data = await response.json();
+                deliveryNotes = data.delivery_notes || [];
                 renderDeliveryNotes();
             } catch (error) {
                 console.error('Hata:', error);
@@ -177,13 +178,13 @@
 
         async function assignShipping(deliveryNoteId) {
             try {
-                const token = localStorage.getItem('token');
-                
                 // Sevkiyat personelini seç
-                const shippingUsers = await fetch('/api/users?role=shipping', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const usersResponse = await fetch('/api/users?role=shipping', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 }).then(r => r.json());
                 
+                const shippingUsers = usersResponse.users || [];
+
                 if (shippingUsers.length === 0) {
                     alert('Sevkiyat personeli bulunamadı');
                     return;
@@ -198,7 +199,7 @@
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         status: 'in_transit',
@@ -232,9 +233,8 @@
         async function openNewDeliveryModal() {
             try {
                 // Müşterileri yükle
-                const token = localStorage.getItem('token');
                 const response = await fetch('/api/customers', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (response.ok) {
@@ -267,17 +267,16 @@
         
         async function generateDeliveryNumber() {
             try {
-                const token = localStorage.getItem('token');
-                if (!token) {
+                if (!authToken) {
                     throw new Error('Oturum süresi dolmuş');
                 }
                 
                 const response = await fetch('/api/delivery-notes/generate-number', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 
                 if (!response.ok) {
-                    if (response.status === 401) {
+                    if (response.status === 401 || response.status === 403) {
                         alert('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
                         window.location.href = 'index.html';
                         return;
@@ -305,7 +304,6 @@
         
         async function saveNewDelivery() {
             try {
-                const token = localStorage.getItem('token');
                 const formData = {
                     delivery_number: document.getElementById('deliveryNumber').value,
                     customer_id: document.getElementById('customerId').value,
@@ -324,7 +322,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify(formData)
                 });

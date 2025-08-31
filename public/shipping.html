@@ -902,13 +902,13 @@
             }
         }
 
-        async function displayDeliveryNotesModal(notes, status) {
+        async function displayDeliveryNotesModal(notes, status) { // Fonksiyonu async olarak işaretle
             const statusTitles = {
                 pending: 'Sevkiyat Bekleyen İrsaliyeler',
                 in_transit: 'Yoldaki Sevkiyatlar',
                 delivered: 'Tamamlanan Sevkiyatlar'
             };
-            
+
             const modal = document.getElementById('deliveryNotesModal');
             document.getElementById('modalTitle').textContent = statusTitles[status] || 'İrsaliyeler';
             const listEl = document.getElementById('deliveryNotesList');
@@ -916,24 +916,66 @@
             if (!notes || notes.length === 0) {
                 listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Bu durumda irsaliye bulunmuyor.</div>';
             } else {
-                listEl.innerHTML = notes.map(note => `
-                    <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                            <div style="flex: 1;">
-                                <strong style="color: #333; font-size: 16px;">${note.delivery_number}</strong><br>
-                                <span style="color: #666; font-size: 14px;">Tarih: ${formatDate(note.delivery_date)}</span><br>
-                                <span style="color: #666;">Müşteri:</span>
-                                <strong style="color: #333;">${note.customer_name || 'Bilinmiyor'}</strong><br>
-                                <span style="color: #666;">Adres: ${note.delivery_address || note.customer_address || 'Belirtilmemiş'}</span>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
-                                ${status === 'pending' ? `<button onclick="startShipping(${note.id})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
-                                ${status === 'in_transit' ? `<button onclick="showSignatureModal(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button>` : ''}
-                                ${status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : ''}
+                // Yükleniyor durumu göster
+                listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Ürün bilgileri yükleniyor...</div>';
+
+                const notesHtmlPromises = notes.map(async note => {
+                    let productsHtml = '';
+                    if (note.order_id) {
+                        try {
+                            const itemsResponse = await fetch(`/api/orders/${note.order_id}/items`, {
+                                headers: { 'Authorization': `Bearer ${authToken}` }
+                            });
+                            if (itemsResponse.ok) {
+                                const itemsData = await itemsResponse.json();
+                                const items = itemsData.items || [];
+                                if (items.length > 0) {
+                                    productsHtml = `
+                                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                                            <strong style="font-size: 13px;">Ürünler:</strong>
+                                            <ul style="list-style-type: disc; padding-left: 20px; margin-top: 5px; font-size: 12px;">
+                                                ${items.map(item => `<li>${item.product_name} - ${item.quantity} ${item.unit || 'adet'}</li>`).join('')}
+                                            </ul>
+                                        </div>
+                                    `;
+                                } else {
+                                    productsHtml = '<div style="font-size: 12px; color: #666; margin-top: 5px;">Bu irsaliyeye ait ürün bulunamadı.</div>';
+                                }
+                            } else {
+                                 productsHtml = '<div style="font-size: 12px; color: #999; margin-top: 5px;">Ürünler yüklenemedi.</div>';
+                            }
+                        } catch (e) {
+                            productsHtml = '<div style="font-size: 12px; color: #999; margin-top: 5px;">Ürünler yüklenemedi.</div>';
+                        }
+                    } else {
+                        productsHtml = '<div style="font-size: 12px; color: #666; margin-top: 5px;">Sipariş ilişkisi yok.</div>';
+                    }
+
+                    const address = (note.delivery_address || note.customer_address || '').replace(/'/g, "\\'");
+                    const lat = note.latitude || 'null';
+                    const lng = note.longitude || 'null';
+
+                    return `
+                        <div class="order-item" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #f9f9f9;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <strong style="color: #333; font-size: 16px;">${note.delivery_number}</strong><br>
+                                    <span style="color: #666; font-size: 14px;">Tarih: ${formatDate(note.delivery_date)}</span><br>
+                                    <span style="color: #666;">Müşteri:</span>
+                                    <strong style="color: #333;">${note.customer_name || 'Bilinmiyor'}</strong><br>
+                                    <span style="color: #666;">Adres: ${note.delivery_address || note.customer_address || 'Belirtilmemiş'}</span>
+                                    ${productsHtml}
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 5px; margin-left: 15px;">
+                                    ${status === 'pending' ? `<button onclick="startShipping(${note.id}, '${address}', ${lat}, ${lng})" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">Sevkiyata Al</button>` : ''}
+                                    ${status === 'in_transit' ? `<button onclick="showSignatureModal(${note.id})" class="btn" style="background: #28a745; font-size: 12px; padding: 8px 12px;">📝 Teslim Et & İmza Al</button><button onclick="startNavigation(${lat}, ${lng}, '${address}')" class="btn" style="background: #17a2b8; color: white; font-size: 12px; padding: 8px 12px;">🗺️ Navigasyon Başlat</button>` : ''}
+                                    ${status === 'delivered' ? `<span style="background: #28a745; color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px;">✅ Teslim Edildi</span>` : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                });
+                listEl.innerHTML = (await Promise.all(notesHtmlPromises)).join('');
             }
             modal.style.display = 'flex';
         }
@@ -975,9 +1017,41 @@
             }
         });
         
-        async function startShipping(deliveryNoteId) {
+        function openNavigation(lat, lng) {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            if (isMobile) {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    window.open(`http://maps.apple.com/?daddr=${lat},${lng}`);
+                } else {
+                    window.open(`google.navigation:q=${lat},${lng}`);
+                }
+            } else {
+                window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+            }
+        }
+
+        function openNavigationByAddress(address) {
+            const encodedAddress = encodeURIComponent(address);
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+        }
+
+        function startNavigation(lat, lng, address) {
+            if (lat && lng) {
+                openNavigation(lat, lng);
+            } else if (address) {
+                openNavigationByAddress(address);
+            } else {
+                alert('Navigasyon başlatılamadı: Adres veya konum bilgisi eksik.');
+            }
+        }
+
+        async function startShipping(deliveryNoteId, address, lat, lng) {
+            const wantsNavigation = confirm('Navigasyon başlatmak istiyor musunuz?');
+
             try {
                 console.log('🚚 Sevkiyat başlatılıyor, İrsaliye ID:', deliveryNoteId);
+
                 const response = await fetch(`/api/delivery-notes/${deliveryNoteId}/status`, {
                     method: 'PUT',
                     headers: {
@@ -986,14 +1060,18 @@
                     },
                     body: JSON.stringify({ status: 'in_transit' })
                 });
-                
-                if (response.ok) {
-                    alert('✅ Sipariş sevkiyata alındı!');
-                } else {
+
+                if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'İşlem başarısız oldu.');
                 }
-                
+
+                alert('✅ Sipariş sevkiyata alındı!');
+
+                if (wantsNavigation) {
+                    startNavigation(lat, lng, address);
+                }
+
                 closeDeliveryNotesModal();
                 await loadDeliveryStatus();
             } catch (error) {

@@ -2292,10 +2292,12 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
  
     let query = `
       SELECT dn.*,
-             c.company_name as customer_name,
-             c.address as customer_address,
-             u.full_name as delivered_by_name,
-             o.order_number
+            c.company_name as customer_name,
+            c.address as customer_address,
+            c.latitude, 
+            c.longitude,
+            u.full_name as delivered_by_name,
+            o.order_number
       FROM delivery_notes dn
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN users u ON dn.delivered_by = u.id
@@ -2353,7 +2355,8 @@ app.get("/api/delivery-notes/:id", authenticateToken, checkPermission('delivery.
              c.company_name as customer_name,
              c.address as customer_address,
              u.full_name as delivered_by_name,
-             o.order_number
+             o.order_number,
+             o.total_amount
       FROM delivery_notes dn
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN users u ON dn.delivered_by = u.id
@@ -3668,18 +3671,12 @@ async function checkTableExists(tableName) {
 // Kullanıcılar API
 app.get("/api/users", authenticateToken, checkPermission('users.read'), async (req, res) => {
   try {
-    console.log('👥 Users API çağrıldı');
+    console.log('👥 Users API çağrıldı, query:', req.query);
+    const { role } = req.query;
 
     // Önce users tablosunun var olup olmadığını kontrol et
-    const tableCheck = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'users'
-      );
-    `);
-
-    if (!tableCheck.rows[0].exists) {
+    const tableExists = await checkTableExists('users');
+    if (!tableExists) {
       console.log('⚠️ Users tablosu bulunamadı');
       return res.json({
         success: true,
@@ -3688,17 +3685,33 @@ app.get("/api/users", authenticateToken, checkPermission('users.read'), async (r
       });
     }
 
-    const result = await pool.query(`
-      SELECT u.*,
+    let query = `
+      SELECT u.id, u.username, u.full_name, u.email, u.phone, u.is_active, u.role_id, u.department_id,
              COALESCE(r.name, 'Rol Yok') as role_name,
              COALESCE(d.name, 'Departman Yok') as department_name
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN departments d ON u.department_id = d.id
-      ORDER BY u.created_at DESC
-    `);
+    `;
+    const params = [];
+    const whereClauses = [];
 
-    console.log('✅ Users API - Bulunan kullanıcı sayısı:', result.rows.length);
+    if (role) {
+        // Gelen role parametresine göre esnek arama yap (örn: "shipping" -> "Sevkiyat")
+        const roleSearchTerm = role.toLowerCase() === 'shipping' ? 'Sevkiyat' : role;
+        whereClauses.push(`r.name ILIKE $${params.length + 1}`);
+        params.push(`%${roleSearchTerm}%`);
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY u.full_name ASC`;
+
+    const result = await pool.query(query, params);
+
+    console.log(`✅ Users API - Rol "${role || 'Tümü'}" için ${result.rows.length} kullanıcı bulundu.`);
 
     res.json({
       success: true,
