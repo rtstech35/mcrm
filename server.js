@@ -4814,12 +4814,13 @@ app.get("/api/sales/dashboard/:userId", async (req, res) => {
 
         // 4. Get user collections for the month
         const collectionsResult = await pool.query(`
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM account_transactions
-            WHERE created_by = $1
-              AND transaction_type = 'credit'
-              AND EXTRACT(YEAR FROM transaction_date) = $2
-              AND EXTRACT(MONTH FROM transaction_date) = $3
+            SELECT COALESCE(SUM(at.amount), 0) as total
+            FROM account_transactions at
+            JOIN customers c ON at.customer_id = c.id
+            WHERE c.assigned_sales_rep = $1
+              AND at.transaction_type = 'credit'
+              AND EXTRACT(YEAR FROM at.transaction_date) = $2
+              AND EXTRACT(MONTH FROM at.transaction_date) = $3
         `, [userId, currentYear, currentMonth]);
         const currentMonthlyCollection = parseFloat(collectionsResult.rows[0].total);
 
