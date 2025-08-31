@@ -238,9 +238,9 @@
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
-                        customer_signature: signatureData,
-                        customer_name: customerName,
-                        customer_title: customerTitle
+                        customer_signature: signatureData, // Correct key
+                        customer_name: customerName,      // Correct key
+                        customer_title: customerTitle     // Added field
                     })
                 });
                 
