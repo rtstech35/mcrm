@@ -3994,7 +3994,7 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
 
 app.post("/api/customers", authenticateToken, checkPermission('customers.create'), async (req, res) => {
   try {
-    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude } = req.body;
+    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status } = req.body;
     
     // Gelen boş string'leri veritabanı için NULL'a çevir
     const finalLatitude = latitude === '' ? null : latitude;
@@ -4016,9 +4016,9 @@ app.post("/api/customers", authenticateToken, checkPermission('customers.create'
     
     const result = await pool.query(`
       INSERT INTO customers (company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'potential')
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, finalLatitude, finalLongitude]);
+    `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, finalLatitude, finalLongitude, customer_status || 'potential']);
     
     res.json({
       success: true,
