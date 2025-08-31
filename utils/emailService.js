@@ -92,27 +92,6 @@ const generateDeliveryNoteHTML = (deliveryNote, customer, items, signature) => {
                 </tbody>
             </table>
             
-            ${signature ? `
-                <div class="signature-section">
-                    <h3>Teslim Alındı Onayı</h3>
-                    <div class="signature-box">
-                        <p><strong>Dijital İmza ile Teslim Alınmıştır</strong></p>
-                        <img src="${signature}" alt="Dijital İmza" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; margin: 10px 0;">
-                        <p>Tarih: ${new Date(deliveryNote.delivery_date).toLocaleDateString('tr-TR')}</p>
-                        <p>Teslim Alan: ${customer.contact_person || 'Yetkili Kişi'}</p>
-                    </div>
-                </div>
-            ` : `
-                <div class="signature-section">
-                    <div class="signature-box">
-                        <p><strong>Teslim Alındı</strong></p>
-                        <p>Tarih: ${new Date(deliveryNote.delivery_date).toLocaleDateString('tr-TR')}</p>
-                        <p>Teslim Alan: ________________</p>
-                        <p>İmza: ________________</p>
-                    </div>
-                </div>
-            `}
-            
             <div class="footer">
                 <p>Bu irsaliye otomatik olarak oluşturulmuştur.</p>
                 <p>Herhangi bir sorunuz için lütfen bizimle iletişime geçin.</p>

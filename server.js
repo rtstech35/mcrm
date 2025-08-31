@@ -2999,7 +2999,7 @@ app.post("/api/migrate-delivery-notes", async (req, res) => {
 // Randevu/Görev Yönetimi API'leri
 app.get("/api/appointments", authenticateToken, checkPermission('appointments.read'), async (req, res) => {
   try {
-    const { type, status, assigned_to, customer_id, start_date } = req.query;
+    const { type, status, assigned_to, customer_id, start_date, end_date } = req.query;
     const { userId, role } = req.user;
 
     let query = `
@@ -3029,7 +3029,9 @@ app.get("/api/appointments", authenticateToken, checkPermission('appointments.re
       whereClauses.push(`a.customer_id = $${params.push(parseInt(customer_id))}`);
     }
 
-    if (start_date) {
+    if (start_date && end_date) {
+      whereClauses.push(`a.start_date BETWEEN $${params.push(start_date)} AND $${params.push(end_date)}`);
+    } else if (start_date) {
       whereClauses.push(`a.start_date = $${params.push(start_date)}`);
     }
 
@@ -3432,6 +3434,51 @@ app.post("/api/migrate-appointments", async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+});
+
+// Cari Hesap Özeti API'si
+app.get("/api/accounting/summary", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        c.id as customer_id,
+        c.company_name,
+        c.contact_person,
+        COALESCE(SUM(CASE WHEN at.transaction_type = 'debit' OR at.transaction_type = 'invoice' THEN at.amount ELSE 0 END), 0) as total_debit,
+        COALESCE(SUM(CASE WHEN at.transaction_type = 'credit' OR at.transaction_type = 'payment' THEN at.amount ELSE 0 END), 0) as total_credit
+      FROM customers c
+      LEFT JOIN account_transactions at ON c.id = at.customer_id
+      GROUP BY c.id, c.company_name, c.contact_person
+      ORDER BY c.company_name
+    `);
+
+    const summary = result.rows.map(row => ({
+      ...row,
+      balance: parseFloat(row.total_debit) - parseFloat(row.total_credit)
+    }));
+
+    res.json({ success: true, summary: summary });
+  } catch (error) {
+    console.error('Accounting summary API hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Müşteri Cari Hesap Hareketleri
+app.get("/api/accounting/history/:customerId", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const result = await pool.query(`
+      SELECT * FROM account_transactions
+      WHERE customer_id = $1
+      ORDER BY transaction_date DESC, created_at DESC
+    `, [customerId]);
+
+    res.json({ success: true, history: result.rows });
+  } catch (error) {
+    console.error('Accounting history API hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
