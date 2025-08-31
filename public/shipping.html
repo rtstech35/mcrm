@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <title>Sevkiyat Paneli - Saha CRM</title>
     <style>
         * {
@@ -596,10 +597,13 @@
         </div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let authToken = localStorage.getItem('authToken');
         let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-
+        let mapInstance = null;
+        let mapMarkers = [];
+        
         // Global profile functions
         window.toggleProfileMenu = function() {
             const menu = document.getElementById('profileMenu');
@@ -1327,190 +1331,83 @@
             }
         }
         
-        window.loadCustomerMap = function() {
+        window.loadCustomerMap = async function() {
             const mapContainer = document.getElementById('customerMap');
             
             // Yükleme animasyonu göster
             mapContainer.innerHTML = `
                 <div style="padding: 20px; text-align: center;">
-                    <div class="loading" style="margin: 20px 0;">Konum alınıyor ve yakındaki müşteriler aranıyor...</div>
+                    <div class="loading" style="margin: 20px 0;">Teslimat noktaları haritaya yükleniyor...</div>
                 </div>
             `;
-            
-            // Gerçek konum al
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        loadNearbyCustomers(lat, lng);
-                    },
-                    (error) => {
-                        console.error('Konum alınamadı:', error);
-                        loadStaticMap();
+
+            mapContainer.innerHTML = '<div id="mapDiv" style="height: 400px; border-radius: 8px;"></div>';
+
+            try {
+                if (mapInstance) {
+                    mapInstance.remove();
+                }
+                mapInstance = L.map('mapDiv').setView([41.0082, 28.9784], 10); // Istanbul
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(mapInstance);
+
+                mapMarkers.forEach(marker => mapInstance.removeLayer(marker));
+                mapMarkers = [];
+
+                const [pendingResponse, transitResponse] = await Promise.all([
+                    fetch('/api/delivery-notes?status=pending', { headers: { 'Authorization': `Bearer ${authToken}` } }),
+                    fetch('/api/delivery-notes?status=in_transit', { headers: { 'Authorization': `Bearer ${authToken}` } })
+                ]);
+
+                if (!pendingResponse.ok || !transitResponse.ok) throw new Error('Teslimat verileri alınamadı.');
+
+                const pendingData = await pendingResponse.json();
+                const transitData = await transitResponse.json();
+                const allDeliveries = [...(pendingData.delivery_notes || []), ...(transitData.delivery_notes || [])];
+
+                const customersWithLocation = {};
+                allDeliveries.forEach(note => {
+                    if (note.customer_id && note.latitude && note.longitude) {
+                        if (!customersWithLocation[note.customer_id]) {
+                            customersWithLocation[note.customer_id] = {
+                                id: note.customer_id, name: note.customer_name, lat: note.latitude, lng: note.longitude, deliveries: []
+                            };
+                        }
+                        customersWithLocation[note.customer_id].deliveries.push({ number: note.delivery_number, status: note.status });
                     }
-                );
-            } else {
-                loadStaticMap();
+                });
+
+                const customerList = Object.values(customersWithLocation);
+                if (customerList.length === 0) {
+                    mapContainer.innerHTML = '<div class="map-placeholder"><p>Haritada gösterilecek teslimat noktası bulunmuyor.</p></div>';
+                    return;
+                }
+
+                const markerBounds = [];
+                customerList.forEach(customer => {
+                    const isTransit = customer.deliveries.some(d => d.status === 'in_transit');
+                    const statusColor = isTransit ? '#007bff' : '#ffc107';
+                    const marker = L.circleMarker([customer.lat, customer.lng], {
+                        radius: 8, fillColor: statusColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9
+                    }).addTo(mapInstance);
+
+                    let popupContent = `<strong>${customer.name}</strong><br><hr style="margin: 5px 0;">`;
+                    customer.deliveries.forEach(d => {
+                        popupContent += `İrsaliye: ${d.number} (${d.status === 'in_transit' ? 'Yolda' : 'Bekliyor'})<br>`;
+                    });
+                    popupContent += `<br><button class="btn btn-sm" onclick="startNavigation(${customer.lat}, ${customer.lng})">Yol Tarifi</button>`;
+                    marker.bindPopup(popupContent);
+                    mapMarkers.push(marker);
+                    markerBounds.push([customer.lat, customer.lng]);
+                });
+
+                if (markerBounds.length > 0) mapInstance.fitBounds(markerBounds, { padding: [50, 50] });
+
+            } catch (error) {
+                console.error('Harita yüklenemedi:', error);
+                mapContainer.innerHTML = `<div class="map-placeholder"><p style="color: red;">Harita yüklenirken bir hata oluştu: ${error.message}</p></div>`;
             }
-        }
-        
-        function loadNearbyCustomers(userLat, userLng) {
-            const mapContainer = document.getElementById('customerMap');
-            
-            // Örnek müşteri konumları (gerçek projede API'den gelecek)
-            const customers = [
-                { name: 'ABC Teknoloji', lat: userLat + 0.01, lng: userLng + 0.01 },
-                { name: 'XYZ İnşaat', lat: userLat - 0.005, lng: userLng + 0.008 },
-                { name: 'Mavi Deniz Lojistik', lat: userLat + 0.008, lng: userLng - 0.012 },
-                { name: 'Altın Gıda', lat: userLat - 0.015, lng: userLng - 0.005 },
-                { name: 'Yeşil Enerji', lat: userLat + 0.02, lng: userLng + 0.015 }
-            ];
-            
-            // Mesafeleri hesapla
-            const customersWithDistance = customers.map(customer => {
-                const distance = calculateDistance(userLat, userLng, customer.lat, customer.lng);
-                return { ...customer, distance };
-            }).sort((a, b) => a.distance - b.distance);
-            
-            setTimeout(() => {
-                mapContainer.innerHTML = `
-                    <div style="padding: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h4 style="margin: 0; color: #333;">Yakındaki Müşteriler</h4>
-                            <span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 12px;">${customersWithDistance.length} Konum</span>
-                        </div>
-                        <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 12px;">
-                            📍 Konumunuz: ${userLat.toFixed(4)}, ${userLng.toFixed(4)}
-                        </div>
-                        <div style="margin: 20px 0;">
-                            ${customersWithDistance.map(customer => {
-                                const statusColor = customer.distance < 2 ? '#4caf50' : customer.distance < 5 ? '#ff9800' : '#f44336';
-                                const statusText = customer.distance < 2 ? 'Yakın' : customer.distance < 5 ? 'Orta' : 'Uzak';
-                                
-                                return `
-                                    <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
-                                        <span style="font-size: 1.5em; color: ${statusColor};">📍</span>
-                                        <div style="flex: 1;">
-                                            <strong style="color: #333;">${customer.name}</strong>
-                                            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Mesafe: ${customer.distance.toFixed(1)} km</p>
-                                            <p style="margin: 2px 0 0 0; color: #888; font-size: 0.8em;">Konum: ${customer.lat.toFixed(4)}, ${customer.lng.toFixed(4)}</p>
-                                        </div>
-                                        <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">${statusText}</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="resetMap()" class="btn btn-secondary">Haritayı Kapat</button>
-                            <button onclick="loadCustomerMap()" class="btn btn-primary">Yenile</button>
-                        </div>
-                    </div>
-                `;
-            }, 1500);
-        }
-        
-        function calculateDistance(lat1, lng1, lat2, lng2) {
-            const R = 6371; // Dünya'nın yarıçapı (km)
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-        
-        function loadStaticMap() {
-            const mapContainer = document.getElementById('customerMap');
-            setTimeout(() => {
-                mapContainer.innerHTML = `
-                    <div style="padding: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h4 style="margin: 0; color: #333;">Müşteri Konumları</h4>
-                            <span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 12px;">5 Konum</span>
-                        </div>
-                        <div style="margin: 20px 0;">
-                            <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
-                                <span style="font-size: 1.5em; color: #4caf50;">📍</span>
-                                <div style="flex: 1;">
-                                    <strong style="color: #333;">ABC Teknoloji</strong>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Kadıköy, İstanbul - 2.5 km</p>
-                                </div>
-                                <span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">Yakın</span>
-                            </div>
-                            <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
-                                <span style="font-size: 1.5em; color: #ff9800;">📍</span>
-                                <div style="flex: 1;">
-                                    <strong style="color: #333;">XYZ İnşaat</strong>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Beşiktaş, İstanbul - 4.1 km</p>
-                                </div>
-                                <span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">Orta</span>
-                            </div>
-                            <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
-                                <span style="font-size: 1.5em; color: #f44336;">📍</span>
-                                <div style="flex: 1;">
-                                    <strong style="color: #333;">Mavi Deniz Lojistik</strong>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Şişli, İstanbul - 6.8 km</p>
-                                </div>
-                                <span style="background: #f44336; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">Uzak</span>
-                            </div>
-                            <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-bottom: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; background: #f9f9f9;">
-                                <span style="font-size: 1.5em; color: #4caf50;">📍</span>
-                                <div style="flex: 1;">
-                                    <strong style="color: #333;">Altın Gıda</strong>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Fatih, İstanbul - 3.2 km</p>
-                                </div>
-                                <span style="background: #4caf50; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">Yakın</span>
-                            </div>
-                            <div class="location-item" style="display: flex; align-items: center; gap: 15px; padding: 12px; border-radius: 8px; background: #f9f9f9;">
-                                <span style="font-size: 1.5em; color: #ff9800;">📍</span>
-                                <div style="flex: 1;">
-                                    <strong style="color: #333;">Yeşil Enerji</strong>
-                                    <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9em;">Sarıyer, İstanbul - 5.5 km</p>
-                                </div>
-                                <span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">Orta</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="resetMap()" class="btn btn-secondary">Haritayı Kapat</button>
-                            <button onclick="refreshMap()" class="btn btn-primary">Yenile</button>
-                        </div>
-                    </div>
-                `;
-            }, 1000);
-        }
-        
-        function refreshMap() {
-            const mapContainer = document.getElementById('customerMap');
-            mapContainer.innerHTML = `
-                <div style="padding: 20px; text-align: center;">
-                    <div class="success-message">Harita başarıyla yenilendi!</div>
-                </div>
-            `;
-            
-            setTimeout(() => {
-                loadCustomerMap();
-            }, 1000);
-        }
-        
-        function resetMap() {
-            const mapContainer = document.getElementById('customerMap');
-            
-            // Kapanma animasyonu
-            mapContainer.style.opacity = '0.5';
-            
-            setTimeout(() => {
-                mapContainer.innerHTML = `
-                    <div class="map-placeholder">
-                        <div class="map-icon">🗺️</div>
-                        <p>Müşteri konumları haritada gösterilecek</p>
-                        <p style="font-size: 14px; color: #888; margin: 10px 0;">Teslimat rotalarını optimize etmek için haritayı kullanın</p>
-                        <button onclick="loadCustomerMap()" class="btn btn-primary">Haritayı Yükle</button>
-                    </div>
-                `;
-                mapContainer.style.opacity = '1';
-            }, 300);
         }
 
         window.toggleMobileMenu = function() {
