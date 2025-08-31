@@ -195,6 +195,23 @@ async function runMigrations() {
   }
 }
 
+// ---------------- YARDIMCI FONKSİYONLAR ---------------- //
+
+// Güvenli tablo kontrolü yardımcı fonksiyonu
+async function checkTableExists(tableName) {
+  try {
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = $1
+      );
+    `, [tableName]);
+    return result.rows[0].exists;
+  } catch (error) {
+    console.error(`Tablo kontrolü hatası (${tableName}):`, error);
+    return false;
+  }
+}
+
 // ---------------- TEST ---------------- //
 app.get("/", (req, res) => {
   res.send(`
@@ -268,7 +285,7 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ---------------- AUTH ---------------- //
+// ---------------- AUTH API ---------------- //
 app.post("/api/register", async (req, res) => {
   try {
     console.log("Register isteği geldi:", req.body);
@@ -299,7 +316,6 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// ---------------- LOGIN ENDPOINT (DÜZELME TESTİ) ---------------- //
 app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -357,7 +373,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ---------------- JWT MIDDLEWARE ---------------- //
+// ---------------- MIDDLEWARE ---------------- //
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -384,7 +400,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// ---------------- PERMISSION MIDDLEWARE ---------------- //
 const checkPermission = (requiredPermission) => {
   return (req, res, next) => {
     // req.user, authenticateToken middleware'i tarafından eklenir ve yetkileri içermelidir.
@@ -416,7 +431,7 @@ const checkPermission = (requiredPermission) => {
   };
 };
 
-// ---------------- USER PROFILE ---------------- //
+// ---------------- USER PROFILE API ---------------- //
 app.get("/api/profile", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -440,7 +455,119 @@ app.get("/api/profile", authenticateToken, async (req, res) => {
   }
 });
 
-// ---------------- ÜRÜNLER ---------------- //
+// ---------------- KULLANICILAR API ---------------- //
+app.get("/api/users", authenticateToken, checkPermission('users.read'), async (req, res) => {
+  try {
+    console.log('👥 Users API çağrıldı, query:', req.query);
+    const { role } = req.query;
+
+    const tableExists = await checkTableExists('users');
+    if (!tableExists) {
+      return res.json({ success: true, users: [], message: 'Users tablosu henüz oluşturulmamış' });
+    }
+
+    let query = `
+      SELECT u.id, u.username, u.full_name, u.email, u.phone, u.is_active, u.role_id, u.department_id,
+             COALESCE(r.name, 'Rol Yok') as role_name,
+             COALESCE(d.name, 'Departman Yok') as department_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+    `;
+    const params = [];
+    const whereClauses = [];
+
+    if (role) {
+        const roleSearchTerm = role.toLowerCase() === 'shipping' ? 'Sevkiyat' : role;
+        whereClauses.push(`r.name ILIKE $${params.length + 1}`);
+        params.push(`%${roleSearchTerm}%`);
+    }
+
+    if (whereClauses.length > 0) {
+        query += ` WHERE ${whereClauses.join(' AND ')}`;
+    }
+
+    query += ` ORDER BY u.full_name ASC`;
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('❌ Users API hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/users", authenticateToken, checkPermission('users.create'), async (req, res) => {
+  try {
+    const { username, email, password, full_name, role_id, department_id, phone } = req.body;
+    if (!password || password.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Şifre gerekli' });
+    }
+    const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
+    const result = await pool.query(`
+      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, phone, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, true) RETURNING *
+    `, [username, email, hashedPassword, full_name, role_id, department_id, phone]);
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('User create hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get("/api/users/:id", authenticateToken, checkPermission('users.read'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT u.*, r.name as role_name, d.name as department_name FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = $1
+    `, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('User get hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put("/api/users/:id", authenticateToken, checkPermission('users.update'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, password, full_name, role_id, department_id, phone, is_active } = req.body;
+    let query = `UPDATE users SET username = $1, email = $2, full_name = $3, role_id = $4, department_id = $5, phone = $6, is_active = $7`;
+    let params = [username, email, full_name, role_id, department_id, phone, is_active];
+    if (password && password.trim() !== '') {
+      const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
+      query += `, password_hash = $${params.length + 1} WHERE id = $${params.length + 2} RETURNING *`;
+      params.push(hashedPassword, id);
+    } else {
+      query += ` WHERE id = $${params.length + 1} RETURNING *`;
+      params.push(id);
+    }
+    const result = await pool.query(query, params);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('User update hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete("/api/users/:id", authenticateToken, checkPermission('users.delete'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`DELETE FROM users WHERE id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
+    res.json({ success: true, message: 'Kullanıcı başarıyla silindi' });
+  } catch (error) {
+    console.error('User delete hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ---------------- ÜRÜNLER API ---------------- //
 // Ürün ekleme (Yetki kontrolü eklendi)
 app.post("/api/products", authenticateToken, checkPermission('products.create'), async (req, res) => {
   try {
@@ -656,556 +783,7 @@ app.get("/api/product-categories", authenticateToken, checkPermission('products.
   }
 });
 
-
-// ---------------- SİPARİŞLER (ESKİ - KALDIRILDI) ---------------- //
-// Bu endpoint'ler yeni API'lerle değiştirildi
-
-// ---------------- MÜŞTERİLER (ESKİ - KALDIRILDI) ---------------- //
-// Bu endpoint'ler yeni API'lerle değiştirildi
-
-// ---------------- DASHBOARD STATS ---------------- //
-app.get("/api/stats", async (req, res) => {
-  try {
-    console.log("📊 Dashboard stats isteği geldi");
-    
-    // Toplam siparişler
-    const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
-    const totalOrders = parseInt(ordersResult.rows[0].total);
-
-    // Toplam müşteriler
-    const customersResult = await pool.query("SELECT COUNT(*) as total FROM customers");
-    const totalCustomers = parseInt(customersResult.rows[0].total);
-
-    // Toplam ürünler
-    const productsResult = await pool.query("SELECT COUNT(*) as total FROM products");
-    const totalProducts = parseInt(productsResult.rows[0].total);
-
-    // Bu ay siparişler
-    const monthlyOrdersResult = await pool.query(`
-      SELECT COUNT(*) as total FROM orders 
-      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-    `);
-    const monthlyOrders = parseInt(monthlyOrdersResult.rows[0].total);
-
-    // Toplam gelir hesaplama
-    const revenueResult = await pool.query("SELECT COALESCE(SUM(total_amount), 0) as total FROM orders");
-    const totalRevenue = parseFloat(revenueResult.rows[0].total);
-
-    console.log("✅ Dashboard stats başarıyla hesaplandı");
-
-    res.json({
-      success: true,
-      totalOrders,
-      totalCustomers, 
-      totalProducts,
-      monthlyOrders,
-      totalRevenue: totalRevenue || 0,
-    });
-  } catch (err) {
-    console.error("❌ Dashboard stats hatası:", err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-      totalOrders: 0,
-      totalCustomers: 0,
-      totalProducts: 0,
-      monthlyOrders: 0,
-      totalRevenue: 0
-    });
-  }
-});
-
-// Dashboard için basit stats (authentication olmadan)
-app.get("/api/dashboard-stats", async (req, res) => {
-  try {
-    console.log("📊 Basit dashboard stats isteği geldi");
-    
-    // Toplam sipariş sayısı
-    const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
-    const totalOrders = parseInt(ordersResult.rows[0].total);
-
-    // Toplam müşteri sayısı
-    const customersResult = await pool.query("SELECT COUNT(*) as total FROM customers");
-    const totalCustomers = parseInt(customersResult.rows[0].total);
-
-    // Toplam ürün sayısı
-    const productsResult = await pool.query("SELECT COUNT(*) as total FROM products");
-    const totalProducts = parseInt(productsResult.rows[0].total);
-
-    res.json({
-      success: true,
-      totalOrders,
-      totalCustomers, 
-      totalProducts,
-      message: "Stats başarıyla alındı"
-    });
-  } catch (err) {
-    console.error("❌ Basit dashboard stats hatası:", err);
-    res.status(500).json({
-      success: false,
-      error: err.message,
-      totalOrders: 0,
-      totalCustomers: 0,
-      totalProducts: 0
-    });
-  }
-});
-
-// ---------------- ROLES & DEPARTMENTS ---------------- //
-
-
-
-// Database durumu kontrolü
-app.get("/api/database-status", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        current_database() as database,
-        inet_server_addr() as host,
-        inet_server_port() as port
-    `);
-    
-    const dbInfo = result.rows[0];
-    
-    // Tabloları kontrol et
-    const tablesResult = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name
-    `);
-    
-    res.json({
-      success: true,
-      database: dbInfo.database,
-      host: dbInfo.host,
-      port: dbInfo.port,
-      tables: tablesResult.rows.map(row => ({ name: row.table_name }))
-    });
-  } catch (error) {
-    console.error('Database status hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Sadece schema kurulumu
-app.post("/api/setup-schema-only", async (req, res) => {
-  try {
-    console.log('📋 Schema kurulumu başlatılıyor...');
-    const fs = require("fs");
-    const path = require("path");
-    
-    const schemaPath = path.join(__dirname, "database", "schema.sql");
-    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
-    
-    await pool.query(schemaSQL);
-    
-    res.json({
-      success: true,
-      message: 'Database schema başarıyla oluşturuldu'
-    });
-  } catch (error) {
-    console.error('Schema kurulum hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Örnek veri ekleme
-app.post("/api/add-sample-data", async (req, res) => {
-  try {
-    console.log('📝 Örnek veriler ekleniyor...');
-    
-    // Roller (Yetkiler)
-    await pool.query(`
-      INSERT INTO roles (id, name, description, level, is_active) VALUES
-      (1, 'Yönetici', 'Sistem yöneticisi - Tüm yetkiler', 4, true),
-      (2, 'Satış Temsilcisi', 'Satış işlemleri ve müşteri yönetimi', 2, true),
-      (3, 'Üretim Personeli', 'Üretim planlama ve operasyonları', 2, true),
-      (4, 'Sevkiyat Personeli', 'Lojistik ve teslimat işlemleri', 2, true),
-      (5, 'Muhasebe Personeli', 'Mali işler ve muhasebe', 2, true)
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    // Departmanlar (Bölümler)
-    await pool.query(`
-      INSERT INTO departments (id, name, description) VALUES
-      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
-      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
-      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
-      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
-      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    // Admin kullanıcısı
-    const bcrypt = require("bcryptjs");
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    
-    await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 5, true)
-      ON CONFLICT (username) DO NOTHING
-    `, [hashedPassword]);
-
-    res.json({
-      success: true,
-      message: 'Örnek veriler başarıyla eklendi'
-    });
-  } catch (error) {
-    console.error('Örnek veri ekleme hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Tüm verileri silme
-app.post("/api/clear-all-data", async (req, res) => {
-  try {
-    console.log('🗑️ Tüm veriler siliniyor...');
-
-    const tables = [
-      'customer_visits',
-      'order_items',
-      'orders',
-      'products',
-      'customers',
-      'users',
-      'departments',
-      'roles'
-    ];
-
-    for (const table of tables) {
-      await pool.query(`DELETE FROM ${table}`);
-      console.log(`✅ ${table} tablosundaki veriler silindi`);
-    }
-
-    res.json({
-      success: true,
-      message: 'Tüm veriler başarıyla silindi'
-    });
-  } catch (error) {
-    console.error('Veri silme hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Rol ve Departman verilerini düzelt
-app.post("/api/fix-roles-departments", async (req, res) => {
-  try {
-    console.log('🔧 Rol ve Departman verileri düzeltiliyor...');
-
-    // Önce yeni rolleri ekle (mevcut ID'leri güncelle)
-    await pool.query(`
-      INSERT INTO roles (id, name, description) VALUES
-      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
-      (2, 'Manager', 'Yönetici - Departman yönetimi'),
-      (3, 'Employee', 'Çalışan - Temel işlemler'),
-      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
-      ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name,
-        description = EXCLUDED.description
-    `);
-
-    // Eski rolleri sil (5 ve üzeri ID'ler)
-    await pool.query('DELETE FROM roles WHERE id > 4');
-
-    // Kullanıcıların rol_id'lerini güncelle (eski rol ID'leri varsa)
-    await pool.query(`
-      UPDATE users SET role_id = 1
-      WHERE role_id NOT IN (1, 2, 3, 4) OR role_id IS NULL
-    `);
-
-    // Departmanları güncelle
-    await pool.query(`
-      INSERT INTO departments (id, name, description) VALUES
-      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
-      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
-      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
-      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
-      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
-      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
-      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
-      ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name,
-        description = EXCLUDED.description
-    `);
-
-    // Eski departmanları sil (8 ve üzeri ID'ler)
-    await pool.query('DELETE FROM departments WHERE id > 7');
-
-    // Kullanıcıların department_id'lerini güncelle
-    await pool.query(`
-      UPDATE users SET department_id = 5
-      WHERE department_id NOT IN (1, 2, 3, 4, 5, 6, 7) OR department_id IS NULL
-    `);
-
-    res.json({
-      success: true,
-      message: 'Rol ve Departman verileri başarıyla düzeltildi'
-    });
-  } catch (error) {
-    console.error('Rol/Departman düzeltme hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Güvenli rol/departman ekleme (mevcut verileri korur)
-app.post("/api/add-missing-roles-departments", async (req, res) => {
-  try {
-    console.log('🔧 Eksik rol ve departman verileri ekleniyor...');
-
-    // Eksik rolleri ekle
-    await pool.query(`
-      INSERT INTO roles (id, name, description) VALUES
-      (1, 'Admin', 'Sistem yöneticisi - Tüm yetkiler'),
-      (2, 'Manager', 'Yönetici - Departman yönetimi'),
-      (3, 'Employee', 'Çalışan - Temel işlemler'),
-      (4, 'Viewer', 'Görüntüleyici - Sadece okuma')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    // Eksik departmanları ekle
-    await pool.query(`
-      INSERT INTO departments (id, name, description) VALUES
-      (1, 'Satış Departmanı', 'Müşteri ilişkileri ve satış işlemleri'),
-      (2, 'Üretim Departmanı', 'Üretim planlama ve operasyonları'),
-      (3, 'Sevkiyat Departmanı', 'Lojistik ve teslimat işlemleri'),
-      (4, 'Muhasebe Departmanı', 'Mali işler ve muhasebe'),
-      (5, 'IT Departmanı', 'Bilgi teknolojileri ve sistem yönetimi'),
-      (6, 'İnsan Kaynakları', 'Personel yönetimi ve işe alım'),
-      (7, 'Kalite Kontrol', 'Ürün kalitesi ve standartlar')
-      ON CONFLICT (id) DO NOTHING
-    `);
-
-    res.json({
-      success: true,
-      message: 'Eksik rol ve departman verileri güvenli şekilde eklendi'
-    });
-  } catch (error) {
-    console.error('Güvenli rol/departman ekleme hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Products tablosuna KDV kolonları ekle
-app.post("/api/migrate-products-vat", async (req, res) => {
-  try {
-    console.log('🔧 Products tablosuna KDV kolonları ekleniyor...');
-
-    // Kolonları ekle (eğer yoksa)
-    await pool.query(`
-      ALTER TABLE products
-      ADD COLUMN IF NOT EXISTS vat_rate DECIMAL(5,2) DEFAULT 20,
-      ADD COLUMN IF NOT EXISTS price_with_vat DECIMAL(10,2)
-    `);
-
-    // Mevcut ürünler için KDV dahil fiyatı hesapla
-    await pool.query(`
-      UPDATE products
-      SET price_with_vat = unit_price * (1 + COALESCE(vat_rate, 20) / 100)
-      WHERE price_with_vat IS NULL
-    `);
-
-    res.json({
-      success: true,
-      message: 'Products tablosu KDV kolonları ile güncellendi'
-    });
-  } catch (error) {
-    console.error('Products migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Kapsamlı örnek veri oluştur
-app.post("/api/create-comprehensive-data", async (req, res) => {
-  try {
-    console.log('🎯 Kapsamlı örnek veri oluşturuluyor...');
-
-    const bcrypt = require("bcryptjs");
-    let stats = { users: 0, customers: 0, products: 0, transactions: 0 };
-
-    // 1. Roller ve departmanları kontrol et
-    const rolesResult = await pool.query('SELECT * FROM roles ORDER BY id');
-    const departmentsResult = await pool.query('SELECT * FROM departments ORDER BY id');
-
-    // 2. Belirtilen test kullanıcılarını oluştur
-    const testUsers = [
-      { username: 'admin', password: 'admin123', full_name: 'Admin', email: 'admin@sahacrm.com', role_id: 1, department_id: 1 },
-      { username: 'satismuduru', password: '123456', full_name: 'Satış Müdürü', email: 'satismuduru@test.com', role_id: 2, department_id: 2 },
-      { username: 'satispersoneli', password: '123456', full_name: 'Satış Personeli', email: 'satispersoneli@test.com', role_id: 3, department_id: 2 },
-      { username: 'depomuduru', password: '123456', full_name: 'Depo Müdürü', email: 'depomuduru@test.com', role_id: 4, department_id: 3 },
-      { username: 'depopersoneli', password: '123456', full_name: 'Depo Personeli', email: 'depopersoneli@test.com', role_id: 5, department_id: 3 },
-      { username: 'sevkiyatsorumlusu', password: '123456', full_name: 'Sevkiyat Sorumlusu', email: 'sevkiyatsorumlusu@test.com', role_id: 6, department_id: 4 },
-      { username: 'sevkiyatci', password: '123456', full_name: 'Sevkiyatçı', email: 'sevkiyatci@test.com', role_id: 7, department_id: 4 },
-      { username: 'uretimmeduru', password: '123456', full_name: 'Üretim Müdürü', email: 'uretimmeduru@test.com', role_id: 8, department_id: 5 },
-      { username: 'uretimpersoneli', password: '123456', full_name: 'Üretim Personeli', email: 'uretimpersoneli@test.com', role_id: 9, department_id: 5 },
-      { username: 'muhasebemuduru', password: '123456', full_name: 'Muhasebe Müdürü', email: 'muhasebemuduru@test.com', role_id: 10, department_id: 6 },
-      { username: 'muhasebepersoneli', password: '123456', full_name: 'Muhasebe Personeli', email: 'muhasebepersoneli@test.com', role_id: 11, department_id: 6 }
-    ];
-
-    for (const user of testUsers) {
-        const hashedPassword = await bcrypt.hash(user.password, 10);
-        const result = await pool.query(`
-            INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES ($1, $2, $3, $4, $5, $6, true)
-            ON CONFLICT (username) DO NOTHING
-        `, [user.username, user.email, hashedPassword, user.full_name, user.role_id, user.department_id]);
-        if (result.rowCount > 0) stats.users++;
-    }
-
-    // 3. 5 adet müşteri oluştur
-    const customerNames = [
-      'ABC Teknoloji Ltd. Şti.',
-      'XYZ İnşaat A.Ş.',
-      'Mavi Deniz Lojistik',
-      'Altın Gıda San. Tic.',
-      'Yeşil Enerji Çözümleri'
-    ];
-
-    const contactPersons = ['Ahmet Yılmaz', 'Fatma Kaya', 'Mehmet Demir', 'Ayşe Şahin', 'Ali Özkan'];
-    const phones = ['0555 123 4567', '0532 987 6543', '0544 111 2233', '0505 444 5566', '0533 777 8899'];
-
-    // Satış temsilcisi olarak ilk kullanıcıyı al
-    const salesRepResult = await pool.query('SELECT id FROM users WHERE is_active = true LIMIT 1');
-    const salesRepId = salesRepResult.rows[0]?.id || 1;
-
-    for (let i = 0; i < 5; i++) {
-      // Önce müşteri var mı kontrol et
-      const existingCustomer = await pool.query('SELECT id FROM customers WHERE company_name = $1', [customerNames[i]]);
-
-      if (existingCustomer.rows.length === 0) {
-        await pool.query(`
-          INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
-          VALUES ($1, $2, $3, $4, $5, $6, 'active')
-        `, [
-          customerNames[i],
-          contactPersons[i],
-          phones[i],
-          `info@${customerNames[i].toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}.com`,
-          `${customerNames[i]} Adresi, İstanbul`,
-          salesRepId
-        ]);
-
-        stats.customers++;
-      }
-    }
-
-    // 4. 5 adet ürün oluştur
-    const products = [
-      { name: 'Premium Yazılım Paketi', price: 2500.00, description: 'Kurumsal yazılım çözümü', unit: 'adet' },
-      { name: 'Endüstriyel Makine', price: 15000.00, description: 'Yüksek performanslı üretim makinesi', unit: 'adet' },
-      { name: 'Lojistik Hizmeti', price: 500.00, description: 'Kapıdan kapıya teslimat', unit: 'ton' },
-      { name: 'Organik Gıda Paketi', price: 150.00, description: 'Doğal ve sağlıklı gıda ürünleri', unit: 'kg' },
-      { name: 'Solar Panel Sistemi', price: 8000.00, description: 'Yenilenebilir enerji çözümü', unit: 'kW' }
-    ];
-
-    for (const product of products) {
-      // Önce ürün var mı kontrol et
-      const existingProduct = await pool.query('SELECT id FROM products WHERE name = $1', [product.name]);
-
-      if (existingProduct.rows.length === 0) {
-        // Önce vat_rate ve price_with_vat kolonları var mı kontrol et
-        const columnsResult = await pool.query(`
-          SELECT column_name FROM information_schema.columns
-          WHERE table_name = 'products' AND column_name IN ('vat_rate', 'price_with_vat')
-        `);
-
-        const hasVatColumns = columnsResult.rows.length === 2;
-
-        if (hasVatColumns) {
-          const vatRate = 20;
-          const priceWithVat = product.price * (1 + vatRate / 100);
-
-          await pool.query(`
-            INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6, true)
-          `, [product.name, product.description, product.price, vatRate, priceWithVat, product.unit]);
-        } else {
-          await pool.query(`
-            INSERT INTO products (name, description, unit_price, unit, is_active)
-            VALUES ($1, $2, $3, $4, true)
-          `, [product.name, product.description, product.price, product.unit]);
-        }
-
-        stats.products++;
-      }
-    }
-
-    // 5. Her müşteri için borç ve alacak kaydı oluştur
-    const customersResult = await pool.query('SELECT id, company_name FROM customers ORDER BY id LIMIT 5');
-
-    for (const customer of customersResult.rows) {
-      // Mevcut işlemleri kontrol et
-      const existingTransactions = await pool.query(
-        'SELECT COUNT(*) as count FROM account_transactions WHERE customer_id = $1',
-        [customer.id]
-      );
-
-      if (parseInt(existingTransactions.rows[0].count) === 0) {
-        // Borç kaydı
-        await pool.query(`
-          INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
-          VALUES ($1, 'debit', $2, CURRENT_DATE - INTERVAL '30 days', $3, $4, $5)
-        `, [
-          customer.id,
-          Math.floor(Math.random() * 5000) + 1000, // 1000-6000 TL arası
-          `${customer.company_name} - Satış faturası`,
-          `FAT-${Date.now()}-${customer.id}`,
-          salesRepId
-        ]);
-
-        // Alacak kaydı
-        await pool.query(`
-          INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
-          VALUES ($1, 'credit', $2, CURRENT_DATE - INTERVAL '15 days', $3, $4, $5)
-        `, [
-          customer.id,
-          Math.floor(Math.random() * 3000) + 500, // 500-3500 TL arası
-          `${customer.company_name} - Ödeme`,
-          `ODM-${Date.now()}-${customer.id}`,
-          salesRepId
-        ]);
-
-        stats.transactions += 2;
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Kapsamlı örnek veri başarıyla oluşturuldu',
-      stats: stats
-    });
-
-  } catch (error) {
-    console.error('Kapsamlı veri oluşturma hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Rol Yönetimi API'leri
+// ---------------- ROLLER API ---------------- //
 app.get("/api/roles", authenticateToken, checkPermission('roles.read'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -1233,7 +811,7 @@ app.get("/api/roles", authenticateToken, checkPermission('roles.read'), async (r
 });
 
 // Tek rol getir
-app.get("/api/roles/:id", async (req, res) => {
+app.get("/api/roles/:id", authenticateToken, checkPermission('roles.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -1266,7 +844,7 @@ app.get("/api/roles/:id", async (req, res) => {
 });
 
 // Yeni rol oluştur
-app.post("/api/roles", async (req, res) => {
+app.post("/api/roles", authenticateToken, checkPermission('roles.create'), async (req, res) => {
   try {
     const { name, description, level, is_active } = req.body;
 
@@ -1299,7 +877,7 @@ app.post("/api/roles", async (req, res) => {
 });
 
 // Rol güncelle
-app.put("/api/roles/:id", async (req, res) => {
+app.put("/api/roles/:id", authenticateToken, checkPermission('roles.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, level, is_active } = req.body;
@@ -1353,7 +931,7 @@ app.put("/api/roles/:id", async (req, res) => {
 });
 
 // Rol sil
-app.delete("/api/roles/:id", async (req, res) => {
+app.delete("/api/roles/:id", authenticateToken, checkPermission('roles.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1397,7 +975,7 @@ app.delete("/api/roles/:id", async (req, res) => {
 });
 
 // Rol yetkilerini güncelle
-app.put("/api/roles/:id/permissions", authenticateToken, async (req, res) => {
+app.put("/api/roles/:id/permissions", authenticateToken, checkPermission('roles.update'), async (req, res) => {
   try {
     // Sadece "all: true" yetkisine sahip Admin'in yetkisi olmalı
     if (!req.user.permissions || req.user.permissions.all !== true) {
@@ -1426,62 +1004,8 @@ app.put("/api/roles/:id/permissions", authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-// Rol sistemi migration
-app.post("/api/migrate-roles", async (req, res) => {
-  try {
-    console.log('🔄 Rol sistemi migration başlatılıyor...');
 
-    // Level ve is_active kolonlarını ekle (eğer yoksa)
-    await pool.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 2;`);
-    await pool.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;`);
-
-    // Mevcut rolleri güncelle
-    await pool.query(`
-      UPDATE roles SET
-          level = CASE
-              WHEN name ILIKE '%yönetici%' THEN 4
-              WHEN name ILIKE '%temsilcisi%' THEN 2
-              WHEN name ILIKE '%personeli%' THEN 2
-              ELSE 1
-          END,
-          is_active = true
-      WHERE level IS NULL OR is_active IS NULL;
-    `);
-
-    // Temel rollerin varlığını kontrol et ve eksikleri ekle
-    const basicRoles = [
-      { id: 1, name: 'Yönetici', description: 'Sistem yöneticisi - Tüm yetkiler', level: 4, permissions: '{"all": true}' },
-      { id: 2, name: 'Satış Temsilcisi', description: 'Satış işlemleri ve müşteri yönetimi', level: 2, permissions: '{}' },
-      { id: 3, name: 'Üretim Personeli', description: 'Üretim planlama ve operasyonları', level: 2, permissions: '{}' },
-      { id: 4, name: 'Sevkiyat Personeli', description: 'Lojistik ve teslimat işlemleri', level: 2, permissions: '{}' },
-      { id: 5, name: 'Muhasebe Personeli', description: 'Mali işler ve muhasebe', level: 2, permissions: '{}' },
-      { id: 6, name: 'Depo Personeli', description: 'Depo ve envanter yönetimi', level: 2, permissions: '{}' }
-    ];
-
-    for (const role of basicRoles) {
-      await pool.query(`
-        INSERT INTO roles (id, name, description, level, is_active, permissions) VALUES ($1, $2, $3, $4, true, $5::jsonb)
-        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, level = EXCLUDED.level;
-      `, [role.id, role.name, role.description, role.level, role.permissions]);
-    }
-
-    console.log('✅ Rol sistemi migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'Rol sistemi başarıyla güncellendi'
-    });
-
-  } catch (error) {
-    console.error('Rol migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Departman Yönetimi API'leri
+// ---------------- DEPARTMANLAR API ---------------- //
 app.get("/api/departments", authenticateToken, checkPermission('departments.read'), async (req, res) => {
   try {
     console.log('🏢 Departments API çağrıldı');
@@ -1526,7 +1050,7 @@ app.get("/api/departments", authenticateToken, checkPermission('departments.read
 });
 
 // Tek departman getir
-app.get("/api/departments/:id", async (req, res) => {
+app.get("/api/departments/:id", authenticateToken, checkPermission('departments.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -1561,7 +1085,7 @@ app.get("/api/departments/:id", async (req, res) => {
 });
 
 // Yeni departman oluştur
-app.post("/api/departments", async (req, res) => {
+app.post("/api/departments", authenticateToken, checkPermission('departments.create'), async (req, res) => {
   try {
     const { name, description, code, manager_id, is_active } = req.body;
 
@@ -1605,7 +1129,7 @@ app.post("/api/departments", async (req, res) => {
 });
 
 // Departman güncelle
-app.put("/api/departments/:id", async (req, res) => {
+app.put("/api/departments/:id", authenticateToken, checkPermission('departments.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, code, manager_id, is_active } = req.body;
@@ -1662,7 +1186,7 @@ app.put("/api/departments/:id", async (req, res) => {
 });
 
 // Departman sil
-app.delete("/api/departments/:id", async (req, res) => {
+app.delete("/api/departments/:id", authenticateToken, checkPermission('departments.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1697,91 +1221,8 @@ app.delete("/api/departments/:id", async (req, res) => {
   }
 });
 
-// Departman sistemi migration
-app.post("/api/migrate-departments", async (req, res) => {
-  try {
-    console.log('🏢 Departman sistemi migration başlatılıyor...');
-
-    // Code kolonu ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'code') THEN
-              ALTER TABLE departments ADD COLUMN code VARCHAR(10) UNIQUE;
-          END IF;
-      END $$;
-    `);
-
-    // Manager_id kolonu ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'manager_id') THEN
-              ALTER TABLE departments ADD COLUMN manager_id INTEGER;
-          END IF;
-      END $$;
-    `);
-
-    // is_active kolonu ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'is_active') THEN
-              ALTER TABLE departments ADD COLUMN is_active BOOLEAN DEFAULT true;
-          END IF;
-      END $$;
-    `);
-
-    // Foreign key constraint ekle (eğer yoksa)
-    await pool.query(`
-      DO $$
-      BEGIN
-          IF NOT EXISTS (
-              SELECT 1 FROM information_schema.table_constraints
-              WHERE constraint_name = 'departments_manager_id_fkey'
-              AND table_name = 'departments'
-          ) THEN
-              ALTER TABLE departments ADD CONSTRAINT departments_manager_id_fkey
-              FOREIGN KEY (manager_id) REFERENCES users(id);
-          END IF;
-      END $$;
-    `);
-
-    // Mevcut departmanları güncelle
-    await pool.query(`
-      UPDATE departments SET
-          is_active = true,
-          code = CASE
-              WHEN name ILIKE '%satış%' OR name ILIKE '%sales%' THEN 'SALES'
-              WHEN name ILIKE '%üretim%' OR name ILIKE '%production%' THEN 'PROD'
-              WHEN name ILIKE '%sevkiyat%' OR name ILIKE '%shipping%' THEN 'SHIP'
-              WHEN name ILIKE '%muhasebe%' OR name ILIKE '%accounting%' THEN 'ACC'
-              WHEN name ILIKE '%it%' OR name ILIKE '%bilgi%' THEN 'IT'
-              WHEN name ILIKE '%insan%' OR name ILIKE '%hr%' THEN 'HR'
-              WHEN name ILIKE '%kalite%' OR name ILIKE '%quality%' THEN 'QC'
-              ELSE UPPER(LEFT(name, 4))
-          END
-      WHERE is_active IS NULL OR code IS NULL;
-    `);
-
-    console.log('✅ Departman sistemi migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'Departman sistemi başarıyla güncellendi'
-    });
-
-  } catch (error) {
-    console.error('Departman migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Kullanıcı Hedefleri API'leri
-app.get("/api/user-targets", async (req, res) => {
+// ---------------- HEDEFLER API ---------------- //
+app.get("/api/user-targets", authenticateToken, checkPermission('admin_dashboard'), async (req, res) => {
   try {
     const { year, month, user_id } = req.query;
 
@@ -1838,7 +1279,7 @@ app.get("/api/user-targets", async (req, res) => {
 });
 
 // Tek kullanıcının belirli ay hedefini getir
-app.get("/api/user-targets/:userId", async (req, res) => {
+app.get("/api/user-targets/:userId", authenticateToken, checkPermission('admin_dashboard'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { year, month } = req.query;
@@ -1869,7 +1310,7 @@ app.get("/api/user-targets/:userId", async (req, res) => {
 });
 
 // Yeni hedef oluştur
-app.post("/api/user-targets", async (req, res) => {
+app.post("/api/user-targets", authenticateToken, checkPermission('admin_dashboard'), async (req, res) => {
   try {
     const {
       user_id, target_year, target_month,
@@ -1919,7 +1360,7 @@ app.post("/api/user-targets", async (req, res) => {
 });
 
 // Hedef güncelle (UPSERT: Update or Insert)
-app.put("/api/user-targets/:userId", async (req, res) => {
+app.put("/api/user-targets/:userId", authenticateToken, checkPermission('admin_dashboard'), async (req, res) => {
   try {
     const { userId } = req.params;
     const {
@@ -1967,7 +1408,7 @@ app.put("/api/user-targets/:userId", async (req, res) => {
 });
 
 // Hedef sil
-app.delete("/api/user-targets/:id", async (req, res) => {
+app.delete("/api/user-targets/:id", authenticateToken, checkPermission('admin_dashboard'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1993,140 +1434,8 @@ app.delete("/api/user-targets/:id", async (req, res) => {
   }
 });
 
-// Hedef sistemi migration
-app.post("/api/migrate-targets", async (req, res) => {
-  try {
-    console.log('🎯 Hedef sistemi migration başlatılıyor...');
-
-    // user_targets tablosunu oluştur
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_targets (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-          target_year INTEGER NOT NULL,
-          target_month INTEGER NOT NULL,
-
-          sales_target DECIMAL(12,2) DEFAULT 0,
-          sales_achieved DECIMAL(12,2) DEFAULT 0,
-
-          visit_target INTEGER DEFAULT 0,
-          visit_achieved INTEGER DEFAULT 0,
-
-          production_target INTEGER DEFAULT 0,
-          production_achieved INTEGER DEFAULT 0,
-
-          shipping_target INTEGER DEFAULT 0,
-          shipping_achieved INTEGER DEFAULT 0,
-
-          revenue_target DECIMAL(12,2) DEFAULT 0,
-          revenue_achieved DECIMAL(12,2) DEFAULT 0,
-
-          collection_target DECIMAL(12,2) DEFAULT 0,
-          collection_achieved DECIMAL(12,2) DEFAULT 0,
-
-          notes TEXT,
-          is_active BOOLEAN DEFAULT true,
-          created_by INTEGER REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-          UNIQUE(user_id, target_year, target_month)
-      );
-    `);
-
-    // İndeksler ekle
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_user_targets_user_id ON user_targets(user_id);
-      CREATE INDEX IF NOT EXISTS idx_user_targets_year_month ON user_targets(target_year, target_month);
-      CREATE INDEX IF NOT EXISTS idx_user_targets_active ON user_targets(is_active);
-    `);
-
-    // Örnek hedefler oluştur
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-
-    const users = await pool.query('SELECT id, role_id FROM users');
-
-    for (const user of users.rows) {
-      let salesTarget = 0, visitTarget = 0, productionTarget = 0, shippingTarget = 0, revenueTarget = 0, collectionTarget = 0;
-
-      // Role-based default targets
-      switch(user.role_id) {
-        case 1: // Admin
-            salesTarget = 150000;
-            visitTarget = 20;
-            productionTarget = 100;
-            shippingTarget = 120;
-            revenueTarget = 200000;
-            collectionTarget = 80000;
-            break;
-        case 2: // Sales
-            salesTarget = 80000;
-            visitTarget = 40;
-            revenueTarget = 120000;
-            collectionTarget = 60000;
-            break;
-        case 3: // Production
-            productionTarget = 150;
-            break;
-        case 4: // Shipping
-            shippingTarget = 200;
-            break;
-        case 5: // Accounting
-            revenueTarget = 500000;
-            collectionTarget = 250000;
-            break;
-      }
-
-      await pool.query(`
-        INSERT INTO user_targets (
-          user_id, target_year, target_month,
-          sales_target, visit_target, production_target, shipping_target, revenue_target, collection_target,
-          notes, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        ON CONFLICT (user_id, target_year, target_month) DO NOTHING
-      `, [
-        user.id, currentYear, currentMonth, salesTarget, visitTarget, productionTarget, 
-        shippingTarget, revenueTarget, collectionTarget,
-        'Otomatik oluşturulan örnek hedef', 1
-      ]);
-
-      // Gelecek ay için hedef (eğer aralık değilse)
-      if (currentMonth < 12) {
-        await pool.query(`
-          INSERT INTO user_targets (
-            user_id, target_year, target_month,
-            sales_target, visit_target, production_target, shipping_target, revenue_target, collection_target,
-            notes, created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          ON CONFLICT (user_id, target_year, target_month) DO NOTHING
-        `, [
-          user.id, currentYear, currentMonth + 1, Math.round(salesTarget * 1.1), visitTarget + 2, 
-          productionTarget + 10, shippingTarget + 15, Math.round(revenueTarget * 1.1), 
-          Math.round(collectionTarget * 1.05),
-          'Otomatik oluşturulan gelecek ay hedefi', 1
-        ]);
-      }
-    }
-
-    console.log('✅ Hedef sistemi migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'Hedef sistemi başarıyla oluşturuldu'
-    });
-
-  } catch (error) {
-    console.error('Hedef migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Kasa Yönetimi API'leri
-app.get("/api/cash-registers", async (req, res) => {
+// ---------------- KASA YÖNETİMİ API ---------------- //
+app.get("/api/cash-registers", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
   try {
     // Önce cash_registers tablosunun varlığını kontrol et
     const tableExists = await checkTableExists('cash_registers');
@@ -2183,7 +1492,7 @@ app.get("/api/cash-registers", async (req, res) => {
   }
 });
 
-// İrsaliye Yönetimi API'leri
+// ---------------- İRSALİYE API ---------------- //
 app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read'), async (req, res) => {
   try {
     // Tablonun varlığı migration'lar ve setup script'i ile garanti altına alınmalıdır.
@@ -2834,138 +2143,7 @@ app.delete("/api/delivery-notes/:id", authenticateToken, checkPermission('delive
   }
 });
 
-// İrsaliye sistemi migration
-app.post("/api/migrate-delivery-notes", async (req, res) => {
-  try {
-    console.log('📋 İrsaliye sistemi migration başlatılıyor...');
-
-    // Mevcut delivery_notes tablosunu sil ve yeniden oluştur
-    await pool.query('DROP TABLE IF EXISTS delivery_note_items CASCADE');
-    await pool.query('DROP TABLE IF EXISTS delivery_notes CASCADE');
-
-    // Yeni delivery_notes tablosunu oluştur
-    await pool.query(`
-      CREATE TABLE delivery_notes (
-          id SERIAL PRIMARY KEY,
-          delivery_number VARCHAR(50) UNIQUE NOT NULL,
-          order_id INTEGER REFERENCES orders(id),
-          customer_id INTEGER REFERENCES customers(id),
-
-          delivery_date DATE NOT NULL,
-          delivery_time TIME,
-          delivered_by INTEGER REFERENCES users(id),
-          delivery_address TEXT,
-
-          customer_signature TEXT,
-          customer_name VARCHAR(100),
-          customer_title VARCHAR(100),
-          signature_date TIMESTAMP,
-          signature_ip VARCHAR(45),
-          signature_device_info TEXT,
-
-          status VARCHAR(20) DEFAULT 'pending',
-          notes TEXT,
-          internal_notes TEXT,
-
-          attachments JSONB,
-
-          created_by INTEGER REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // İrsaliye detay tablosunu oluştur
-    await pool.query(`
-      CREATE TABLE delivery_note_items (
-          id SERIAL PRIMARY KEY,
-          delivery_note_id INTEGER REFERENCES delivery_notes(id) ON DELETE CASCADE,
-          product_id INTEGER REFERENCES products(id),
-          product_name VARCHAR(200) NOT NULL,
-          quantity INTEGER NOT NULL,
-          unit_price DECIMAL(10,2),
-          total_price DECIMAL(10,2),
-          unit VARCHAR(20) DEFAULT 'adet',
-          notes TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // İndeksler ekle
-    await pool.query(`
-      CREATE INDEX idx_delivery_notes_customer_id ON delivery_notes(customer_id);
-      CREATE INDEX idx_delivery_notes_order_id ON delivery_notes(order_id);
-      CREATE INDEX idx_delivery_notes_status ON delivery_notes(status);
-      CREATE INDEX idx_delivery_notes_delivery_date ON delivery_notes(delivery_date);
-      CREATE INDEX idx_delivery_note_items_delivery_note_id ON delivery_note_items(delivery_note_id);
-    `);
-
-    // Örnek irsaliyeler oluştur
-    const customers = await pool.query('SELECT id, company_name, address FROM customers LIMIT 5');
-    const users = await pool.query('SELECT id FROM users LIMIT 1');
-
-    if (customers.rows.length > 0 && users.rows.length > 0) {
-      const userId = users.rows[0].id;
-
-      for (let i = 0; i < customers.rows.length; i++) {
-        const customer = customers.rows[i];
-        const deliveryNumber = `IRS${new Date().getFullYear().toString().substr(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${new Date().getDate().toString().padStart(2, '0')}${(i + 1).toString().padStart(3, '0')}`;
-
-        const deliveryDate = new Date();
-        deliveryDate.setDate(deliveryDate.getDate() + i);
-
-        const status = i % 4 === 0 ? 'delivered' : i % 3 === 0 ? 'in_transit' : 'pending';
-
-        const result = await pool.query(`
-          INSERT INTO delivery_notes (
-            delivery_number, customer_id, delivery_date, delivery_time,
-            delivered_by, delivery_address, status, notes, internal_notes,
-            created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING id
-        `, [
-          deliveryNumber, customer.id, deliveryDate.toISOString().split('T')[0], '14:00:00',
-          userId, customer.address, status,
-          `Örnek irsaliye - ${customer.company_name} için teslimat`,
-          'Dahili not: Dikkatli teslimat yapılacak', userId
-        ]);
-
-        // Eğer teslim edilmişse örnek imza ekle
-        if (status === 'delivered') {
-          await pool.query(`
-            UPDATE delivery_notes SET
-              customer_signature = $1,
-              customer_name = $2,
-              customer_title = $3,
-              signature_date = $4,
-              signature_ip = $5
-            WHERE id = $6
-          `, [
-            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-            'Yetkili Kişi', 'Satın Alma Müdürü', new Date(), '192.168.1.100',
-            result.rows[0].id
-          ]);
-        }
-      }
-    }
-
-    console.log('✅ İrsaliye sistemi migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'İrsaliye sistemi başarıyla güncellendi'
-    });
-
-  } catch (error) {
-    console.error('İrsaliye migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Randevu/Görev Yönetimi API'leri
+// ---------------- RANDEVU/GÖREV API ---------------- //
 app.get("/api/appointments", authenticateToken, checkPermission('appointments.read'), async (req, res) => {
   try {
     const { type, status, assigned_to, customer_id, start_date, end_date } = req.query;
@@ -3041,7 +2219,7 @@ app.get("/api/appointments", authenticateToken, checkPermission('appointments.re
 });
 
 // Tek randevu getir
-app.get("/api/appointments/:id", async (req, res) => {
+app.get("/api/appointments/:id", authenticateToken, checkPermission('appointments.read'), async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -3077,7 +2255,7 @@ app.get("/api/appointments/:id", async (req, res) => {
 });
 
 // Yeni randevu oluştur
-app.post("/api/appointments", async (req, res) => {
+app.post("/api/appointments", authenticateToken, checkPermission('appointments.create'), async (req, res) => {
   try {
     const {
       title, description, type, priority,
@@ -3118,7 +2296,7 @@ app.post("/api/appointments", async (req, res) => {
 });
 
 // Randevu güncelle
-app.put("/api/appointments/:id", async (req, res) => {
+app.put("/api/appointments/:id", authenticateToken, checkPermission('appointments.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -3181,7 +2359,7 @@ app.put("/api/appointments/:id", async (req, res) => {
 });
 
 // Randevu tamamla
-app.post("/api/appointments/:id/complete", async (req, res) => {
+app.post("/api/appointments/:id/complete", authenticateToken, checkPermission('appointments.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { completion_notes } = req.body;
@@ -3217,7 +2395,7 @@ app.post("/api/appointments/:id/complete", async (req, res) => {
 });
 
 // Randevu sil
-app.delete("/api/appointments/:id", async (req, res) => {
+app.delete("/api/appointments/:id", authenticateToken, checkPermission('appointments.delete'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -3243,170 +2421,7 @@ app.delete("/api/appointments/:id", async (req, res) => {
   }
 });
 
-// Randevu sistemi migration
-app.post("/api/migrate-appointments", async (req, res) => {
-  try {
-    console.log('📅 Randevu sistemi migration başlatılıyor...');
-
-    // appointments tablosunu oluştur
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS appointments (
-          id SERIAL PRIMARY KEY,
-          title VARCHAR(200) NOT NULL,
-          description TEXT,
-
-          type VARCHAR(50) NOT NULL,
-          priority VARCHAR(20) DEFAULT 'medium',
-
-          start_date DATE NOT NULL,
-          start_time TIME,
-          end_date DATE,
-          end_time TIME,
-          all_day BOOLEAN DEFAULT false,
-
-          customer_id INTEGER REFERENCES customers(id),
-          order_id INTEGER REFERENCES orders(id),
-          assigned_to INTEGER REFERENCES users(id) NOT NULL,
-
-          location TEXT,
-          address TEXT,
-          latitude DECIMAL(10, 8),
-          longitude DECIMAL(11, 8),
-
-          status VARCHAR(20) DEFAULT 'pending',
-          completion_notes TEXT,
-          completion_date TIMESTAMP,
-
-          reminder_minutes INTEGER DEFAULT 15,
-          reminder_sent BOOLEAN DEFAULT false,
-
-          is_recurring BOOLEAN DEFAULT false,
-          recurrence_pattern JSONB,
-
-          created_by INTEGER REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // appointment_participants tablosunu oluştur
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS appointment_participants (
-          id SERIAL PRIMARY KEY,
-          appointment_id INTEGER REFERENCES appointments(id) ON DELETE CASCADE,
-          user_id INTEGER REFERENCES users(id),
-          customer_contact_id INTEGER,
-          participant_type VARCHAR(20) DEFAULT 'attendee',
-          response_status VARCHAR(20) DEFAULT 'pending',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // İndeksler ekle
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_appointments_assigned_to ON appointments(assigned_to);
-      CREATE INDEX IF NOT EXISTS idx_appointments_customer_id ON appointments(customer_id);
-      CREATE INDEX IF NOT EXISTS idx_appointments_start_date ON appointments(start_date);
-      CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
-      CREATE INDEX IF NOT EXISTS idx_appointments_type ON appointments(type);
-    `);
-
-    // Örnek randevular oluştur
-    const users = await pool.query('SELECT id, full_name FROM users LIMIT 3');
-    const customers = await pool.query('SELECT id, company_name FROM customers LIMIT 2');
-
-    if (users.rows.length > 0 && customers.rows.length > 0) {
-      const appointmentTypes = ['appointment', 'task', 'visit', 'call', 'meeting'];
-      const priorities = ['low', 'medium', 'high', 'urgent'];
-      const statuses = ['pending', 'in_progress', 'completed'];
-
-      let appointmentCount = 0;
-
-      for (const user of users.rows) {
-        for (const customer of customers.rows) {
-          appointmentCount++;
-
-          const type = appointmentTypes[(appointmentCount - 1) % 5];
-          const priority = priorities[(appointmentCount - 1) % 4];
-          const status = statuses[(appointmentCount - 1) % 3];
-
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() + appointmentCount);
-
-          const startTime = appointmentCount % 3 === 1 ? '09:00:00' :
-                           appointmentCount % 3 === 2 ? '14:00:00' : '16:30:00';
-
-          const result = await pool.query(`
-            INSERT INTO appointments (
-              title, description, type, priority,
-              start_date, start_time, assigned_to, customer_id,
-              location, address, status, reminder_minutes, created_by
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            RETURNING id
-          `, [
-            `${customer.company_name} ile ${type}`,
-            `Örnek randevu açıklaması - ${customer.company_name} firması ile yapılacak ${type}`,
-            type, priority,
-            startDate.toISOString().split('T')[0], startTime,
-            user.id, customer.id,
-            `${customer.company_name} Ofisi`,
-            `Örnek adres - ${customer.company_name}`,
-            status,
-            priority === 'urgent' ? 5 : priority === 'high' ? 15 : 30,
-            1
-          ]);
-
-          // Bazı randevuları tamamlanmış olarak işaretle
-          if (appointmentCount % 4 === 0) {
-            await pool.query(`
-              UPDATE appointments SET
-                status = 'completed',
-                completion_notes = 'Randevu başarıyla tamamlandı. Müşteri ile görüşme yapıldı.',
-                completion_date = CURRENT_TIMESTAMP - INTERVAL '${appointmentCount} hours'
-              WHERE id = $1
-            `, [result.rows[0].id]);
-          }
-        }
-      }
-
-      // Bazı görevler ekle (müşteri bağımsız)
-      for (const user of users.rows.slice(0, 2)) {
-        appointmentCount++;
-
-        await pool.query(`
-          INSERT INTO appointments (
-            title, description, type, priority,
-            start_date, start_time, all_day,
-            assigned_to, location, status, reminder_minutes, created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        `, [
-          'Haftalık Rapor Hazırlama',
-          'Haftalık satış raporunu hazırla ve yöneticiye sun',
-          'task', 'medium',
-          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          '10:00:00', false,
-          user.id, 'Ofis', 'pending', 60, 1
-        ]);
-      }
-    }
-
-    console.log('✅ Randevu sistemi migration tamamlandı');
-
-    res.json({
-      success: true,
-      message: 'Randevu sistemi başarıyla oluşturuldu'
-    });
-
-  } catch (error) {
-    console.error('Randevu migration hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Cari Hesap Özeti API'si
+// ---------------- MUHASEBE API ---------------- //
 app.get("/api/accounting/summary", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -3451,137 +2466,7 @@ app.get("/api/accounting/history/:customerId", authenticateToken, checkPermissio
   }
 });
 
-// Backup alma
-app.post("/api/backup-database", async (req, res) => {
-  try {
-    console.log('💾 Database backup alınıyor...');
-    
-    const backupId = `backup_${Date.now()}`;
-    
-    // Basit backup - tablo yapılarını ve verileri JSON olarak döndür
-    const tables = ['roles', 'departments', 'users', 'products', 'customers', 'orders', 'order_items', 'customer_visits'];
-    const backup = {};
-    
-    for (const table of tables) {
-      try {
-        const result = await pool.query(`SELECT * FROM ${table}`);
-        backup[table] = result.rows;
-      } catch (error) {
-        console.log(`⚠️ ${table} tablosu bulunamadı`);
-      }
-    }
-    
-    res.json({
-      success: true,
-      message: 'Database backup başarıyla alındı',
-      backupId: backupId,
-      backup: backup
-    });
-  } catch (error) {
-    console.error('Backup hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Bağlantı testi
-app.get("/api/test-connection", async (req, res) => {
-  try {
-    const startTime = Date.now();
-    await pool.query('SELECT 1');
-    const responseTime = Date.now() - startTime;
-    
-    res.json({
-      success: true,
-      message: 'Database bağlantısı başarılı',
-      responseTime: responseTime
-    });
-  } catch (error) {
-    console.error('Bağlantı test hatası:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Dashboard için eksik endpoint'ler
-app.get("/api/dashboard/monthly-sales", authenticateToken, async (req, res) => {
-    try {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-
-        // Gerçekleşen aylık satışı al
-        const salesResult = await pool.query(`
-            SELECT COALESCE(SUM(total_amount), 0) as monthlySales 
-            FROM orders 
-            WHERE EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2
-        `, [currentYear, currentMonth]);
-        const monthlySales = parseFloat(salesResult.rows[0].monthlysales) || 0;
-
-        // Aylık toplam hedefi user_targets tablosundan al
-        let monthlyTarget = 0;
-        const tableExists = await checkTableExists('user_targets');
-        if (tableExists) {
-            const targetResult = await pool.query(`
-                SELECT COALESCE(SUM(sales_target), 0) as totalTarget
-                FROM user_targets
-                WHERE target_year = $1 AND target_month = $2
-            `, [currentYear, currentMonth]);
-            monthlyTarget = parseFloat(targetResult.rows[0].totaltarget) || 0;
-        }
-
-        res.json({ success: true, monthlySales: monthlySales, target: monthlyTarget });
-    } catch (error) {
-        console.error('Monthly sales hatası:', error);
-        res.status(500).json({ success: false, monthlySales: 0, target: 0, error: error.message });
-    }
-});
-
-// Hedefler API - Sales.html için
-app.get("/api/targets/user/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
-    console.log('🎯 Kullanıcı hedefleri istendi:', userId);
-    
-    // Örnek hedef verileri döndür
-    const targets = [
-      {
-        id: 1,
-        user_id: userId,
-        target_type: 'sales',
-        target_value: 100000,
-        achieved_value: 75000,
-        target_month: new Date().getMonth() + 1,
-        target_year: new Date().getFullYear()
-      },
-      {
-        id: 2,
-        user_id: userId,
-        target_type: 'visits',
-        target_value: 30,
-        achieved_value: 22,
-        target_month: new Date().getMonth() + 1,
-        target_year: new Date().getFullYear()
-      }
-    ];
-    
-    res.json({
-      success: true,
-      targets: targets
-    });
-  } catch (error) {
-    console.error('User targets hatası:', error);
-    res.status(500).json({
-      success: false,
-      targets: []
-    });
-  }
-});
-
-// Ziyaretler API - Sales.html için
+// ---------------- ZİYARETLER API ---------------- //
 app.post("/api/visits", authenticateToken, async (req, res) => {
   try {
     const { customer_id, visit_type, result, notes, next_contact_date, visit_date } = req.body;
@@ -3623,7 +2508,7 @@ app.post("/api/visits", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/api/dashboard/customer-status", async (req, res) => {
+app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -3651,371 +2536,18 @@ app.get("/api/dashboard/customer-status", async (req, res) => {
   }
 });
 
-// Test API'si - Database bağlantısını kontrol et
-app.get("/api/test", async (req, res) => {
-  try {
-    console.log("🧪 Test API çağrıldı");
-
-    // Database bağlantısını test et
-    const result = await pool.query('SELECT NOW() as current_time');
-    console.log("✅ Database bağlantısı çalışıyor:", result.rows[0]);
-
-    // Tabloları kontrol et
-    const tables = await pool.query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-      ORDER BY table_name
-    `);
-
-    console.log("📋 Mevcut tablolar:", tables.rows.map(t => t.table_name));
-
-    res.json({
-      success: true,
-      message: "API çalışıyor",
-      database_time: result.rows[0].current_time,
-      tables: tables.rows.map(t => t.table_name),
-      environment: process.env.NODE_ENV || 'development'
-    });
-
-  } catch (error) {
-    console.error("❌ Test API hatası:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
-
-// Setup endpoint
-app.get("/api/setup", async (req, res) => {
-  try {
-    console.log('🔧 Setup başlatılıyor...');
-    
-    const bcrypt = require("bcryptjs");
-    
-    // Basit tablolar oluştur
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS roles (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(50) UNIQUE NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS departments (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL
-      );
-      
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        full_name VARCHAR(100) NOT NULL,
-        role_id INTEGER,
-        department_id INTEGER,
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS customers (
-        id SERIAL PRIMARY KEY,
-        company_name VARCHAR(200) NOT NULL,
-        contact_person VARCHAR(100),
-        phone VARCHAR(20),
-        email VARCHAR(100),
-        address TEXT,
-        assigned_sales_rep INTEGER,
-        customer_status VARCHAR(20) DEFAULT 'potential',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(200) NOT NULL,
-        description TEXT,
-        unit_price DECIMAL(10,2) NOT NULL,
-        unit VARCHAR(20) DEFAULT 'adet',
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        order_number VARCHAR(50) UNIQUE NOT NULL,
-        customer_id INTEGER,
-        sales_rep_id INTEGER,
-        order_date DATE NOT NULL,
-        total_amount DECIMAL(12,2) NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending',
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    
-    // Temel veriler
-    await pool.query(`INSERT INTO roles (id, name) VALUES (1, 'Admin') ON CONFLICT (name) DO NOTHING`);
-    await pool.query(`INSERT INTO departments (id, name) VALUES (1, 'IT') ON CONFLICT (id) DO NOTHING`);
-    
-    // Admin kullanıcısı
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-    await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active) VALUES 
-      ('admin', 'admin@sahacrm.com', $1, 'Sistem Yöneticisi', 1, 1, true)
-      ON CONFLICT (username) DO NOTHING
-    `, [hashedPassword]);
-    
-    res.json({ 
-      success: true,
-      message: 'Database başarıyla kuruldu!',
-      admin: { username: 'admin', password: 'admin123' }
-    });
-    
-  } catch (error) {
-    console.error('Setup hatası:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Güvenli tablo kontrolü yardımcı fonksiyonu
-async function checkTableExists(tableName) {
-  try {
-    const result = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = $1
-      );
-    `, [tableName]);
-    return result.rows[0].exists;
-  } catch (error) {
-    console.error(`Tablo kontrolü hatası (${tableName}):`, error);
-    return false;
-  }
-}
-
-// Kullanıcılar API
-app.get("/api/users", authenticateToken, checkPermission('users.read'), async (req, res) => {
-  try {
-    console.log('👥 Users API çağrıldı, query:', req.query);
-    const { role } = req.query;
-
-    // Önce users tablosunun var olup olmadığını kontrol et
-    const tableExists = await checkTableExists('users');
-    if (!tableExists) {
-      console.log('⚠️ Users tablosu bulunamadı');
-      return res.json({
-        success: true,
-        users: [],
-        message: 'Users tablosu henüz oluşturulmamış'
-      });
-    }
-
-    let query = `
-      SELECT u.id, u.username, u.full_name, u.email, u.phone, u.is_active, u.role_id, u.department_id,
-             COALESCE(r.name, 'Rol Yok') as role_name,
-             COALESCE(d.name, 'Departman Yok') as department_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN departments d ON u.department_id = d.id
-    `;
-    const params = [];
-    const whereClauses = [];
-
-    if (role) {
-        // Gelen role parametresine göre esnek arama yap (örn: "shipping" -> "Sevkiyat")
-        const roleSearchTerm = role.toLowerCase() === 'shipping' ? 'Sevkiyat' : role;
-        whereClauses.push(`r.name ILIKE $${params.length + 1}`);
-        params.push(`%${roleSearchTerm}%`);
-    }
-
-    if (whereClauses.length > 0) {
-        query += ` WHERE ${whereClauses.join(' AND ')}`;
-    }
-
-    query += ` ORDER BY u.full_name ASC`;
-
-    const result = await pool.query(query, params);
-
-    console.log(`✅ Users API - Rol "${role || 'Tümü'}" için ${result.rows.length} kullanıcı bulundu.`);
-
-    res.json({
-      success: true,
-      users: result.rows
-    });
-  } catch (error) {
-    console.error('❌ Users API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      details: 'Users tablosu veya ilişkili tablolar bulunamadı'
-    });
-  }
-});
-
-app.post("/api/users", async (req, res) => {
-  try {
-    const { username, email, password, full_name, role_id, department_id } = req.body;
-    
-    // Şifre kontrolü
-    if (!password || password.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        error: 'Şifre gerekli'
-      });
-    }
-    
-    // Şifreyi hash'le
-    const bcrypt = require("bcryptjs");
-    const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
-    
-    const result = await pool.query(`
-      INSERT INTO users (username, email, password_hash, full_name, role_id, department_id, is_active)
-      VALUES ($1, $2, $3, $4, $5, $6, true)
-      RETURNING *
-    `, [username, email, hashedPassword, full_name, role_id, department_id]);
-    
-    res.json({
-      success: true,
-      user: result.rows[0]
-    });
-  } catch (error) {
-    console.error('User create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Tek kullanıcı getir
-app.get("/api/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT u.*, r.name as role_name, d.name as department_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN departments d ON u.department_id = d.id
-      WHERE u.id = $1
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Kullanıcı bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      user: result.rows[0]
-    });
-  } catch (error) {
-    console.error('User get hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Kullanıcı güncelle
-app.put("/api/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { username, email, password, full_name, role_id, department_id, phone } = req.body;
-
-    let query = `
-      UPDATE users SET
-        username = $1,
-        email = $2,
-        full_name = $3,
-        role_id = $4,
-        department_id = $5,
-        phone = $6
-    `;
-    let params = [username, email, full_name, role_id, department_id, phone];
-
-    // Eğer şifre verilmişse, hash'leyip güncelle
-    if (password && password.trim() !== '') {
-      const bcrypt = require("bcryptjs");
-      const hashedPassword = await bcrypt.hash(password.toString().trim(), 10);
-      query += `, password_hash = $7 WHERE id = $8 RETURNING *`;
-      params.push(hashedPassword, id);
-    } else {
-      query += ` WHERE id = $7 RETURNING *`;
-      params.push(id);
-    }
-
-    const result = await pool.query(query, params);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Kullanıcı bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      user: result.rows[0]
-    });
-  } catch (error) {
-    console.error('User update hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Kullanıcı sil
-app.delete("/api/users/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(`
-      DELETE FROM users WHERE id = $1 RETURNING *
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Kullanıcı bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Kullanıcı başarıyla silindi'
-    });
-  } catch (error) {
-    console.error('User delete hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Müşteriler API
+// ---------------- MÜŞTERİLER API ---------------- //
 app.get("/api/customers", authenticateToken, checkPermission('customers.read'), async (req, res) => {
   try {
     console.log('🏢 Customers API çağrıldı');
 
-    // Önce customers tablosunun var olup olmadığını kontrol et
     const tableCheck = await pool.query(`
       SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'customers'
+        SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'customers'
       );
     `);
 
     if (!tableCheck.rows[0].exists) {
-      console.log('⚠️ Customers tablosu bulunamadı');
       return res.json({
         success: true,
         customers: [],
@@ -4035,15 +2567,12 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
     const params = [];
     const whereClauses = [];
     
-    // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
     const customerPerms = permissions.customers || [];
     if (customerPerms.includes('read_own') && !customerPerms.includes('read') && !permissions.all) {
-      // Satış Personeli sadece kendi müşterilerini görür
       whereClauses.push(`c.assigned_sales_rep = $${params.length + 1}`);
       params.push(userId);
     }
 
-    // Bounding box filter for map
     if (north && south && east && west) {
         whereClauses.push(`c.latitude IS NOT NULL AND c.longitude IS NOT NULL`);
         whereClauses.push(`c.latitude <= $${params.length + 1}`);
@@ -4064,63 +2593,85 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
 
     const result = await pool.query(query, params);
 
-    res.json({
-      success: true,
-      customers: result.rows
-    });
+    res.json({ success: true, customers: result.rows });
   } catch (error) {
     console.error('❌ Customers API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      details: 'Customers tablosu veya ilişkili tablolar bulunamadı'
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.post("/api/customers", authenticateToken, checkPermission('customers.create'), async (req, res) => {
   try {
     const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status } = req.body;
-    
-    // Gelen boş string'leri veritabanı için NULL'a çevir
     const finalLatitude = latitude === '' ? null : latitude;
     const finalLongitude = longitude === '' ? null : longitude;
-
-    // Geçerli bir sales_rep ID'si olup olmadığını kontrol et
     let validSalesRepId = null;
     if (assigned_sales_rep) {
       const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [assigned_sales_rep]);
-      if (userCheck.rows.length > 0) {
-        validSalesRepId = assigned_sales_rep;
-      }
+      if (userCheck.rows.length > 0) validSalesRepId = assigned_sales_rep;
     }
-    
-    // Eğer geçerli değilse veya atanmamışsa, isteği yapan kullanıcıyı ata
-    if (!validSalesRepId) {
-      validSalesRepId = req.user.userId;
-    }
-    
+    if (!validSalesRepId) validSalesRepId = req.user.userId;
     const result = await pool.query(`
       INSERT INTO customers (company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *
     `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, finalLatitude, finalLongitude, customer_status || 'potential']);
-    
-    res.json({
-      success: true,
-      customer: result.rows[0]
-    });
+    res.json({ success: true, customer: result.rows[0] });
   } catch (error) {
     console.error('Customer create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Faturalar API
-app.get("/api/invoices", async (req, res) => {
+app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT c.*, u.full_name as sales_rep_name FROM customers c
+      LEFT JOIN users u ON c.assigned_sales_rep = u.id
+      WHERE c.id = $1
+    `, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
+    res.json({ success: true, customer: result.rows[0] });
+  } catch (error) {
+    console.error('Customer get hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status } = req.body;
+    const finalLatitude = latitude === '' ? null : latitude;
+    const finalLongitude = longitude === '' ? null : longitude;
+    const result = await pool.query(`
+      UPDATE customers SET
+        company_name = $1, contact_person = $2, phone = $3, mobile_phone = $4, email = $5, address = $6,
+        assigned_sales_rep = $7, latitude = $8, longitude = $9, customer_status = $10, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $11 RETURNING *
+    `, [company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, finalLatitude, finalLongitude, customer_status, id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
+    res.json({ success: true, customer: result.rows[0] });
+  } catch (error) {
+    console.error('Customer update hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.delete("/api/customers/:id", authenticateToken, checkPermission('customers.delete'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`DELETE FROM customers WHERE id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
+    res.json({ success: true, message: 'Müşteri başarıyla silindi' });
+  } catch (error) {
+    console.error('Customer delete hatası:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ---------------- FATURALAR API ---------------- //
+app.get("/api/invoices", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
   try {
     // Önce invoices tablosunun varlığını kontrol et
     const tableExists = await checkTableExists('invoices');
@@ -4182,7 +2733,7 @@ app.get("/api/invoices", async (req, res) => {
 });
 
 // İrsaliyeden fatura oluştur
-app.post("/api/invoices/from-delivery", async (req, res) => {
+app.post("/api/invoices/from-delivery", authenticateToken, checkPermission('accounting.create'), async (req, res) => {
   try {
     const { delivery_note_id } = req.body;
     
@@ -4230,7 +2781,7 @@ app.post("/api/invoices/from-delivery", async (req, res) => {
 });
 
 // Çoklu irsaliyeden birleşik fatura oluştur
-app.post("/api/invoices/bulk-from-deliveries", async (req, res) => {
+app.post("/api/invoices/bulk-from-deliveries", authenticateToken, checkPermission('accounting.create'), async (req, res) => {
   try {
     const { delivery_note_ids } = req.body;
     
@@ -4312,7 +2863,7 @@ app.post("/api/invoices/bulk-from-deliveries", async (req, res) => {
 });
 
 // Fatura sil
-app.delete("/api/invoices/:id", async (req, res) => {
+app.delete("/api/invoices/:id", authenticateToken, checkPermission('accounting.delete'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -4333,7 +2884,7 @@ app.delete("/api/invoices/:id", async (req, res) => {
 });
 
 // Fatura ödeme kaydet
-app.post("/api/invoices/:id/payment", async (req, res) => {
+app.post("/api/invoices/:id/payment", authenticateToken, checkPermission('accounting.update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { amount } = req.body;
@@ -4365,6 +2916,7 @@ app.post("/api/invoices/:id/payment", async (req, res) => {
   }
 });
 
+// ---------------- SİPARİŞLER API ---------------- //
 // Tek sipariş getir
 app.get("/api/orders/:id", authenticateToken, checkPermission('orders.read'), async (req, res) => {
   try {
@@ -5115,7 +3667,6 @@ app.get("/api/dashboard/stats", authenticateToken, async (req, res) => {
     }
 });
 
-// Siparişler API
 app.get("/api/orders", authenticateToken, checkPermission('orders.read'), async (req, res) => {
   try {
     console.log('📦 Orders API çağrıldı');
@@ -5275,302 +3826,7 @@ app.post("/api/orders", authenticateToken, checkPermission('orders.create'), asy
   }
 });
 
-// Roller ve Departmanlar API
-app.get("/api/roles", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM roles ORDER BY name");
-    res.json({
-      success: true,
-      roles: result.rows
-    });
-  } catch (error) {
-    console.error('Roles API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Duplicate departman API'leri silindi
-
-// Cari Hesap API
-app.get("/api/account-transactions", async (req, res) => {
-  try {
-    // Önce account_transactions tablosunun varlığını kontrol et
-    const tableExists = await checkTableExists('account_transactions');
-    
-    if (!tableExists) {
-      console.log('⚠️ Account_transactions tablosu bulunamadı, oluşturuluyor...');
-      
-      // Tabloyu oluştur
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS account_transactions (
-            id SERIAL PRIMARY KEY,
-            customer_id INTEGER REFERENCES customers(id),
-            transaction_type VARCHAR(20) NOT NULL, -- 'debit' or 'credit'
-            amount DECIMAL(12,2) NOT NULL,
-            transaction_date DATE NOT NULL,
-            description TEXT,
-            reference_number VARCHAR(100),
-            created_by INTEGER REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      console.log('✅ Account_transactions tablosu oluşturuldu');
-    }
-    
-    const { customer_id, transaction_type, start_date, end_date } = req.query;
-    
-    let query = `
-      SELECT at.*, c.company_name as customer_name, u.full_name as created_by_name
-      FROM account_transactions at
-      LEFT JOIN customers c ON at.customer_id = c.id
-      LEFT JOIN users u ON at.created_by = u.id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramIndex = 1;
-    
-    if (customer_id) {
-      query += ` AND at.customer_id = $${paramIndex}`;
-      params.push(customer_id);
-      paramIndex++;
-    }
-    
-    if (transaction_type) {
-      query += ` AND at.transaction_type = $${paramIndex}`;
-      params.push(transaction_type);
-      paramIndex++;
-    }
-    
-    if (start_date) {
-      query += ` AND at.transaction_date >= $${paramIndex}`;
-      params.push(start_date);
-      paramIndex++;
-    }
-    
-    if (end_date) {
-      query += ` AND at.transaction_date <= $${paramIndex}`;
-      params.push(end_date);
-      paramIndex++;
-    }
-    
-    query += ` ORDER BY at.transaction_date DESC`;
-    
-    const result = await pool.query(query, params);
-    
-    res.json({
-      success: true,
-      transactions: result.rows
-    });
-  } catch (error) {
-    console.error('Account transactions API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      transactions: []
-    });
-  }
-});
-
-app.post("/api/account-transactions", async (req, res) => {
-  try {
-    // Önce account_transactions tablosunun varlığını kontrol et
-    const tableExists = await checkTableExists('account_transactions');
-    
-    if (!tableExists) {
-      // Tabloyu oluştur
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS account_transactions (
-            id SERIAL PRIMARY KEY,
-            customer_id INTEGER REFERENCES customers(id),
-            transaction_type VARCHAR(20) NOT NULL,
-            amount DECIMAL(12,2) NOT NULL,
-            transaction_date DATE NOT NULL,
-            description TEXT,
-            reference_number VARCHAR(100),
-            created_by INTEGER REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-    }
-    
-    const { customer_id, transaction_type, amount, transaction_date, description, reference_number } = req.body;
-    
-    const result = await pool.query(`
-      INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, reference_number, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, 1)
-      RETURNING *
-    `, [customer_id, transaction_type, amount, transaction_date, description, reference_number]);
-    
-    res.json({
-      success: true,
-      transaction: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Transaction create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Hedefler API
-app.get("/api/targets", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT u.id, u.full_name, u.monthly_sales_target, u.monthly_production_target, u.monthly_revenue_target
-      FROM users u
-      WHERE u.is_active = true
-      ORDER BY u.full_name
-    `);
-    
-    res.json({
-      success: true,
-      targets: result.rows
-    });
-  } catch (error) {
-    console.error('Targets API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-app.post("/api/targets", async (req, res) => {
-  try {
-    const { user_id, monthly_sales_target, monthly_production_target, monthly_revenue_target } = req.body;
-    
-    const result = await pool.query(`
-      UPDATE users 
-      SET monthly_sales_target = $2, monthly_production_target = $3, monthly_revenue_target = $4
-      WHERE id = $1
-      RETURNING *
-    `, [user_id, monthly_sales_target, monthly_production_target, monthly_revenue_target]);
-    
-    res.json({
-      success: true,
-      target: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Target update hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Tek hedef getir
-app.get("/api/targets/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT u.id, u.full_name, u.username, u.monthly_sales_target, u.monthly_production_target, u.monthly_revenue_target
-      FROM users u
-      WHERE u.id = $1 AND u.is_active = true
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Hedef bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      target: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Target get hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Hedef güncelle
-app.put("/api/targets/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { monthly_sales_target, monthly_production_target, monthly_revenue_target } = req.body;
-
-    const result = await pool.query(`
-      UPDATE users
-      SET monthly_sales_target = $1,
-          monthly_production_target = $2,
-          monthly_revenue_target = $3
-      WHERE id = $4 AND is_active = true
-      RETURNING id, full_name, monthly_sales_target, monthly_production_target, monthly_revenue_target
-    `, [monthly_sales_target, monthly_production_target, monthly_revenue_target, id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Kullanıcı bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      target: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Target update hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ---------------- STATS API ---------------- //
-app.get("/api/stats", async (req, res) => {
-  try {
-    // Toplam sipariş sayısı
-    const ordersResult = await pool.query("SELECT COUNT(*) as total FROM orders");
-    const totalOrders = parseInt(ordersResult.rows[0].total);
-    
-    // Toplam müşteri sayısı
-    const customersResult = await pool.query("SELECT COUNT(*) as total FROM customers");
-    const totalCustomers = parseInt(customersResult.rows[0].total);
-    
-    // Toplam ürün sayısı
-    const productsResult = await pool.query("SELECT COUNT(*) as total FROM products");
-    const totalProducts = parseInt(productsResult.rows[0].total);
-    
-    // Bu ay sipariş sayısı
-    const monthlyOrdersResult = await pool.query(`
-      SELECT COUNT(*) as total 
-      FROM orders 
-      WHERE EXTRACT(MONTH FROM order_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(YEAR FROM order_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-    `);
-    const monthlyOrders = parseInt(monthlyOrdersResult.rows[0].total);
-    
-    res.json({
-      success: true,
-      totalOrders,
-      totalCustomers,
-      totalProducts,
-      monthlyOrders
-    });
-  } catch (error) {
-    console.error('Stats API hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ---------------- MAIL SYSTEM ---------------- //
+// ---------------- MAIL API ---------------- //
 // Mail ayarları kaydet
 app.post("/api/mail/settings", async (req, res) => {
   try {
@@ -5751,45 +4007,53 @@ app.post("/api/mail/test-connection", async (req, res) => {
   }
 });
 
-// ---------------- DEBUG ENDPOINTS (Geçici) ---------------- //
-app.post("/api/create-admin", async (req, res) => {
+// ---------------- DASHBOARD API ---------------- //
+app.get("/api/dashboard/monthly-sales", authenticateToken, async (req, res) => {
+    try {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+        const salesResult = await pool.query(`
+            SELECT COALESCE(SUM(total_amount), 0) as monthlySales 
+            FROM orders 
+            WHERE EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2
+        `, [currentYear, currentMonth]);
+        const monthlySales = parseFloat(salesResult.rows[0].monthlysales) || 0;
+        let monthlyTarget = 0;
+        const tableExists = await checkTableExists('user_targets');
+        if (tableExists) {
+            const targetResult = await pool.query(`
+                SELECT COALESCE(SUM(sales_target), 0) as totalTarget
+                FROM user_targets
+                WHERE target_year = $1 AND target_month = $2
+            `, [currentYear, currentMonth]);
+            monthlyTarget = parseFloat(targetResult.rows[0].totaltarget) || 0;
+        }
+        res.json({ success: true, monthlySales: monthlySales, target: monthlyTarget });
+    } catch (error) {
+        console.error('Monthly sales hatası:', error);
+        res.status(500).json({ success: false, monthlySales: 0, target: 0, error: error.message });
+    }
+});
+
+app.get("/api/dashboard/customer-status", authenticateToken, async (req, res) => {
   try {
-    console.log('🔧 Admin oluşturuluyor...');
-    
-    const hashedPassword = await bcrypt.hash('1234', 10);
-    console.log('🔧 Hash oluşturuldu:', hashedPassword.substring(0, 20) + '...');
-    
-    // Önce sil
-    await pool.query("DELETE FROM users WHERE username = 'admin1'");
-    console.log('🔧 Eski admin silindi');
-    
-    // Roles ve departments oluştur
-    await pool.query("INSERT INTO roles (id, name) VALUES (1, 'Admin') ON CONFLICT (id) DO NOTHING");
-    await pool.query("INSERT INTO departments (id, name) VALUES (5, 'IT Departmanı') ON CONFLICT (id) DO NOTHING");
-    
-    // Sonra ekle
-    const result = await pool.query(
-      `INSERT INTO users (username, password_hash, full_name, email, role_id, department_id, is_active) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id, username`,
-      ['admin1', hashedPassword, 'Admin User', 'admin@test.com', 1, 5, true]
-    );
-    
-    console.log('🔧 Yeni admin eklendi:', result.rows[0]);
-    
-    res.json({ 
+    const result = await pool.query(`
+      SELECT 
+        COUNT(CASE WHEN customer_status = 'active' THEN 1 END) as active,
+        COUNT(CASE WHEN customer_status = 'potential' THEN 1 END) as potential,
+        COUNT(CASE WHEN customer_status = 'inactive' THEN 1 END) as inactive
+      FROM customers
+    `);
+    const row = result.rows[0];
+    res.json({
       success: true,
-      message: 'Admin kullanıcı oluşturuldu',
-      user: result.rows[0],
-      credentials: {
-        username: 'admin1',
-        password: '1234'
-      }
+      active: parseInt(row.active) || 0,
+      potential: parseInt(row.potential) || 0,
+      inactive: parseInt(row.inactive) || 0
     });
-    
   } catch (error) {
-    console.error('🔧 Admin oluşturma hatası:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Customer status hatası:', error);
+    res.status(500).json({ success: false, active: 0, potential: 0, inactive: 0 });
   }
 });
 
@@ -5810,13 +4074,6 @@ app.get("/setup", (req, res) => {
 
 app.get("/database-manager", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "database-manager.html"));
-});
-
-
-// ---------------- ERROR HANDLER ---------------- //
-app.use((err, req, res, next) => {
-  console.error('Sunucu hatası:', err);
-  res.status(500).json({ error: 'Sunucu hatası oluştu' });
 });
 
 // ---------------- 404 HANDLER ---------------- //
