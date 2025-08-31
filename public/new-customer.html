@@ -38,6 +38,11 @@
                         </div>
                         
                         <div class="form-group">
+                            <label>Cep Telefonu</label>
+                            <input type="tel" id="mobile_phone">
+                        </div>
+                        
+                        <div class="form-group">
                             <label>E-posta</label>
                             <input type="email" id="email">
                         </div>
@@ -46,6 +51,11 @@
                     <div class="form-group">
                         <label>Adres Bilgisi</label>
                         <textarea id="address" rows="3" placeholder="Konum bilgisinden otomatik oluşturulacak..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Harita Konumu (Otomatik)</label>
+                        <input type="text" id="coordinates" readonly style="background: #f8f9fa; color: #666;">
                     </div>
                     
                     <div class="form-group">
@@ -107,6 +117,7 @@
             if (lat && lng) {
                 currentLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
                 getAddressFromCoordinates(currentLocation.lat, currentLocation.lng);
+                document.getElementById('coordinates').value = `${lat}, ${lng}`;
             }
         }
 
@@ -133,6 +144,7 @@
                 company_name: document.getElementById('company_name').value,
                 contact_person: document.getElementById('contact_person').value,
                 phone: document.getElementById('phone').value,
+                mobile_phone: document.getElementById('mobile_phone').value,
                 email: document.getElementById('email').value,
                 address: document.getElementById('address').value,
                 notes: document.getElementById('notes').value,

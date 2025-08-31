@@ -222,6 +222,10 @@
                     <input type="tel" id="customer_phone">
                 </div>
                 <div class="form-group">
+                    <label>Cep Telefonu:</label>
+                    <input type="tel" id="customer_mobile_phone">
+                </div>
+                <div class="form-group">
                     <label>E-posta:</label>
                     <input type="email" id="customer_email">
                 </div>
@@ -288,6 +292,10 @@
                 <div class="form-group">
                     <label>Telefon:</label>
                     <input type="tel" id="map_phone">
+                </div>
+                <div class="form-group">
+                    <label>Cep Telefonu:</label>
+                    <input type="tel" id="map_mobile_phone">
                 </div>
                 <div class="form-group">
                     <label>E-posta:</label>
@@ -1436,6 +1444,7 @@
                 company_name: document.getElementById('company_name').value,
                 contact_person: document.getElementById('contact_person').value,
                 phone: document.getElementById('customer_phone').value,
+                mobile_phone: document.getElementById('customer_mobile_phone').value,
                 email: document.getElementById('customer_email').value,
                 address: document.getElementById('customer_address').value,
                 assigned_sales_rep: 1
@@ -2388,6 +2397,7 @@
                 company_name: document.getElementById('map_company_name').value,
                 contact_person: document.getElementById('map_contact_person').value,
                 phone: document.getElementById('map_phone').value,
+                mobile_phone: document.getElementById('map_mobile_phone').value,
                 email: document.getElementById('map_email').value,
                 address: document.getElementById('map_address').value,
                 assigned_sales_rep: currentUser.id,
@@ -2518,6 +2528,7 @@
                 document.getElementById('company_name').value = customer.customer.company_name || '';
                 document.getElementById('contact_person').value = customer.customer.contact_person || '';
                 document.getElementById('customer_phone').value = customer.customer.phone || '';
+                document.getElementById('customer_mobile_phone').value = customer.customer.mobile_phone || '';
                 document.getElementById('customer_email').value = customer.customer.email || '';
                 document.getElementById('customer_address').value = customer.customer.address || '';
                 
