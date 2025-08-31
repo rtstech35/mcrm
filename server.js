@@ -191,25 +191,9 @@ async function checkTableExists(tableName) {
 
 // ---------------- TEST ---------------- //
 app.get("/", (req, res) => {
-  res.send(`
-    <html>
-      <head><title>CRM Server Status</title></head>
-      <body style="font-family: Arial; padding: 20px;">
-        <h1>🚀 Saha CRM Sistemi Çalışıyor</h1>
-        <p><strong>Server Durumu:</strong> ✅ Aktif</p>
-        <p><strong>Zaman:</strong> ${new Date().toLocaleString('tr-TR')}</p>
-        <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
-        <p><strong>Database URL:</strong> ${process.env.DATABASE_URL ? '✅ Tanımlı' : '❌ Tanımsız'}</p>
-        <hr>
-        <h3>Test Linkleri:</h3>
-        <ul>
-          <li><a href="/setup">Setup Sayfası</a></li>
-          <li><a href="/admin">Admin Paneli</a></li>
-          <li><a href="/api/health">Health Check API</a></li>
-        </ul>
-      </body>
-    </html>
-  `);
+  // Ana sayfa isteği geldiğinde doğrudan login sayfasını (index.html) gönder.
+  // Bu, kullanıcıların test sayfası yerine giriş ekranını görmesini sağlar.
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Database durumu kontrol API'si
