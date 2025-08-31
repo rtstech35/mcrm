@@ -56,25 +56,6 @@ app.use('/api/*', (req, res, next) => {
   next();
 });
 
-// ---------------- STATİK DOSYALAR (API'lerden sonra) ---------------- //
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
-});
-
-app.get("/admin-simple", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin-simple.html"));
-});
-
-app.get("/setup", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "setup.html"));
-});
-
-app.get("/database-manager", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "database-manager.html"));
-});
-
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
 console.log('💾 Database bağlantısı yapılandırılıyor...');
 console.log('DATABASE_URL:', process.env.DATABASE_URL ? '✅ Tanımlı' : '❌ Tanımsız');
@@ -4779,9 +4760,20 @@ app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async 
 });
 
 // Satış personeli dashboard stats
-app.get("/api/sales/dashboard/:userId", async (req, res) => {
+app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
     try {
-        const { userId } = req.params;
+        const requestedUserId = parseInt(req.params.userId, 10);
+        const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
+
+        // Admin ve Satış Müdürü herkesin dashboard'unu görebilir.
+        // Diğer kullanıcılar (örn. Satış Personeli) sadece kendininkini görebilir.
+        const canViewAll = loggedInUserRole === 'Admin' || loggedInUserRole === 'Satış Müdürü';
+
+        if (!canViewAll && loggedInUserId !== requestedUserId) {
+            return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
+        }
+
+        const userId = requestedUserId;
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth() + 1;
 
@@ -5559,6 +5551,26 @@ app.post("/api/create-admin", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ---------------- STATİK DOSYALAR (API'lerden sonra) ---------------- //
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/admin-simple", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-simple.html"));
+});
+
+app.get("/setup", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "setup.html"));
+});
+
+app.get("/database-manager", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "database-manager.html"));
+});
+
 
 // ---------------- ERROR HANDLER ---------------- //
 app.use((err, req, res, next) => {
