@@ -2282,8 +2282,16 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
     // Filter if the user has 'read_own' but not the general 'read' permission (and is not admin)
     const deliveryPerms = permissions.delivery || [];
     if (deliveryPerms.includes('read_own') && !deliveryPerms.includes('read') && !permissions.all) {
-      // Sevkiyatçı veya Sorumlu sadece kendine atananları görür
-      whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
+      // Sevkiyatçı:
+      // - Tüm 'pending' durumundaki irsaliyeleri görebilir (kendine atamak için).
+      // - Diğer durumlardaki ('in_transit', 'delivered') sadece kendine atananları görebilir.
+      // - Eğer durum filtresi yoksa (dashboard gibi), hem bekleyenleri hem de kendine atananları görür.
+      if (status && status !== 'pending') {
+        whereClauses.push(`dn.delivered_by = $${params.push(userId)}`);
+      } else if (!status) { // Dashboard'dan gelen genel istek (status filtresi yok)
+        whereClauses.push(`(dn.status = 'pending' OR dn.delivered_by = $${params.push(userId)})`);
+      }
+      // status === 'pending' ise ekstra bir filtre uygulanmaz, tümü listelenir.
     }
 
     if (whereClauses.length > 0) {
