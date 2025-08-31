@@ -106,6 +106,10 @@
                     <input type="email" id="profile_email" required>
                 </div>
                 <div class="form-group">
+                    <label>Telefon:</label>
+                    <input type="tel" id="profile_phone">
+                </div>
+                <div class="form-group">
                     <label>Yeni Şifre (isteğe bağlı):</label>
                     <input type="password" id="new_password">
                 </div>
@@ -206,11 +210,13 @@
 
         window.openProfile = function() {
             const modal = document.getElementById('profileModal');
-            if (modal) {
-                document.getElementById('profile_full_name').value = currentUser.full_name || '';
-                document.getElementById('profile_email').value = currentUser.email || '';
-                modal.style.display = 'block';
-            }
+            if (!modal) return;
+
+            document.getElementById('profile_full_name').value = currentUser.full_name || '';
+            document.getElementById('profile_email').value = currentUser.email || '';
+            document.getElementById('profile_phone').value = currentUser.phone || '';
+            modal.style.display = 'block';
+
             toggleProfileMenu();
         };
 
@@ -218,15 +224,25 @@
             e.preventDefault();
             const newPassword = document.getElementById('new_password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
-            if (newPassword && newPassword !== confirmPassword) {
-                alert('Şifreler eşleşmiyor!'); return;
-            }
+            if (newPassword && newPassword !== confirmPassword) { alert('Yeni şifreler eşleşmiyor!'); return; }
+
             const formData = {
                 full_name: document.getElementById('profile_full_name').value,
                 email: document.getElementById('profile_email').value,
+                phone: document.getElementById('profile_phone').value
             };
-            if (newPassword) formData.password = newPassword;
-            alert('Profil güncelleme özelliği yakında eklenecek.');
+            if (newPassword) { formData.password = newPassword; }
+
+            try {
+                await apiCall(`/api/users/${currentUser.id}`, { method: 'PUT', body: JSON.stringify(formData) });
+                currentUser.full_name = formData.full_name;
+                currentUser.email = formData.email;
+                currentUser.phone = formData.phone;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                alert('Profil başarıyla güncellendi!');
+                closeModal('profileModal');
+                updateDateTime();
+            } catch (error) { alert('Güncelleme hatası: ' + error.message); }
         });
     </script>
     <script>
