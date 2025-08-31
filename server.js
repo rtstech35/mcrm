@@ -3994,7 +3994,7 @@ app.get("/api/customers", authenticateToken, checkPermission('customers.read'), 
 
 app.post("/api/customers", authenticateToken, checkPermission('customers.create'), async (req, res) => {
   try {
-    const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
+    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude } = req.body;
     
     // Geçerli bir sales_rep ID'si olup olmadığını kontrol et
     let validSalesRepId = null;
@@ -4005,17 +4005,16 @@ app.post("/api/customers", authenticateToken, checkPermission('customers.create'
       }
     }
     
-    // Eğer geçerli değilse, ilk kullanıcıyı ata
+    // Eğer geçerli değilse veya atanmamışsa, isteği yapan kullanıcıyı ata
     if (!validSalesRepId) {
-      const firstUser = await pool.query('SELECT id FROM users ORDER BY id LIMIT 1');
-      validSalesRepId = firstUser.rows.length > 0 ? firstUser.rows[0].id : null;
+      validSalesRepId = req.user.userId;
     }
     
     const result = await pool.query(`
-      INSERT INTO customers (company_name, contact_person, phone, email, address, assigned_sales_rep, customer_status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'potential')
+      INSERT INTO customers (company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'potential')
       RETURNING *
-    `, [company_name, contact_person, phone, email, address, validSalesRepId]);
+    `, [company_name, contact_person, phone, mobile_phone, email, address, validSalesRepId, latitude, longitude]);
     
     res.json({
       success: true,
@@ -4485,19 +4484,22 @@ app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read
 app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { company_name, contact_person, phone, email, address, assigned_sales_rep } = req.body;
+    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude } = req.body;
 
     const result = await pool.query(`
       UPDATE customers SET
         company_name = $1,
         contact_person = $2,
         phone = $3,
-        email = $4,
-        address = $5,
-        assigned_sales_rep = $6
-      WHERE id = $7
+        mobile_phone = $4,
+        email = $5,
+        address = $6,
+        assigned_sales_rep = $7,
+        latitude = $8,
+        longitude = $9
+      WHERE id = $10
       RETURNING *
-    `, [company_name, contact_person, phone, email, address, assigned_sales_rep, id]);
+    `, [company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({

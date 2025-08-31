@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS customers (
     company_name VARCHAR(200) UNIQUE NOT NULL,
     contact_person VARCHAR(100),
     phone VARCHAR(20),
+    mobile_phone VARCHAR(20), -- Reklam ve SMS için cep telefonu
     email VARCHAR(100),
     address TEXT,
     latitude DECIMAL(10,8),
