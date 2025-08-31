@@ -632,6 +632,31 @@
                 const visitPercentage = stats.monthlyVisitTarget > 0 ? Math.round((stats.currentMonthlyVisits / stats.monthlyVisitTarget) * 100) : 0;
                 const collectionPercentage = stats.monthlyCollectionTarget > 0 ? Math.round((stats.currentMonthlyCollection / stats.monthlyCollectionTarget) * 100) : 0;
                 
+                // Eğer tüm temel veriler sıfır ise, kullanıcıya bir başlangıç ekranı göster
+                const isDataEmpty = 
+                    stats.monthlySalesTarget === 0 &&
+                    stats.currentMonthlySales === 0 &&
+                    stats.monthlyVisitTarget === 0 &&
+                    stats.currentMonthlyVisits === 0;
+
+                if (isDataEmpty && todayAppointments.length === 0) {
+                    document.getElementById('content').innerHTML = `
+                        <div class="card">
+                            <h2>📊 Satış Dashboard</h2>
+                            <p>Hoş geldiniz, ${currentUser.full_name || 'Kullanıcı'}!</p>
+                            <div style="background: #e3f2fd; border-left: 4px solid #007bff; padding: 1.5rem; margin: 1.5rem 0; border-radius: 8px;">
+                                <h4 style="margin-top: 0; color: #0056b3;">Başlamaya Hazır!</h4>
+                                <p style="color: #333; line-height: 1.6;">Dashboard'unuzda veri görüntülemek için henüz yeterli aktivite yok veya yöneticiniz tarafından bu ay için bir hedef belirlenmemiş.</p>
+                                <p style="color: #555; font-size: 0.9em; margin-top: 1rem;">Yeni müşteri ziyaretleri ve siparişler oluşturarak başlayabilirsiniz.</p>
+                                <div style="margin-top: 1.5rem;">
+                                    <a href="/visit-nearby.html" class="btn" style="text-decoration: none; background: #fd7e14;">🆕 Yeni Ziyaret</a>
+                                    <button class="btn" onclick="openOrderModal()" style="background: #28a745; margin-left: 0.5rem;">📝 Yeni Sipariş</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    return; // Fonksiyonun geri kalanını çalıştırma
+                }
+
                 document.getElementById('content').innerHTML = `
                     <!-- Hedefler ve Gerçekleşmeler -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
