@@ -208,12 +208,11 @@
                 company_name: document.getElementById('company_name').value,
                 contact_person: document.getElementById('contact_person').value,
                 phone: document.getElementById('phone').value,
-                mobile_phone: document.getElementById('mobile_phone').value,
                 email: document.getElementById('email').value,
                 address: document.getElementById('address').value,
                 notes: document.getElementById('notes').value,
                 customer_status: document.getElementById('customer_status').value,
-                sales_rep_id: currentUser.id,
+                assigned_sales_rep: currentUser.id, // API'nin beklediği doğru anahtar
                 latitude: currentLocation ? currentLocation.lat : null,
                 longitude: currentLocation ? currentLocation.lng : null
             };
@@ -226,7 +225,7 @@
 
                 if (createVisit) {
                     // Müşteri kaydedildikten sonra ziyaret sayfasına yönlendir
-                    window.location.href = `/visit-form.html?customer_id=${result.id}&new_customer=true`;
+                    window.location.href = `/visit-form.html?customer_id=${result.customer.id}&new_customer=true`;
                 } else {
                     alert('Müşteri başarıyla kaydedildi!');
                     goBack();
@@ -244,8 +243,14 @@
             window.location.href = '/visit-nearby.html';
         }
 
-        // Sayfa yüklendiğinde konum parametrelerini kontrol et
-        initMap();
+        // Sayfa tamamen yüklendiğinde haritayı başlat
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            // Adres arama kutusunda Enter tuşuna basıldığında aramayı tetikle
+            document.getElementById('address-search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') searchAddress();
+            });
+        });
     </script>
 </body>
 </html>
