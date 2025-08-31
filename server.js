@@ -4842,6 +4842,128 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
     }
 });
 
+// Üretim personeli dashboard stats
+app.get("/api/production/dashboard/:userId", authenticateToken, async (req, res) => {
+    try {
+        const requestedUserId = parseInt(req.params.userId, 10);
+        const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
+
+        const canViewAll = ['Admin', 'Üretim Müdürü'].includes(loggedInUserRole);
+        if (!canViewAll && loggedInUserId !== requestedUserId) {
+            return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
+        }
+
+        const userId = requestedUserId;
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        // Hedefler
+        const targetsResult = await pool.query(`
+            SELECT production_target FROM user_targets 
+            WHERE user_id = $1 AND target_year = $2 AND target_month = $3
+        `, [userId, currentYear, currentMonth]);
+        const productionTarget = parseInt(targetsResult.rows[0]?.production_target) || 0;
+
+        // Gerçekleşen üretim (tamamlanan siparişler)
+        const achievedResult = await pool.query(`
+            SELECT COUNT(*) as count FROM orders WHERE status = 'completed'
+        `);
+        const productionAchieved = parseInt(achievedResult.rows[0].count);
+
+        // Sipariş durumları
+        const orderStatusResult = await pool.query(`SELECT status, COUNT(*) as count FROM orders GROUP BY status`);
+        const orderStatuses = orderStatusResult.rows.reduce((acc, row) => {
+            if (row.status) acc[row.status] = parseInt(row.count);
+            return acc;
+        }, {});
+
+        res.json({
+            success: true,
+            stats: {
+                productionTarget,
+                productionAchieved,
+                pendingOrders: orderStatuses.pending || 0,
+                productionOrders: orderStatuses.production || 0,
+                completedOrders: orderStatuses.completed || 0,
+                readyForDelivery: orderStatuses.ready_for_delivery || 0,
+            }
+        });
+    } catch (error) {
+        console.error(`Production dashboard stats error for user ${req.params.userId}:`, error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Sevkiyat personeli dashboard stats
+app.get("/api/shipping/dashboard/:userId", authenticateToken, async (req, res) => {
+    try {
+        const requestedUserId = parseInt(req.params.userId, 10);
+        const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
+
+        const canViewAll = ['Admin', 'Sevkiyat Sorumlusu'].includes(loggedInUserRole);
+        if (!canViewAll && loggedInUserId !== requestedUserId) {
+            return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
+        }
+
+        const userId = requestedUserId;
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        // Hedefler
+        const targetsResult = await pool.query(`
+            SELECT shipping_target FROM user_targets 
+            WHERE user_id = $1 AND target_year = $2 AND target_month = $3
+        `, [userId, currentYear, currentMonth]);
+        const shippingTarget = parseInt(targetsResult.rows[0]?.shipping_target) || 0;
+
+        // Gerçekleşen sevkiyat (teslim edilen irsaliyeler)
+        const achievedResult = await pool.query(`
+            SELECT COUNT(*) as count FROM delivery_notes WHERE delivered_by = $1 AND status = 'delivered'
+        `, [userId]);
+        const shippingAchieved = parseInt(achievedResult.rows[0].count);
+
+        // İrsaliye durumları
+        const deliveryStatusResult = await pool.query(`SELECT status, COUNT(*) as count FROM delivery_notes GROUP BY status`);
+        const deliveryStatuses = deliveryStatusResult.rows.reduce((acc, row) => {
+            if (row.status) acc[row.status] = parseInt(row.count);
+            return acc;
+        }, {});
+
+        res.json({
+            success: true,
+            stats: {
+                shippingTarget,
+                shippingAchieved,
+                pendingDeliveries: deliveryStatuses.pending || 0,
+                inTransitDeliveries: deliveryStatuses.in_transit || 0,
+                completedDeliveries: deliveryStatuses.delivered || 0,
+            }
+        });
+    } catch (error) {
+        console.error(`Shipping dashboard stats error for user ${req.params.userId}:`, error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Muhasebe dashboard stats
+app.get("/api/accounting/dashboard/:userId", authenticateToken, async (req, res) => {
+    try {
+        const summaryResult = await pool.query(`
+            SELECT
+                COALESCE(SUM(CASE WHEN transaction_type = 'debit' THEN amount ELSE 0 END), 0) as total_debit,
+                COALESCE(SUM(CASE WHEN transaction_type = 'credit' THEN amount ELSE 0 END), 0) as total_credit
+            FROM account_transactions
+        `);
+        const summary = summaryResult.rows[0];
+        const balance = parseFloat(summary.total_debit) - parseFloat(summary.total_credit);
+
+        res.json({ success: true, stats: { ...summary, balance } });
+    } catch (error) {
+        console.error(`Accounting dashboard stats error:`, error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Admin dashboard stats
 app.get("/api/dashboard/stats", authenticateToken, async (req, res) => {
     try {
