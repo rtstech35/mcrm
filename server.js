@@ -2251,41 +2251,9 @@ app.get("/api/cash-registers", async (req, res) => {
 // İrsaliye Yönetimi API'leri
 app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read'), async (req, res) => {
   try {
-    // Önce delivery_notes tablosunun varlığını kontrol et
-    const tableExists = await checkTableExists('delivery_notes');
-    
-    if (!tableExists) {
-      console.log('⚠️ Delivery_notes tablosu bulunamadı, oluşturuluyor...');
-      
-      // Tabloyu oluştur
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS delivery_notes (
-            id SERIAL PRIMARY KEY,
-            delivery_number VARCHAR(50) UNIQUE NOT NULL,
-            order_id INTEGER REFERENCES orders(id),
-            customer_id INTEGER REFERENCES customers(id),
-            delivery_date DATE NOT NULL,
-            delivery_time TIME,
-            delivered_by INTEGER REFERENCES users(id),
-            delivery_address TEXT,
-            status VARCHAR(20) DEFAULT 'ready_for_shipping',
-            notes TEXT,
-            internal_notes TEXT,
-            total_amount DECIMAL(12,2) DEFAULT 0,
-            is_invoiced BOOLEAN DEFAULT false,
-            customer_signature TEXT,
-            customer_name VARCHAR(100),
-            customer_title VARCHAR(100),
-            signature_date TIMESTAMP,
-            signature_ip VARCHAR(45),
-            created_by INTEGER REFERENCES users(id),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      console.log('✅ Delivery_notes tablosu oluşturuldu');
-    }
+    // Tablonun varlığı migration'lar ve setup script'i ile garanti altına alınmalıdır.
+    // API endpoint'i içinde tablo oluşturmak hatalara yol açabilir ve kodun okunabilirliğini düşürür.
+    // Bu nedenle on-the-fly tablo oluşturma mantığı kaldırıldı.
 
     const { status, customer_id } = req.query;
     const { userId, permissions } = req.user;
@@ -2597,10 +2565,14 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
 
     // İrsaliye ve müşteri bilgilerini al
     const deliveryResult = await pool.query(`
-      SELECT dn.*, c.company_name, c.contact_person, c.email as customer_email, o.order_number
+      SELECT dn.*, 
+             c.company_name, c.contact_person, c.email as customer_email, c.phone as customer_phone, c.address as customer_address,
+             o.order_number,
+             u_creator.full_name as created_by_name
       FROM delivery_notes dn
       LEFT JOIN customers c ON dn.customer_id = c.id
       LEFT JOIN orders o ON dn.order_id = o.id
+      LEFT JOIN users u_creator ON dn.created_by = u_creator.id
       WHERE dn.id = $1
     `, [deliveryNoteId]);
     
@@ -2616,20 +2588,17 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
         return { success: false, error: 'Müşteri e-posta adresi yok' };
     }
 
-    // Sipariş kalemlerini al
-    let orderItems = [];
-    if (delivery.order_id) {
-      try {
+    // İrsaliye kalemlerini al
+    let deliveryItems = [];
+    try {
         const itemsResult = await pool.query(`
-          SELECT COALESCE(p.name, oi.product_name, 'Ürün') as product_name, oi.quantity, COALESCE(oi.unit, 'adet') as unit
-          FROM order_items oi
-          LEFT JOIN products p ON oi.product_id = p.id
-          WHERE oi.order_id = $1
-        `, [delivery.order_id]);
-        orderItems = itemsResult.rows;
-      } catch (error) {
-        console.log(`⚠️ Sipariş kalemleri alınamadı, Sipariş ID: ${delivery.order_id}`, error.message);
-      }
+            SELECT product_name, quantity, unit
+            FROM delivery_note_items
+            WHERE delivery_note_id = $1
+        `, [deliveryNoteId]);
+        deliveryItems = itemsResult.rows;
+    } catch (error) {
+        console.log(`⚠️ İrsaliye kalemleri alınamadı, İrsaliye ID: ${deliveryNoteId}`, error.message);
     }
 
     const nodemailer = require('nodemailer');
@@ -2647,19 +2616,110 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
 
     const subject = `Teslimat Tamamlandı - ${delivery.delivery_number}`;
     
-    let productsHtml = orderItems.length > 0 ? `
-      <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 15px 0;">
-        <h4 style="margin-top: 0; color: #2d5016;">📦 Teslim Edilen Ürünler</h4>
-        <ul style="margin: 10px 0; padding-left: 20px;">
-          ${orderItems.map(item => 
-            `<li style="margin: 5px 0; color: #333;">
-              <strong>${item.product_name}</strong> - ${item.quantity} ${item.unit || 'adet'}
-            </li>`
-          ).join('')}
-        </ul>
-      </div>` : '';
-    
-    const htmlContent = `...`; // Tam HTML içeriği buraya kopyalanacak
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>İrsaliye - ${delivery.delivery_number}</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #007bff; padding-bottom: 20px; }
+            .company-info { text-align: center; margin-bottom: 20px; }
+            .delivery-info { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+            .info-box { background: #f8f9fa; padding: 15px; border-radius: 5px; }
+            .info-box h3 { margin-top: 0; color: #007bff; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            .items-table th { background: #007bff; color: white; }
+            .items-table tr:nth-child(even) { background: #f9f9f9; }
+            .signature-section { margin-top: 30px; text-align: center; }
+            .signature-box { border: 2px solid #007bff; padding: 20px; margin: 20px 0; border-radius: 5px; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>İRSALİYE</h1>
+                <h2>${delivery.delivery_number}</h2>
+            </div>
+            
+            <div class="company-info">
+                <h3>SAHA CRM SİSTEMİ</h3>
+                <p>Adres: Örnek Mahalle, Örnek Sokak No:1, İstanbul</p>
+                <p>Telefon: +90 212 555 0000 | Email: info@sahacrm.com</p>
+            </div>
+            
+            <div class="delivery-info">
+                <div class="info-box">
+                    <h3>Teslim Edilen Firma</h3>
+                    <p><strong>Firma:</strong> ${delivery.company_name}</p>
+                    <p><strong>Yetkili:</strong> ${delivery.contact_person || 'Belirtilmemiş'}</p>
+                    <p><strong>Telefon:</strong> ${delivery.customer_phone || 'Belirtilmemiş'}</p>
+                    <p><strong>Email:</strong> ${delivery.customer_email || 'Belirtilmemiş'}</p>
+                    <p><strong>Adres:</strong> ${delivery.customer_address || 'Belirtilmemiş'}</p>
+                </div>
+                
+                <div class="info-box">
+                    <h3>Teslimat Bilgileri</h3>
+                    <p><strong>İrsaliye No:</strong> ${delivery.delivery_number}</p>
+                    <p><strong>Teslimat Tarihi:</strong> ${new Date(delivery.delivery_date).toLocaleDateString('tr-TR')}</p>
+                    <p><strong>Teslim Eden:</strong> ${delivery.created_by_name || 'Sevkiyat Personeli'}</p>
+                    <p><strong>Durum:</strong> Teslim Edildi</p>
+                </div>
+            </div>
+            
+            <h3>Teslim Edilen Ürünler</h3>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Ürün Adı</th>
+                        <th>Miktar</th>
+                        <th>Birim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${deliveryItems.map(item => `
+                        <tr>
+                            <td>${item.product_name || 'Ürün'}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.unit || 'adet'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            ${delivery.customer_signature ? `
+                <div class="signature-section">
+                    <h3>Teslim Alındı Onayı</h3>
+                    <div class="signature-box">
+                        <p><strong>Dijital İmza ile Teslim Alınmıştır</strong></p>
+                        <img src="${delivery.customer_signature}" alt="Dijital İmza" style="max-width: 300px; max-height: 150px; border: 1px solid #ddd; margin: 10px 0;">
+                        <p>Tarih: ${new Date(delivery.signature_date).toLocaleDateString('tr-TR')}</p>
+                        <p>Teslim Alan: ${delivery.customer_name || 'Yetkili Kişi'}</p>
+                    </div>
+                </div>
+            ` : `
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <p><strong>Teslim Alındı</strong></p>
+                        <p>Tarih: ${new Date(delivery.delivery_date).toLocaleDateString('tr-TR')}</p>
+                        <p>Teslim Alan: ________________</p>
+                        <p>İmza: ________________</p>
+                    </div>
+                </div>
+            `}
+            
+            <div class="footer">
+                <p>Bu irsaliye otomatik olarak oluşturulmuştur.</p>
+                <p>Herhangi bir sorunuz için lütfen bizimle iletişime geçin.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
 
     const mailOptions = {
       from: `${settings.from_name} <${settings.smtp_user}>`,
