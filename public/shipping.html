@@ -1087,6 +1087,28 @@
             }
         }
 
+        async function showSignatureModal(deliveryNoteId) {
+            try {
+                const authToken = localStorage.getItem('authToken');
+                const response = await fetch(`/api/delivery-notes/${deliveryNoteId}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!response.ok) throw new Error('İrsaliye bilgileri alınamadı.');
+                const data = await response.json();
+                const note = data.delivery_note;
+
+                const modal = document.getElementById('signatureModal');
+                document.getElementById('signatureDeliveryInfo').innerHTML = `
+                    <p style="margin: 0;"><strong>İrsaliye No:</strong> ${note.delivery_number}</p>
+                    <p style="margin: 5px 0 0 0;"><strong>Müşteri:</strong> ${note.customer_name}</p>`;
+                document.getElementById('completeDeliveryBtn').dataset.deliveryNoteId = deliveryNoteId;
+                modal.style.display = 'flex';
+                initSignaturePad();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        }
+
         // --- İmza Modal Fonksiyonları ---
         let canvas, ctx, isDrawing = false;
 
