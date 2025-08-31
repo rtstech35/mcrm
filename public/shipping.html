@@ -599,6 +599,406 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        let currentDeliveryIdForSignature = null;
+        let signaturePad, signatureCtx, isDrawing = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+
+            if (authToken) {
+                loadDashboardData();
+                updateDateTime();
+                setInterval(updateDateTime, 60000);
+                // setupMenuVisibility(); // Yetkilendirme için bu fonksiyon eklenebilir.
+            }
+        });
+
+        function checkAuth() {
+            if (!authToken || !currentUser.id) {
+                console.log('Kimlik doğrulama başarısız, giriş sayfasına yönlendiriliyor.');
+                window.location.href = '/';
+                return;
+            }
+
+            const allowedRoles = ['Sevkiyat', 'Sevkiyat Sorumlusu', 'Yönetici', 'Admin', 'Depo'];
+            const userRole = currentUser.role_name || '';
+
+            if (!allowedRoles.some(role => userRole.includes(role))) {
+                alert('Bu sayfaya erişim yetkiniz yok.');
+                window.location.href = '/';
+            }
+        }
+
+        async function apiCall(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                    ...options.headers
+                }
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'API hatası' }));
+                throw new Error(errorData.message || 'API hatası');
+            }
+            return response.json();
+        }
+
+        async function loadDashboardData() {
+            try {
+                await loadShippingTargets();
+                await loadDeliveryStatusCounts();
+            } catch (error) {
+                console.error('Dashboard verileri yüklenirken hata:', error);
+            }
+        }
+
+        async function loadShippingTargets() {
+            try {
+                const user = currentUser;
+                const currentMonth = new Date().getMonth() + 1;
+                const currentYear = new Date().getFullYear();
+                
+                const response = await apiCall(`/api/user-targets/${user.id}?year=${currentYear}&month=${currentMonth}`);
+                
+                let shippingTarget = 0;
+                if (response && response.target) {
+                    shippingTarget = response.target.shipping_target || 0;
+                }
+                
+                const deliveryNotesResponse = await apiCall('/api/delivery-notes');
+                const deliveryNotes = deliveryNotesResponse.delivery_notes || [];
+                
+                const shippingAchieved = deliveryNotes.filter(dn => 
+                    dn.delivered_by === user.id &&
+                    dn.status === 'delivered' &&
+                    dn.signature_date &&
+                    new Date(dn.signature_date).getMonth() + 1 === currentMonth &&
+                    new Date(dn.signature_date).getFullYear() === currentYear
+                ).length;
+
+                document.getElementById('shippingTarget').textContent = shippingTarget;
+                document.getElementById('shippingAchieved').textContent = shippingAchieved;
+                
+                const percentage = shippingTarget > 0 ? Math.round((shippingAchieved / shippingTarget) * 100) : 0;
+                document.getElementById('shippingPercentage').textContent = percentage + '%';
+                document.getElementById('shippingProgress').style.width = percentage + '%';
+                
+            } catch (error) {
+                console.error('Sevkiyat hedefleri yüklenirken hata:', error);
+            }
+        }
+
+        async function loadDeliveryStatusCounts() {
+            try {
+                const response = await apiCall('/api/delivery-notes');
+                const deliveryNotes = response.delivery_notes || [];
+
+                const statusCounts = deliveryNotes.reduce((acc, note) => {
+                    acc[note.status] = (acc[note.status] || 0) + 1;
+                    return acc;
+                }, { pending: 0, in_transit: 0, delivered: 0 });
+
+                document.getElementById('readyCount').textContent = statusCounts.pending;
+                document.getElementById('transitCount').textContent = statusCounts.in_transit;
+                document.getElementById('deliveredCount').textContent = statusCounts.delivered;
+            } catch (error) {
+                console.error('Teslimat durumları yüklenirken hata:', error);
+            }
+        }
+
+        async function showDeliveryNotes(status) {
+            try {
+                const modal = document.getElementById('deliveryNotesModal');
+                const listEl = document.getElementById('deliveryNotesList');
+                const titleEl = document.getElementById('modalTitle');
+                
+                listEl.innerHTML = '<p>Yükleniyor...</p>';
+                modal.style.display = 'flex';
+
+                const response = await apiCall(`/api/delivery-notes?status=${status}`);
+                const notes = response.delivery_notes || [];
+
+                const statusTitles = {
+                    'pending': 'Sevkiyat Bekleyen İrsaliyeler',
+                    'in_transit': 'Yoldaki Sevkiyatlar',
+                    'delivered': 'Tamamlanan Sevkiyatlar',
+                    '': 'Tüm İrsaliyeler'
+                };
+                titleEl.textContent = statusTitles[status] || 'İrsaliyeler';
+
+                if (notes.length === 0) {
+                    listEl.innerHTML = '<p style="text-align: center; padding: 2rem; color: #666;">Bu durumda irsaliye bulunamadı.</p>';
+                    return;
+                }
+
+                listEl.innerHTML = notes.map(note => `
+                    <div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${note.delivery_number}</strong>
+                            <p>${note.customer_name || 'Bilinmeyen Müşteri'}</p>
+                            <small>${new Date(note.delivery_date).toLocaleDateString('tr-TR')}</small>
+                        </div>
+                        <div>
+                            <a href="/shipping-detail.html?id=${note.id}" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px;">Detay</a>
+                            ${getDeliveryNoteActions(note)}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('İrsaliyeler gösterilirken hata:', error);
+                alert('İrsaliyeler yüklenemedi: ' + error.message);
+            }
+        }
+
+        function getDeliveryNoteActions(note) {
+            const buttonStyle = "padding: 8px 12px; margin-left: 5px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;";
+            
+            switch(note.status) {
+                case 'pending':
+                    return `<button onclick="takeForDelivery(${note.id})" style="${buttonStyle} background: #007bff; color: white;">🚚 Sevkiyata Al</button>`;
+                case 'in_transit':
+                    if (note.delivered_by === currentUser.id) {
+                        return `<button onclick="openSignatureModal(${note.id})" style="${buttonStyle} background: #28a745; color: white;">✍️ Teslim Et</button>`;
+                    } else {
+                        return `<span style="font-size: 12px; color: #666; margin-left: 10px;">Başka personelde</span>`;
+                    }
+                case 'delivered':
+                    return `<button onclick="viewSignedDeliveryNote(${note.id})" style="${buttonStyle} background: #6c757d; color: white;">👁️ Görüntüle</button>`;
+                default:
+                    return '';
+            }
+        }
+
+        async function takeForDelivery(deliveryNoteId) {
+            if (!confirm('Bu sevkiyatı üzerinize almak istediğinizden emin misiniz?')) return;
+            try {
+                await apiCall(`/api/delivery-notes/${deliveryNoteId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: 'in_transit', delivered_by: currentUser.id })
+                });
+                alert('Sevkiyat başarıyla üzerinize alındı!');
+                closeDeliveryNotesModal();
+                await loadDashboardData();
+            } catch (error) {
+                alert('İşlem başarısız: ' + error.message);
+            }
+        }
+
+        async function openSignatureModal(deliveryNoteId) {
+            currentDeliveryIdForSignature = deliveryNoteId;
+            try {
+                const response = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const delivery = response.delivery_note || response;
+
+                document.getElementById('signatureDeliveryInfo').innerHTML = `
+                    <p><strong>İrsaliye No:</strong> ${delivery.delivery_number}</p>
+                    <p><strong>Müşteri:</strong> ${delivery.customer_name}</p>
+                    <p><strong>Adres:</strong> ${delivery.delivery_address || 'Belirtilmemiş'}</p>
+                `;
+
+                const modal = document.getElementById('signatureModal');
+                modal.style.display = 'flex';
+                setTimeout(setupSignatureCanvas, 100); // Canvas'ın görünür olmasını bekle
+            } catch (error) {
+                alert('Teslimat bilgileri alınamadı: ' + error.message);
+            }
+        }
+
+        function closeSignatureModal() {
+            document.getElementById('signatureModal').style.display = 'none';
+            clearSignature();
+            currentDeliveryIdForSignature = null;
+        }
+
+        function setupSignatureCanvas() {
+            signaturePad = document.getElementById('signatureCanvas');
+            if (!signaturePad) return;
+            signatureCtx = signaturePad.getContext('2d');
+            
+            const rect = signaturePad.parentElement.getBoundingClientRect();
+            signaturePad.width = rect.width;
+            signaturePad.height = 200;
+
+            signatureCtx.strokeStyle = '#000';
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = 'round';
+
+            const startDrawing = (e) => { isDrawing = true; draw(e); };
+            const stopDrawing = () => { isDrawing = false; signatureCtx.beginPath(); };
+            const draw = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                signatureCtx.lineTo(pos.x, pos.y);
+                signatureCtx.stroke();
+                signatureCtx.beginPath();
+                signatureCtx.moveTo(pos.x, pos.y);
+            };
+            const getPos = (e) => {
+                const rect = signaturePad.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : null;
+                return {
+                    x: (touch ? touch.clientX : e.clientX) - rect.left,
+                    y: (touch ? touch.clientY : e.clientY) - rect.top
+                };
+            };
+
+            signaturePad.addEventListener('mousedown', startDrawing);
+            signaturePad.addEventListener('mousemove', draw);
+            signaturePad.addEventListener('mouseup', stopDrawing);
+            signaturePad.addEventListener('mouseout', stopDrawing);
+            signaturePad.addEventListener('touchstart', startDrawing, { passive: false });
+            signaturePad.addEventListener('touchmove', draw, { passive: false });
+            signaturePad.addEventListener('touchend', stopDrawing);
+        }
+
+        function clearSignature() {
+            if (signatureCtx) {
+                signatureCtx.clearRect(0, 0, signaturePad.width, signaturePad.height);
+            }
+        }
+
+        async function saveSignatureAndCompleteDelivery() {
+            const customerName = document.getElementById('customerName').value.trim();
+            const customerTitle = document.getElementById('customerTitle').value.trim();
+
+            if (!customerName) {
+                alert('Lütfen teslim alan kişinin adını giriniz.');
+                return;
+            }
+
+            if (signaturePad.toDataURL() === document.createElement('canvas').toDataURL()) {
+                alert('Lütfen imza atınız.');
+                return;
+            }
+
+            const signatureData = signaturePad.toDataURL('image/png');
+
+            try {
+                await apiCall(`/api/delivery-notes/${currentDeliveryIdForSignature}/sign`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        customer_signature: signatureData,
+                        customer_name: customerName,
+                        customer_title: customerTitle
+                    })
+                });
+                alert('Teslimat başarıyla tamamlandı!');
+                closeSignatureModal();
+                closeDeliveryNotesModal();
+                await loadDashboardData();
+            } catch (error) {
+                alert('Teslimat tamamlanamadı: ' + error.message);
+            }
+        }
+
+        async function viewSignedDeliveryNote(deliveryNoteId) {
+            try {
+                const response = await apiCall(`/api/delivery-notes/${deliveryNoteId}`);
+                const note = response.delivery_note || response;
+
+                const contentEl = document.getElementById('viewSignatureContent');
+                contentEl.innerHTML = `
+                    <p><strong>İrsaliye No:</strong> ${note.delivery_number}</p>
+                    <p><strong>Müşteri:</strong> ${note.customer_name}</p>
+                    <p><strong>Teslim Alan:</strong> ${note.customer_name || 'Belirtilmemiş'}</p>
+                    <p><strong>İmza Tarihi:</strong> ${new Date(note.signature_date).toLocaleString('tr-TR')}</p>
+                    <img src="${note.customer_signature}" alt="İmza" style="width: 100%; border: 1px solid #ccc; margin-top: 10px; border-radius: 8px;">
+                `;
+                document.getElementById('viewSignatureModal').style.display = 'flex';
+            } catch (error) {
+                alert('İmza görüntülenemedi: ' + error.message);
+            }
+        }
+
+        function closeDeliveryNotesModal() {
+            document.getElementById('deliveryNotesModal').style.display = 'none';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function loadCustomerMap() {
+            const mapContainer = document.getElementById('customerMap');
+            mapContainer.innerHTML = `<div id="leafletMap" style="height: 300px; width: 100%; border-radius: 8px;"></div>`;
+            
+            const map = L.map('leafletMap').setView([41.0082, 28.9784], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            apiCall('/api/customers')
+                .then(data => {
+                    const customers = data.customers || [];
+                    customers.forEach(customer => {
+                        if (customer.latitude && customer.longitude) {
+                            L.marker([customer.latitude, customer.longitude])
+                                .addTo(map)
+                                .bindPopup(`<b>${customer.company_name}</b><br>${customer.address || 'Adres yok'}`);
+                        }
+                    });
+                })
+                .catch(error => console.error('Harita için müşteri verileri yüklenemedi:', error));
+        }
+
+        // Global Profile Functions
+        window.toggleProfileMenu = function() {
+            const menu = document.getElementById('profileMenu');
+            if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        };
+
+        window.updateDateTime = function() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('tr-TR');
+            const timeStr = now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+            
+            const userNameEl = document.getElementById('userName');
+            const dateTimeEl = document.getElementById('currentDateTime');
+            
+            if (userNameEl) {
+                let welcomeName = currentUser.full_name || 'Kullanıcı';
+                if (currentUser.role_name && !currentUser.role_name.includes('Sevkiyat')) {
+                    welcomeName += ` (${currentUser.role_name})`;
+                }
+                userNameEl.textContent = welcomeName;
+            }
+            if (dateTimeEl) dateTimeEl.textContent = `${dateStr} - ${timeStr}`;
+        };
+
+        window.openProfile = function() {
+            const modal = document.getElementById('profileModal');
+            if (modal) {
+                document.getElementById('profile_full_name').value = currentUser.full_name || '';
+                document.getElementById('profile_email').value = currentUser.email || '';
+                modal.style.display = 'flex';
+            }
+            toggleProfileMenu();
+        };
+
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPassword = document.getElementById('new_password').value;
+            const formData = {
+                full_name: document.getElementById('profile_full_name').value,
+                email: document.getElementById('profile_email').value,
+            };
+            if (newPassword) formData.password = newPassword;
+            
+            alert('Profil güncelleme özelliği yakında eklenecek.');
+            closeModal('profileModal');
+        });
+
+        window.logout = function() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+                window.location.href = '/';
+            }
+        }
     </script>
 
     <style>
@@ -802,6 +1202,29 @@
         .map-icon {
             font-size: 3em;
             margin-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .signature-pad-container {
+            position: relative;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            background: #f9f9f9;
         }
 
         .btn {
