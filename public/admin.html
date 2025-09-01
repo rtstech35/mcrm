@@ -994,75 +994,50 @@
         }
 
         // Yetki Yönetimi Fonksiyonları
-        const allMenuItems = {
-            "Admin Paneli": {
+        const permissionModel = {
+            "Genel": {
+                icon: "⚙️",
+                modules: {
+                    'admin_dashboard': { name: 'Admin Dashboard', isFlag: true },
+                    'sales_dashboard': { name: 'Satış Dashboard', isFlag: true },
+                    'production_dashboard': { name: 'Üretim Dashboard', isFlag: true },
+                    'shipping_dashboard': { name: 'Sevkiyat Dashboard', isFlag: true },
+                    'accounting_dashboard': { name: 'Muhasebe Dashboard', isFlag: true },
+                }
+            },
+            "Yönetim Modülleri": {
                 icon: "👑",
-                permissions: [
-                    { key: 'admin_dashboard', text: 'Dashboard' },
-                    { key: 'admin_users', text: 'Kullanıcılar' },
-                    { key: 'admin_customers', text: 'Müşteriler' },
-                    { key: 'admin_products', text: 'Ürünler' },
-                    { key: 'admin_orders', text: 'Siparişler' },
-                    { key: 'admin_departments', text: 'Departmanlar' },
-                    { key: 'admin_roles', text: 'Roller' },
-                    { key: 'admin_permissions', text: 'Yetki Yönetimi' },
-                    { key: 'admin_delivery_notes', text: 'İrsaliyeler' },
-                    { key: 'admin_appointments', text: 'Randevular' },
-                    { key: 'admin_accounts', text: 'Cari Hesap' },
-                    { key: 'admin_mail_settings', text: 'Mail Ayarları' },
-                    { key: 'admin_setup', text: 'Sistem Kurulumu' },
-                    { key: 'admin_map', text: 'Harita' },
-                    { key: 'admin_api_test', text: 'API Test' },
-                    { key: 'admin_test_data', text: 'Test Verileri Oluştur' },
-                ]
+                modules: {
+                    'users': { name: 'Kullanıcılar', actions: ['create', 'read', 'update', 'delete'] },
+                    'roles': { name: 'Roller', actions: ['create', 'read', 'update', 'delete'] },
+                    'departments': { name: 'Departmanlar', actions: ['create', 'read', 'update', 'delete'] },
+                    'admin_permissions': { name: 'Yetki Yönetimi', isFlag: true },
+                }
             },
-            "Satış Paneli": {
-                icon: "💼",
-                permissions: [
-                    { key: 'sales_dashboard', text: 'Dashboard' },
-                    { key: 'sales_customers', text: 'Müşteriler' },
-                    { key: 'sales_orders', text: 'Siparişler' },
-                    { key: 'sales_delivery_notes', text: 'İrsaliyeler' },
-                    { key: 'sales_appointments', text: 'Randevu & Görevler' },
-                    { key: 'sales_new_visit', text: 'Yeni Ziyaret' },
-                    { key: 'sales_accounts', text: 'Cari Hesap' },
-                    { key: 'sales_invoices', text: 'Faturalar' },
-                    { key: 'sales_map', text: 'Harita' },
-                ]
+            "Operasyon Modülleri": {
+                icon: "🚀",
+                modules: {
+                    'customers': { name: 'Müşteriler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
+                    'products': { name: 'Ürünler', actions: ['create', 'read', 'update', 'delete'] },
+                    'orders': { name: 'Siparişler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
+                    'delivery': { name: 'İrsaliyeler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
+                    'appointments': { name: 'Randevular', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
+                    'visits': { name: 'Ziyaretler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
+                }
             },
-            "Üretim Paneli": {
-                icon: "🏭",
-                permissions: [
-                    { key: 'production_dashboard', text: 'Dashboard' },
-                    { key: 'production_orders', text: 'Siparişler' },
-                    { key: 'production_customers', text: 'Müşteriler' },
-                    { key: 'production_delivery_notes', text: 'İrsaliyeler' },
-                ]
-            },
-            "Sevkiyat Paneli": {
-                icon: "🚚",
-                permissions: [
-                    { key: 'shipping_dashboard', text: 'Dashboard' },
-                    { key: 'shipping_delivery_notes', text: 'İrsaliyeler' },
-                    { key: 'shipping_map', text: 'Harita' },
-                ]
-            },
-            "Muhasebe Paneli": {
+            "Finans Modülleri": {
                 icon: "💰",
-                permissions: [
-                    { key: 'accounting_dashboard', text: 'Dashboard' },
-                    { key: 'accounting_customers', text: 'Müşteriler' },
-                    { key: 'accounting_invoices', text: 'Faturalar' },
-                    { key: 'accounting_accounts', text: 'Cari Hesap' },
-                    { key: 'accounting_delivery_notes', text: 'İrsaliyeler' },
-                ]
+                modules: {
+                    'accounting': { name: 'Muhasebe', actions: ['create', 'read', 'update', 'delete'] },
+                    'invoices': { name: 'Faturalar', actions: ['create', 'read', 'update', 'delete'] },
+                }
             }
         };
 
         async function showPermissions() {
             try {
                 const rolesResponse = await apiCall('/api/roles');
-                const roles = rolesResponse.roles.filter(role => role.id !== 1); // Admin rolünü hariç tut
+                const roles = rolesResponse.roles.filter(role => role.name !== 'Admin'); // Admin rolünü hariç tut
                 let html = `
                     <div class="card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
@@ -1107,41 +1082,47 @@
             try {
                 const roleResponse = await apiCall(`/api/roles/${roleId}`);
                 const currentPermissions = roleResponse.role.permissions || {};
-                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">';
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">';
                 
-                for (const panel in allMenuItems) {
-                    const panelData = allMenuItems[panel];
+                for (const groupName in permissionModel) {
+                    const group = permissionModel[groupName];
                     html += `
                         <div class="permission-panel" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0;">
                             <h4 style="margin-top: 0; margin-bottom: 1rem; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <span style="font-size: 1.2rem;">${panelData.icon}</span>
-                                ${panel} Yetkileri
+                                <span style="font-size: 1.2rem;">${group.icon}</span>
+                                ${groupName}
                             </h4>
-                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
                     `;
-                    panelData.permissions.forEach(item => {
-                        const isChecked = currentPermissions[item.key] ? 'checked' : '';
-                        html += `
-                            <label class="permission-label" style="display: flex; align-items: center; gap: 0.75rem; font-weight: normal; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background-color 0.2s;">
-                                <input type="checkbox" class="permission-checkbox" data-key="${item.key}" ${isChecked} style="width: 16px; height: 16px; accent-color: var(--primary);">
-                                <span>${item.text}</span>
-                            </label>
-                        `;
-                    });
-                    html += '</div></div>';
+                    for (const moduleKey in group.modules) {
+                        const module = group.modules[moduleKey];
+                        if (module.isFlag) {
+                            const isChecked = currentPermissions[moduleKey] ? 'checked' : '';
+                            html += `
+                                <label class="permission-label" style="display: flex; align-items: center; gap: 0.75rem; font-weight: normal; cursor: pointer; padding: 0.5rem; border-radius: 4px;">
+                                    <input type="checkbox" class="permission-checkbox" data-key="${moduleKey}" ${isChecked} style="width: 16px; height: 16px;">
+                                    <span>${module.name}</span>
+                                </label>`;
+                        } else {
+                            html += `<div><strong>${module.name}</strong><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; padding-left: 10px;">`;
+                            module.actions.forEach(action => {
+                                const isChecked = currentPermissions[moduleKey] && currentPermissions[moduleKey].includes(action) ? 'checked' : '';
+                                html += `
+                                    <label class="permission-label" style="font-size: 0.8em;">
+                                        <input type="checkbox" class="permission-checkbox" data-module="${moduleKey}" data-action="${action}" ${isChecked}>
+                                        ${action}
+                                    </label>`;
+                            });
+                            html += `</div></div>`;
+                        }
+                    }
+                    html += `</div></div>`;
                 }
                 html += '</div>';
 
                 container.innerHTML = html;
                 container.style.display = 'block';
                 actionsDiv.style.display = 'block';
-
-                // Add hover effect to labels
-                document.querySelectorAll('.permission-label').forEach(label => {
-                    label.addEventListener('mouseover', () => label.style.backgroundColor = '#e9ecef');
-                    label.addEventListener('mouseout', () => label.style.backgroundColor = 'transparent');
-                });
-
             } catch (error) {
                 alert(`Yetkiler yüklenemedi: ${error.message}`);
             }
@@ -1151,10 +1132,20 @@
             const roleId = document.getElementById('permissionRoleSelect').value;
             if (!roleId) return;
 
-            const newPermissions = {};
-            document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
-                if (checkbox.checked) {
-                    newPermissions[checkbox.dataset.key] = true;
+            const newPermissions = { all: false }; // 'all' yetkisini default olarak false yap
+
+            document.querySelectorAll('.permission-checkbox:checked').forEach(checkbox => {
+                const module = checkbox.dataset.module;
+                const action = checkbox.dataset.action;
+                const key = checkbox.dataset.key;
+
+                if (module && action) { // API yetkisi (module.action)
+                    if (!newPermissions[module]) {
+                        newPermissions[module] = [];
+                    }
+                    newPermissions[module].push(action);
+                } else if (key) { // Arayüz yetkisi (flag)
+                    newPermissions[key] = true;
                 }
             });
 
