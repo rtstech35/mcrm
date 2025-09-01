@@ -975,7 +975,7 @@
                 const collectionPercentage = stats.monthlyCollectionTarget > 0 ?
                     Math.round((stats.currentMonthlyCollection / stats.monthlyCollectionTarget) * 100) : 0;
                 
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <!-- Üst 3 Blok -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;" id="topStats">
                         <div class="stat-card clickable" onclick="showOrders()">
