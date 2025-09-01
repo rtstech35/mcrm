@@ -3265,79 +3265,50 @@ app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async 
 
 // Satış personeli dashboard stats
 app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
-    try {
-        const requestedUserId = parseInt(req.params.userId, 10);
-        const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
+  try {
+    const requestedUserId = parseInt(req.params.userId, 10);
+    const { userId: loggedInUserId, role: loggedInUserRole } = req.user;
 
-        // Admin ve Satış Müdürü herkesin dashboard'unu görebilir.
-        // Diğer kullanıcılar (örn. Satış Personeli) sadece kendininkini görebilir.
-        // Rol adı 'Yönetici' olarak düzeltildi.
-        const canViewAll = loggedInUserRole === 'Yönetici' || loggedInUserRole === 'Satış Müdürü';
+    const canViewAll = loggedInUserRole === 'Yönetici' || loggedInUserRole === 'Satış Müdürü';
 
-        if (!canViewAll && loggedInUserId !== requestedUserId) {
-            return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
-        }
-
-        const userId = requestedUserId;
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-
-        // 1. Get user targets
-        const targetsResult = await pool.query(`
-            SELECT * FROM user_targets 
-            WHERE user_id = $1 AND target_year = $2 AND target_month = $3
-        `, [userId, currentYear, currentMonth]);
-        const targets = targetsResult.rows[0] || {};
-
-        // 2. Get user sales for the month and parse safely
-        const salesResult = await pool.query(`
-            SELECT COALESCE(SUM(total_amount), 0) as total 
-            FROM orders 
-            WHERE sales_rep_id = $1 
-              AND status NOT IN ('cancelled', 'iptal') -- İptal edilen siparişleri hariç tut
-              AND EXTRACT(YEAR FROM order_date) = $2 
-              AND EXTRACT(MONTH FROM order_date) = $3
-        `, [userId, currentYear, currentMonth]);
-        const currentMonthlySales = parseFloat(salesResult.rows[0]?.total || 0);
-
-        // 3. Get user visits for the month and parse safely
-        const visitsResult = await pool.query(`
-            SELECT COUNT(*) as count
-            FROM customer_visits
-            WHERE sales_rep_id = $1
-              AND EXTRACT(YEAR FROM visit_date) = $2
-              AND EXTRACT(MONTH FROM visit_date) = $3
-        `, [userId, currentYear, currentMonth]);
-        const currentMonthlyVisits = parseInt(visitsResult.rows[0]?.count || 0);
-
-        // 4. Get user collections for the month and parse safely
-        const collectionsResult = await pool.query(`
-            SELECT COALESCE(SUM(at.amount), 0) as total
-            FROM account_transactions at
-            JOIN customers c ON at.customer_id = c.id
-            WHERE c.assigned_sales_rep = $1
-              AND at.transaction_type = 'credit'
-              AND EXTRACT(YEAR FROM at.transaction_date) = $2
-              AND EXTRACT(MONTH FROM at.transaction_date) = $3
-        `, [userId, currentYear, currentMonth]);
-        const currentMonthlyCollection = parseFloat(collectionsResult.rows[0]?.total || 0);
-
-        res.json({
-            success: true,
-            stats: {
-                monthlySalesTarget: parseFloat(targets.sales_target || 0),
-                currentMonthlySales: currentMonthlySales,
-                monthlyVisitTarget: parseInt(targets.visit_target || 0),
-                currentMonthlyVisits: currentMonthlyVisits,
-                monthlyCollectionTarget: parseFloat(targets.collection_target || 0),
-                currentMonthlyCollection: currentMonthlyCollection,
-            }
-        });
-
-    } catch (error) {
-        console.error(`Sales dashboard stats error for user ${req.params.userId}:`, error);
-        res.status(500).json({ success: false, error: error.message });
+    if (!canViewAll && loggedInUserId !== requestedUserId) {
+      return res.status(403).json({ success: false, error: 'Bu dashboardı görüntüleme yetkiniz yok.' });
     }
+
+    const userId = requestedUserId;
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+
+    // Combine all stats into a single, more efficient query
+    const statsQuery = `
+            SELECT
+                (SELECT sales_target FROM user_targets WHERE user_id = $1 AND target_year = $2 AND target_month = $3) as "monthlySalesTarget",
+                (SELECT visit_target FROM user_targets WHERE user_id = $1 AND target_year = $2 AND target_month = $3) as "monthlyVisitTarget",
+                (SELECT collection_target FROM user_targets WHERE user_id = $1 AND target_year = $2 AND target_month = $3) as "monthlyCollectionTarget",
+                (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE sales_rep_id = $1 AND status NOT IN ('cancelled', 'iptal') AND EXTRACT(YEAR FROM order_date) = $2 AND EXTRACT(MONTH FROM order_date) = $3) as "currentMonthlySales",
+                (SELECT COUNT(*) FROM customer_visits WHERE sales_rep_id = $1 AND EXTRACT(YEAR FROM visit_date) = $2 AND EXTRACT(MONTH FROM visit_date) = $3) as "currentMonthlyVisits",
+                (SELECT COALESCE(SUM(at.amount), 0) FROM account_transactions at JOIN customers c ON at.customer_id = c.id WHERE c.assigned_sales_rep = $1 AND at.transaction_type = 'credit' AND EXTRACT(YEAR FROM at.transaction_date) = $2 AND EXTRACT(MONTH FROM at.transaction_date) = $3) as "currentMonthlyCollection"
+        `;
+
+    const statsResult = await pool.query(statsQuery, [userId, currentYear, currentMonth]);
+    const stats = statsResult.rows[0];
+
+    res.json({
+      success: true,
+      stats: {
+        monthlySalesTarget: parseFloat(stats.monthlySalesTarget || 0),
+        currentMonthlySales: parseFloat(stats.currentMonthlySales || 0),
+        monthlyVisitTarget: parseInt(stats.monthlyVisitTarget || 0),
+        currentMonthlyVisits: parseInt(stats.currentMonthlyVisits || 0),
+        monthlyCollectionTarget: parseFloat(stats.monthlyCollectionTarget || 0),
+        currentMonthlyCollection: parseFloat(stats.currentMonthlyCollection || 0),
+      }
+    });
+
+  } catch (error) {
+    console.error(`Sales dashboard stats error for user ${req.params.userId}:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // Üretim personeli dashboard stats

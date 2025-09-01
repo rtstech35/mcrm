@@ -321,3 +321,10 @@ INSERT INTO departments (id, name, description) VALUES
 (6, 'Muhasebe', 'Mali İşler ve Muhasebe'),
 (7, 'IT', 'Bilgi Teknolojileri ve Sistem Yönetimi')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+
+-- İndeksler
+CREATE INDEX IF NOT EXISTS idx_orders_sales_rep_date ON orders(sales_rep_id, order_date);
+CREATE INDEX IF NOT EXISTS idx_visits_sales_rep_date ON customer_visits(sales_rep_id, visit_date);
+CREATE INDEX IF NOT EXISTS idx_transactions_customer_date ON account_transactions(customer_id, transaction_date);
+CREATE INDEX IF NOT EXISTS idx_customers_sales_rep ON customers(assigned_sales_rep);
+CREATE INDEX IF NOT EXISTS idx_user_targets_user_date ON user_targets(user_id, target_year, target_month);
