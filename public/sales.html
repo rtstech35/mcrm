@@ -11,6 +11,38 @@
     <link rel="stylesheet" href="/mobile.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                background-color: #28a745; /* Sales Panel Theme Color */
+                color: white;
+                border: none;
+                border-radius: 50%;
+                font-size: 24px;
+                z-index: 1002;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+                transition: transform 0.3s ease, background-color 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .mobile-menu-toggle.active {
+                background-color: #6c757d;
+                transform: rotate(45deg);
+            }
+            .sidebar.mobile-open {
+                transform: translateY(0);
+                border-top-left-radius: 16px;
+                border-top-right-radius: 16px;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            }
+        }
+    </style>
 
 </head>
 <body>
@@ -3261,20 +3293,30 @@
             }
         }
 
-        function toggleMobileMenu() {
+       function toggleMobileMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.querySelector('.mobile-overlay');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
             
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('active');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active');
+                toggleBtn.innerHTML = toggleBtn.classList.contains('active') ? '&times;' : '☰';
+            }
         }
         
         function closeMobileMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.querySelector('.mobile-overlay');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
             
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('active');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('active');
+                toggleBtn.innerHTML = '☰';
+            }
         }
         
         // Menü linklerine tıklandığında mobil menüyü kapat

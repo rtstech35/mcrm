@@ -698,20 +698,30 @@
         setupMenuVisibility();
         setInterval(updateDateTime, 60000);
 
-        function toggleMobileMenu() {
+       function toggleMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.querySelector('.mobile-overlay');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
             
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('active');
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('active');
+                toggleBtn.innerHTML = toggleBtn.classList.contains('active') ? '&times;' : '☰';
+            }
         }
         
         function closeMobileMenu() {
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.querySelector('.mobile-overlay');
+            const toggleBtn = document.querySelector('.mobile-menu-toggle');
             
             sidebar.classList.remove('mobile-open');
             overlay.classList.remove('active');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('active');
+                toggleBtn.innerHTML = '☰';
+            }
         }
         
         // Menü linklerine tıklandığında mobil menüyü kapat
