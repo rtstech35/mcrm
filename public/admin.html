@@ -1345,39 +1345,38 @@
                 console.log('Düzenlenecek kullanıcı:', user);
 
                 // Modal'ı aç
-                await openUserModal();
+                await openUserModal(); // Bu fonksiyon select'leri doldurur
 
                 // Form'u doldur
                 document.getElementById('username').value = user.username || '';
                 document.getElementById('full_name').value = user.full_name || '';
                 document.getElementById('email').value = user.email || '';
                 document.getElementById('phone').value = user.phone || '';
-                document.getElementById('password').value = ''; // Şifre boş bırak
+                document.getElementById('password').value = ''; // Şifre boş bırak, sadece istenirse güncellenir
                 document.getElementById('department_id').value = user.department_id || '';
                 document.getElementById('role_id').value = user.role_id || '';
                 document.getElementById('user_is_active').checked = user.is_active;
 
                 // Hedef alanlarını güncelle
                 showTargetFields();
-                
+
                 // Mevcut hedefi yükle
-                setTimeout(async () => {
-                    try {
-                        const currentDate = new Date();
-                        const targetResponse = await apiCall(`/api/user-targets/${userId}?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`);
-                        const userTargetInput = document.getElementById('user_target');
-                        if (targetResponse.target) {
-                            document.getElementById('user_target_sales').value = targetResponse.target.sales_target || '';
-                            document.getElementById('user_target_visits').value = targetResponse.target.visit_target || '';
-                            document.getElementById('user_target_production').value = targetResponse.target.production_target || '';
-                            document.getElementById('user_target_shipping').value = targetResponse.target.shipping_target || '';
-                            document.getElementById('user_target_revenue').value = targetResponse.target.revenue_target || '';
-                            document.getElementById('user_target_collection').value = targetResponse.target.collection_target || '';
-                        }
-                    } catch (error) {
+                try {
+                    const currentDate = new Date();
+                    const targetResponse = await apiCall(`/api/user-targets/${userId}?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`);
+                    if (targetResponse.target) {
+                        document.getElementById('user_target_sales').value = targetResponse.target.sales_target || '';
+                        document.getElementById('user_target_visits').value = targetResponse.target.visit_target || '';
+                        document.getElementById('user_target_production').value = targetResponse.target.production_target || '';
+                        document.getElementById('user_target_shipping').value = targetResponse.target.shipping_target || '';
+                        document.getElementById('user_target_revenue').value = targetResponse.target.revenue_target || '';
+                        document.getElementById('user_target_collection').value = targetResponse.target.collection_target || '';
+                    }
+                } catch (error) {
+                    if (!error.message.includes('404')) { // Hedef bulunamadıysa (404) hata gösterme
                         console.log('Hedef yüklenemedi:', error.message);
                     }
-                }, 100);
+                }
 
                 // Modal başlığını değiştir
                 document.getElementById('userModalTitle').textContent = 'Kullanıcı Düzenle';
@@ -1454,6 +1453,69 @@
             }
         });
         
+        document.getElementById('userForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const form = e.target;
+            const userId = form.getAttribute('data-user-id');
+            const isEdit = !!userId;
+
+            const formData = {
+                username: document.getElementById('username').value,
+                full_name: document.getElementById('full_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                password: document.getElementById('password').value,
+                department_id: document.getElementById('department_id').value,
+                role_id: document.getElementById('role_id').value,
+                is_active: document.getElementById('user_is_active').checked
+            };
+
+            const targetData = {
+                sales_target: parseFloat(document.getElementById('user_target_sales').value) || null,
+                visit_target: parseInt(document.getElementById('user_target_visits').value) || null,
+                production_target: parseInt(document.getElementById('user_target_production').value) || null,
+                shipping_target: parseInt(document.getElementById('user_target_shipping').value) || null,
+                revenue_target: parseFloat(document.getElementById('user_target_revenue').value) || null,
+                collection_target: parseFloat(document.getElementById('user_target_collection').value) || null,
+            };
+
+            const filledTargets = Object.fromEntries(Object.entries(targetData).filter(([_, v]) => v !== null && !isNaN(v)));
+
+            try {
+                let userResult;
+                if (isEdit) {
+                    userResult = await apiCall(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify(formData) });
+                    alert('Kullanıcı başarıyla güncellendi!');
+                } else {
+                    userResult = await apiCall('/api/users', { method: 'POST', body: JSON.stringify(formData) });
+                    alert('Kullanıcı başarıyla oluşturuldu!');
+                }
+
+                if (Object.keys(filledTargets).length > 0) {
+                    const targetUserId = isEdit ? userId : userResult.user.id;
+                    const currentDate = new Date();
+                    const targetPayload = { user_id: targetUserId, target_year: currentDate.getFullYear(), target_month: currentDate.getMonth() + 1, ...filledTargets };
+                    
+                    try {
+                        const existingTarget = await apiCall(`/api/user-targets/${targetUserId}?year=${targetPayload.target_year}&month=${targetPayload.target_month}`);
+                        await apiCall(`/api/user-targets/${existingTarget.target.id}`, { method: 'PUT', body: JSON.stringify(targetPayload) });
+                    } catch (e) {
+                        if (e.message.includes('404')) {
+                            await apiCall('/api/user-targets', { method: 'POST', body: JSON.stringify(targetPayload) });
+                        } else { throw e; }
+                    }
+                }
+
+                form.reset();
+                form.removeAttribute('data-user-id');
+                closeModal('userModal');
+                showUsers();
+            } catch (error) {
+                alert('Hata: ' + error.message);
+            }
+        });
+
         document.getElementById('customerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
