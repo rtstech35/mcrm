@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#28a745">
     <title>Satış Paneli - Saha CRM</title>
@@ -144,7 +145,7 @@
                 
                 <div class="form-group">
                     <label>Teslimat Tarihi:</label>
-                    <input type="date" id="delivery_date">
+                    <input type="date" id="order_delivery_date">
                 </div>
                 <div class="form-group">
                     <label>Notlar:</label>
@@ -415,7 +416,7 @@
                 </div>
                 <div class="form-group">
                     <label>Teslimat Tarihi:</label>
-                    <input type="date" id="delivery_date" required>
+                    <input type="date" id="dn_delivery_date" required>
                 </div>
                 <div class="form-group">
                     <label>Teslimat Saati:</label>
@@ -1168,7 +1169,7 @@
             const formData = {
                 customer_id: document.getElementById('order_customer_id').value,
                 order_date: document.getElementById('order_date').value,
-                delivery_date: document.getElementById('delivery_date').value,
+                delivery_date: document.getElementById('order_delivery_date').value,
                 total_amount: total,
                 notes: document.getElementById('order_notes').value,
                 items: orderProducts
@@ -2665,8 +2666,8 @@
             const formData = {
                 delivery_number: document.getElementById('delivery_number').value,
                 customer_id: document.getElementById('delivery_customer_id').value,
-                delivery_date: document.getElementById('delivery_date').value,
-                delivery_time: document.getElementById('delivery_time').value,
+                delivery_date: document.getElementById('dn_delivery_date').value,
+                delivery_time: document.getElementById('delivery_time').value || null,
                 delivery_address: document.getElementById('delivery_address').value,
                 notes: document.getElementById('delivery_notes').value
             };
