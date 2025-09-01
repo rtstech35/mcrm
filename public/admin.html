@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/admin-orders.js"></script>
+    <script src="/app.js" defer></script>
     <style>
         /* Page-specific styles can go here if needed */
     </style>
@@ -114,7 +115,6 @@
                 <button type="submit" class="btn">Güncelle</button>
             </form>
         </div>
-    </div>
     <!-- Ürün Modal -->
     <div id="productModal" class="modal">
         <div class="modal-content">
@@ -801,73 +801,6 @@
     </div>
 
     <script>
-        // Global profile functions
-        window.toggleProfileMenu = function() {
-            const menu = document.getElementById('profileMenu');
-            if (menu) {
-                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-            }
-        };
-
-        window.updateDateTime = function() {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('tr-TR');
-            const timeStr = now.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
-            
-            const userNameEl = document.getElementById('userName');
-            const dateTimeEl = document.getElementById('currentDateTime');
-            
-            if (userNameEl) {
-                let welcomeName = currentUser.full_name || 'Kullanıcı';
-                if (currentUser.role_name) {
-                    welcomeName += ` (${currentUser.role_name})`;
-                }
-                userNameEl.textContent = welcomeName;
-            }
-            if (dateTimeEl) dateTimeEl.textContent = `${dateStr} - ${timeStr}`;
-        };
-
-        window.openProfile = function() {
-            const modal = document.getElementById('profileModal');
-            if (modal) {
-                document.getElementById('profile_full_name').value = currentUser.full_name || '';
-                document.getElementById('profile_email').value = currentUser.email || '';
-                modal.style.display = 'block';
-            }
-            toggleProfileMenu();
-        };
-
-        document.getElementById('profileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const newPassword = document.getElementById('new_password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            if (newPassword && newPassword !== confirmPassword) {
-                alert('Şifreler eşleşmiyor!'); return;
-            }
-            const formData = {
-                full_name: document.getElementById('profile_full_name').value,
-                email: document.getElementById('profile_email').value,
-            };
-            if (newPassword) formData.password = newPassword;
-            
-            try {
-                await apiCall(`/api/users/${currentUser.id}`, { method: 'PUT', body: JSON.stringify(formData) });
-                currentUser.full_name = formData.full_name;
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                alert('Profil güncellendi!');
-                closeModal('profileModal');
-                updateDateTime();
-            } catch (error) { alert('Güncelleme hatası: ' + error.message); }
-        });
-    </script>
-    <script>
-        let authToken = localStorage.getItem('authToken');
-        let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-
-        if (!authToken) {
-            window.location.href = '/';
-        }
-
         function setupMenuVisibility() {
             const permissions = currentUser.permissions || {};
 
@@ -888,53 +821,6 @@
                     item.style.display = 'none';
                 }
             });
-        }
-
-        async function apiCall(url, options = {}) {
-            try {
-                console.log('🔄 API çağrısı:', url);
-
-                const headers = {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                };
-                
-                if (authToken) {
-                    headers['Authorization'] = `Bearer ${authToken}`;
-                }
-
-                const response = await fetch(url, {
-                    ...options,
-                    headers: headers
-                });
-
-                console.log('📡 API yanıt:', response.status, response.statusText);
-
-                if (!response.ok) {
-                    let errorMessage = `API hatası: ${response.status} ${response.statusText}`;
-                    try {
-                        const errorData = await response.text();
-                        try {
-                            const jsonError = JSON.parse(errorData);
-                            errorMessage = jsonError.message || jsonError.error || errorMessage;
-                        } catch {
-                            errorMessage = errorData || errorMessage;
-                        }
-                    } catch (e) {
-                        console.log('Hata mesajı okunamadı:', e.message);
-                    }
-                    console.error('❌ API hatası:', errorMessage);
-                    throw new Error(errorMessage);
-                }
-
-                const data = await response.json();
-                console.log('✅ API başarılı:', data);
-                return data;
-
-            } catch (error) {
-                console.error('🚨 API çağrısı başarısız:', error);
-                throw error;
-            }
         }
 
         // Test API'sini çağır
@@ -1362,59 +1248,58 @@
 
         async function showUsers() {
             try {
+                const content = document.getElementById('content');
+                content.innerHTML = '<div class="card"><div class="loading">Kullanıcılar yükleniyor...</div></div>';
+
                 const usersResponse = await apiCall('/api/users');
-                const rolesResponse = await apiCall('/api/roles');
-                const departmentsResponse = await apiCall('/api/departments');
-                
                 const users = usersResponse.users || [];
-                const roles = rolesResponse.roles || [];
-                const departments = departmentsResponse.departments || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                content.innerHTML = ''; // Clear loading
+                content.appendChild(card);
+
+                card.innerHTML = `<h2>Kullanıcı Yönetimi</h2>`;
+                const newUserBtn = document.createElement('button');
+                newUserBtn.className = 'btn';
+                newUserBtn.textContent = 'Yeni Kullanıcı';
+                newUserBtn.addEventListener('click', openUserModal);
+                card.appendChild(newUserBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
                 
-                let html = `
-                    <div class="card">
-                        <h2>Kullanıcı Yönetimi</h2>
-                        <button class="btn" onclick="openUserModal()">Yeni Kullanıcı</button>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Kullanıcı Adı</th>
-                                        <th>Ad Soyad</th>
-                                        <th>E-posta</th>
-                                        <th>Departman</th>
-                                        <th>Rol</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
+                table.innerHTML = `<thead><tr><th>ID</th><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>E-posta</th><th>Departman</th><th>Rol</th><th>Durum</th><th>İşlemler</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
                 users.forEach(user => {
-                    html += `
-                        <tr>
-                            <td>${user.id}</td>
-                            <td>${user.username}</td>
-                            <td>${user.full_name}</td>
-                            <td>${user.email}</td>
-                            <td>${user.department_name || '-'}</td>
-                            <td>${user.role_name || '-'}</td>
-                            <td>${user.is_active ? 'Aktif' : 'Pasif'}</td>
-                            <td>
-                                <button class="btn" onclick="editUser(${user.id})">Düzenle</button>
-                                <button class="btn btn-danger" onclick="deleteUser(${user.id})">Sil</button>
-                            </td>
-                        </tr>
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.full_name}</td>
+                        <td>${user.email}</td>
+                        <td>${user.department_name || '-'}</td>
+                        <td>${user.role_name || '-'}</td>
+                        <td>${user.is_active ? 'Aktif' : 'Pasif'}</td>
                     `;
+                    const actionsTd = document.createElement('td');
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn'; editBtn.textContent = 'Düzenle';
+                    editBtn.addEventListener('click', () => editUser(user.id));
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger'; deleteBtn.textContent = 'Sil'; deleteBtn.style.marginLeft = '0.5rem';
+                    deleteBtn.addEventListener('click', () => deleteUser(user.id));
+                    actionsTd.append(editBtn, deleteBtn);
+                    tr.appendChild(actionsTd);
+                    tbody.appendChild(tr);
                 });
-                
-                html += '</tbody></table></div></div>';
-                document.getElementById('content').innerHTML = html;
-                
-                // Modal için seçenekleri hazırla
-                window.rolesData = roles;
-                window.departmentsData = departments;
                 
             } catch (error) {
                 console.error('Kullanıcılar yüklenemedi:', error.message);
@@ -2410,12 +2295,6 @@
                 console.error('Müşteri modal açılırken hata:', error.message);
                 alert('Kullanıcı verileri yüklenirken hata oluştu: ' + error.message);
             }
-        }
-
-        function logout() {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            window.location.href = '/';
         }
 
         // Grafik çizim fonksiyonları
@@ -4796,9 +4675,6 @@
         // Sayfa yüklendiğinde yapılacaklar
         document.addEventListener('DOMContentLoaded', () => {
             if (!authToken) return;
-
-            // Kullanıcı bilgilerini ve menüyü ayarla
-            updateDateTime();
             setupMenuVisibility();
 
             // Dashboard'u göster
@@ -4806,37 +4682,6 @@
             
             // Tarih/saat bilgisini her saniye güncelle
             setInterval(updateDateTime, 1000);
-        });
-
-       function toggleMobileMenu() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            const toggleBtn = document.querySelector('.mobile-menu-toggle');
-            
-            sidebar.classList.toggle('mobile-open');
-            overlay.classList.toggle('active');
-            if (toggleBtn) {
-                toggleBtn.classList.toggle('active');
-                toggleBtn.innerHTML = toggleBtn.classList.contains('active') ? '&times;' : '☰';
-            }
-        }
-        
-        function closeMobileMenu() {
-            const sidebar = document.querySelector('.sidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            const toggleBtn = document.querySelector('.mobile-menu-toggle');
-            
-            sidebar.classList.remove('mobile-open');
-            overlay.classList.remove('active');
-            if (toggleBtn) {
-                toggleBtn.classList.remove('active');
-                toggleBtn.innerHTML = '☰';
-            }
-        }
-        
-        // Menü linklerine tıklandığında mobil menüyü kapat
-        document.querySelectorAll('.sidebar a').forEach(link => {
-            link.addEventListener('click', closeMobileMenu);
         });
     </script>
     <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">
