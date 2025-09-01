@@ -785,11 +785,11 @@
                 
             } catch (error) {
                 console.error('Dashboard yüklenemedi:', error);
-                showDashboardFallback();
+                showDashboardFallback(error.message);
             }
         }
         
-        function showDashboardFallback() {
+        function showDashboardFallback(errorMessage = '') {
             document.getElementById('content').innerHTML = `
                 <div class="card" style="text-align: center;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
@@ -797,6 +797,12 @@
                     <p style="color: #666; margin: 1rem 0 0.5rem 0;">
                         Dashboard verileri yüklenirken bir sorun oluştu. Bu durum genellikle eksik veritabanı tablolarından veya geçici bir sunucu hatasından kaynaklanabilir.
                     </p>
+                    ${errorMessage ? `
+                    <div style="background: #ffebeb; border: 1px solid #ffcdd2; color: #c62828; padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: left; font-family: monospace; font-size: 0.8em; word-break: break-all;">
+                        <strong>Teknik Hata Detayı:</strong><br>
+                        ${errorMessage}
+                    </div>
+                    ` : ''}
                     <p style="font-size: 0.8em; color: #999; margin-bottom: 1.5rem;">
                         (Hata kaynağı: <code>/api/sales/dashboard/:userId</code>)
                     </p>
@@ -804,6 +810,7 @@
                         <strong>Olası Çözümler:</strong>
                         <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
                             <li>Sayfayı yenilemeyi deneyin.</li>
+                            <li>Yukarıdaki teknik hata mesajı "relation ... does not exist" gibi bir ifade içeriyorsa, bu durum veritabanı tablolarının eksik olduğunu gösterir. Sistem yöneticinizden kurulumu tamamlamasını isteyin.</li>
                             <li>Sorun devam ederse, lütfen sistem yöneticinizle iletişime geçin.</li>
                         </ul>
                     </div>
