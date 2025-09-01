@@ -114,6 +114,73 @@ async function setupDatabase() {
     }
     console.log(`✅ ${sampleProducts.length} örnek ürün eklendi.`);
 
+    // Get created IDs to use in relations
+    const usersResult = await pool.query("SELECT id, username FROM users");
+    const customersResult = await pool.query("SELECT id, company_name FROM customers");
+    const productsResult = await pool.query("SELECT id, name, unit_price, unit FROM products");
+
+    const users = usersResult.rows;
+    const customers = customersResult.rows;
+    const products = productsResult.rows;
+
+    const salesPerson = users.find(u => u.username === 'satispersoneli');
+
+    // Örnek Siparişler Ekle (Mevcut Ay İçin)
+    if (salesPerson && customers.length > 1 && products.length > 2) {
+        console.log("📝 Örnek siparişler (mevcut ay) ekleniyor...");
+        const today = new Date();
+        const sampleOrders = [
+            { customer_id: customers[0].id, sales_rep_id: salesPerson.id, order_date: today, items: [ { product_id: products[0].id, quantity: 2, unit_price: products[0].unit_price }, { product_id: products[1].id, quantity: 5, unit_price: products[1].unit_price } ] },
+            { customer_id: customers[1].id, sales_rep_id: salesPerson.id, order_date: new Date(new Date().setDate(today.getDate() - 5)), items: [ { product_id: products[2].id, quantity: 10, unit_price: products[2].unit_price } ] }
+        ];
+
+        let orderCount = 0;
+        for (const o of sampleOrders) {
+            const orderNum = `SIP${Date.now() + orderCount}`;
+            const totalAmount = o.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+            
+            const orderResult = await pool.query(`
+                INSERT INTO orders (order_number, customer_id, sales_rep_id, order_date, total_amount, status)
+                VALUES ($1, $2, $3, $4, $5, 'delivered') RETURNING id
+            `, [orderNum, o.customer_id, o.sales_rep_id, o.order_date, totalAmount]);
+            
+            const orderId = orderResult.rows[0].id;
+
+            for (const item of o.items) {
+                const product = products.find(p => p.id === item.product_id);
+                await pool.query(`
+                    INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, unit)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `, [orderId, item.product_id, product.name, item.quantity, item.unit_price, item.quantity * item.unit_price, product.unit || 'adet']);
+            }
+            orderCount++;
+        }
+        console.log(`✅ ${orderCount} örnek sipariş eklendi.`);
+    }
+
+    // Örnek Ziyaretler Ekle (Mevcut Ay İçin)
+    if (salesPerson && customers.length > 1) {
+        console.log("📝 Örnek ziyaretler (mevcut ay) ekleniyor...");
+        const sampleVisits = [
+            { customer_id: customers[0].id, sales_rep_id: salesPerson.id, visit_date: new Date(), visit_type: 'visit', result: 'potential', notes: 'Yeni ürünler hakkında bilgi verildi.' },
+            { customer_id: customers[1].id, sales_rep_id: salesPerson.id, visit_date: new Date(), visit_type: 'call', result: 'follow_up', notes: 'Fiyat teklifi istendi.' }
+        ];
+        for (const v of sampleVisits) {
+            await pool.query(`INSERT INTO customer_visits (customer_id, sales_rep_id, visit_date, visit_type, result, notes) VALUES ($1, $2, $3, $4, $5, $6)`, [v.customer_id, v.sales_rep_id, v.visit_date, v.visit_type, v.result, v.notes]);
+        }
+        console.log(`✅ ${sampleVisits.length} örnek ziyaret eklendi.`);
+    }
+
+    // Örnek Cari Hesap Hareketleri Ekle (Mevcut Ay İçin)
+    if (salesPerson && customers.length > 1) {
+        console.log("📝 Örnek cari hesap hareketleri (mevcut ay) ekleniyor...");
+        const sampleTransactions = [ { customer_id: customers[0].id, transaction_type: 'credit', amount: 500, transaction_date: new Date(), description: 'Nakit ödeme', created_by: salesPerson.id }, { customer_id: customers[1].id, transaction_type: 'credit', amount: 1000, transaction_date: new Date(), description: 'Havale', created_by: salesPerson.id } ];
+        for (const t of sampleTransactions) {
+            await pool.query(`INSERT INTO account_transactions (customer_id, transaction_type, amount, transaction_date, description, created_by) VALUES ($1, $2, $3, $4, $5, $6)`, [t.customer_id, t.transaction_type, t.amount, t.transaction_date, t.description, t.created_by]);
+        }
+        console.log(`✅ ${sampleTransactions.length} örnek cari hesap hareketi eklendi.`);
+    }
+
     console.log("🎉 Database setup tamamlandı!");
     console.log("📧 Admin kullanıcısı: admin / admin123");
     console.log("🔑 Diğer kullanıcıların şifresi: 123456");
