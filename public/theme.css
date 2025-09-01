@@ -36,21 +36,22 @@ body {
 }
 
 .sidebar {
-    width: 280px;
-    background: white;
-    border-right: 1px solid var(--border);
-    padding: 2rem 0;
+    width: 260px;
     position: fixed;
+    top: 0;
+    left: 0;
     height: 100vh;
     overflow-y: auto;
-    box-shadow: var(--shadow);
+    z-index: 100;
+    transition: width 0.2s;
+    padding: 2rem 0;
 }
 
 .content {
     flex: 1;
-    margin-left: 280px;
-    padding: 2rem;
-    background: var(--light);
+    margin-left: 260px;
+    padding: 0; /* Remove padding to allow header to be full-width */
+    transition: margin-left 0.2s;
 }
 
 /* Header */
@@ -370,80 +371,6 @@ body {
     font-size: 1.2rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .mobile-menu-toggle {
-        display: block;
-    }
-    
-    .container {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        position: fixed !important;
-        top: 0;
-        left: -280px;
-        width: 280px !important;
-        height: 100vh !important;
-        z-index: 1000;
-        transition: left 0.3s ease;
-        background: white;
-        box-shadow: var(--shadow-lg);
-    }
-    
-    .sidebar.mobile-open {
-        left: 0;
-    }
-    
-    .content {
-        margin-left: 0 !important;
-        padding: 4rem 0.75rem 0.75rem !important;
-        order: 1;
-        width: 100%;
-    }
-    
-    .mobile-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-    }
-    
-    .mobile-overlay.active {
-        display: block;
-    }
-    
-    .grid-2,
-    .grid-3,
-    .grid-4 {
-        grid-template-columns: 1fr;
-    }
-    
-    .card {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .card h2, .card h3 {
-        font-size: 1.1rem;
-    }
-    
-    #userInfo {
-        position: fixed !important;
-        bottom: 1rem !important;
-        right: 1rem !important;
-        left: auto !important;
-        margin: 0;
-        text-align: center;
-        min-width: 150px;
-    }
-}
-
 /* --- Added From Refactoring --- */
 
 /* User Profile Widget */
@@ -637,41 +564,6 @@ body {
 .shipping-page .mobile-menu-toggle { background-color: #17a2b8; }
 .shipping-page .sidebar h3, .shipping-page .sidebar a { color: white; }
 .shipping-page .sidebar a:hover { background: rgba(255,255,255,0.1); }
-
-
-/* --- Standart Desktop Layout --- */
-@media (min-width: 769px) {
-    .container {
-        display: flex;
-    }
-
-    .sidebar {
-        width: 260px;
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        overflow-y: auto;
-        z-index: 100;
-        transition: width 0.2s;
-        padding: 2rem 0;
-    }
-    
-    .sidebar a {
-        color: #e9ecef;
-    }
-
-    .content, .main-content {
-        flex: 1;
-        margin-left: 260px;
-        padding: 0; /* Remove padding to allow header to be full-width */
-        transition: margin-left 0.2s;
-    }
-
-    .mobile-menu-toggle, .mobile-overlay {
-        display: none !important;
-    }
-}
 
 /* Standard Page Header */
 .main-header {

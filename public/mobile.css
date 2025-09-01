@@ -256,7 +256,7 @@ body {
     z-index: 10000 !important;
 }
 
-/* --- UNIFIED MOBILE MENU STYLES --- */
+/* --- UNIFIED MOBILE STYLES --- */
 @media (max-width: 768px) {
     .mobile-menu-toggle {
         display: flex !important; /* Use flex to center icon */
@@ -265,7 +265,7 @@ body {
         position: fixed;
         top: 1rem;
         left: 1rem;
-        z-index: 1002; /* Above content, below menu */
+        z-index: 10002; /* Above sidebar and overlay */
         background: var(--primary);
         color: white;
         border: none;
@@ -277,112 +277,16 @@ body {
         box-shadow: var(--shadow-lg);
     }
 
-    /* Default: Slide-in menu from left */
     .sidebar {
         position: fixed !important;
         top: 0;
         left: 0;
-        width: 280px !important;
+        width: 260px !important;
         height: 100vh !important;
-        background: white; /* Default background */
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
         box-shadow: var(--shadow-lg);
-    }
-    
-    .sidebar.mobile-open {
-        transform: translateX(0);
-    }
-    
-    .content {
-        margin-left: 0 !important;
-        padding: 5rem 1rem 1rem !important; /* Adjust padding for fixed toggle */
-    }
-
-    /* Special: Bottom Sheet Menu (for customer-detail.html) */
-    .bottom-sheet-layout .mobile-menu-toggle {
-        top: auto;
-        bottom: 20px;
-        right: 20px;
-        left: auto;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        transition: transform 0.3s ease, background-color 0.3s ease;
-    }
-
-    .bottom-sheet-layout .sidebar.mobile-open {
-        transform: translateY(0);
-    }
-}
-
-/* --- Standart Mobil Menü --- */
-@media (max-width: 768px) {
-    .container {
-        display: block; /* Ensure container stacks vertically */
-    }
-
-    .content, .main-content {
-        margin-left: 0 !important; /* Override fixed sidebar margin */
-        padding: 1rem;
-        padding-bottom: 80px; /* Space for the toggle button */
-    }
-
-    .sidebar {
-        display: block !important; /* Ensure it's not hidden by other rules */
-        position: fixed !important; /* Override other positionings */
-        bottom: 0;
-        left: 0;
-        width: 100% !important; /* Override fixed widths */
-        height: auto !important;
-        min-height: auto !important;
-        max-height: 80vh;
         overflow-y: auto;
-        background: #343a40 !important; /* Dark theme for mobile menu, important to override inline styles */
-        color: white !important;
-        transform: translateY(100%);
-        transition: transform 0.3s ease-in-out;
-        z-index: 1001;
-        border-top-left-radius: 16px;
-        border-top-right-radius: 16px;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-        padding: 1rem;
-        padding-bottom: 2rem; /* Extra space at the bottom */
-    }
-
-    .sidebar.mobile-open {
-        transform: translateY(0);
-    }
-
-    .sidebar a {
-        color: #e9ecef !important;
-    }
-    
-    .sidebar h3 {
-        color: white !important;
-    }
-
-    .mobile-menu-toggle {
-        display: flex !important; /* Ensure it's always visible on mobile */
-    }
-
-    .mobile-menu-toggle.active {
-        background-color: #6c757d !important;
-        transform: rotate(45deg);
-    }
-
-    .mobile-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 1000;
-    }
-
-    .mobile-overlay.active {
-        display: block;
+        padding: 2rem 0;
     }
 }
