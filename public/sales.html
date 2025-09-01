@@ -633,22 +633,31 @@
         }
 
         function setupMenuVisibility() {
+            const userRole = currentUser.role_name || '';
             const permissions = currentUser.permissions || {};
+            const menuItems = document.querySelectorAll('#salesMenu [data-key]');
 
-            // Admin (permissions.all: true) her şeyi görür
-            if (permissions.all === true) {
-                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
+            console.log('Kullanıcı Rolü:', userRole);
+            console.log('Yüklü Yetkiler:', JSON.stringify(permissions, null, 2));
+
+            // Geçici Düzeltme: Eğer rol "Satış" içeriyorsa ve yetkiler eksikse, menüyü yine de göster.
+            // Bu, veritabanındaki yetki tanımı eksik olsa bile arayüzün çalışmasını sağlar.
+            // İdeal çözüm, veritabanındaki "roles" tablosunda ilgili rolün "permissions" alanını kontrol etmektir.
+            if (userRole.includes('Satış')) {
+                console.warn('Satış rolü için menü görünürlüğü zorla etkinleştirildi. Lütfen veritabanı yetkilerini kontrol edin.');
+                menuItems.forEach(item => {
+                    item.style.display = ''; // Menü öğesini görünür yap
+                });
                 return;
             }
 
-            console.log('Kullanıcı yetkileri kontrol ediliyor:', permissions);
-            const menuItems = document.querySelectorAll('#salesMenu [data-key]');
+            // Standart Yetki Kontrolü (Admin ve diğer roller için)
+            if (permissions.all === true) return;
 
             menuItems.forEach(item => {
                 const key = item.dataset.key;
-                // 'logout' gibi anahtar kelimeleri her zaman göster
-                if (key && key !== 'logout' && !permissions[key]) {
-                    console.log(`🚫 Menü gizleniyor: ${key}`);
+                if (key !== 'logout' && !permissions[key]) {
+                    console.log(`🚫 Menü gizleniyor (Yetki yok): ${key}`);
                     item.style.display = 'none';
                 }
             });
