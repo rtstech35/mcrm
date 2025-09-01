@@ -2128,7 +2128,7 @@ app.delete("/api/delivery-notes/:id", authenticateToken, checkPermission('delive
 app.get("/api/appointments", authenticateToken, checkPermission('appointments.read'), async (req, res) => {
   try {
     const { type, status, assigned_to, customer_id, start_date, end_date } = req.query;
-    const { userId, role } = req.user;
+    const { userId, role, permissions } = req.user;
 
     let query = `
       SELECT a.id, a.title, a.description, a.type, a.priority, a.start_date, a.start_time, a.status,
