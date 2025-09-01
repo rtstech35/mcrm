@@ -934,6 +934,16 @@
             }
         }
 
+        function getStatusText(status) {
+            const statusMap = {
+                'active': 'Aktif',
+                'potential': 'Potansiyel',
+                'not_interested': 'İlgilenmiyor',
+                'inactive': 'Pasif'
+            };
+            return statusMap[status] || status;
+        }
+
         async function showOrders() {
             try {
                 const content = document.querySelector('.content-inner');

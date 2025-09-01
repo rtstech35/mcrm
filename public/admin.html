@@ -781,6 +781,15 @@
             }
         }
 
+        // Yetki isimlerini Türkçeye çevirmek için
+        const permissionTranslations = {
+            'create': 'Oluştur',
+            'read': 'Görüntüle',
+            'update': 'Güncelle',
+            'delete': 'Sil',
+            'read_own': 'Sadece Kendininkini Görüntüle'
+        };
+
         // Yetki Yönetimi Fonksiyonları
         const permissionModel = {
             "Genel": {
@@ -896,10 +905,11 @@
                             html += `<div><strong>${module.name}</strong><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; padding-left: 10px;">`;
                             module.actions.forEach(action => {
                                 const isChecked = currentPermissions[moduleKey] && currentPermissions[moduleKey].includes(action) ? 'checked' : '';
+                                const translatedAction = permissionTranslations[action] || action;
                                 html += `
                                     <label class="permission-label" style="font-size: 0.8em;">
                                         <input type="checkbox" class="permission-checkbox" data-module="${moduleKey}" data-action="${action}" ${isChecked}>
-                                        ${action}
+                                        ${translatedAction}
                                     </label>`;
                             });
                             html += `</div></div>`;
