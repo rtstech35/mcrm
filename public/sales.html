@@ -666,20 +666,20 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Satış Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${stats.monthlySalesTarget.toLocaleString('tr-TR')} TL</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${(stats.monthlySalesTarget || 0).toLocaleString('tr-TR')} TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💰</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${stats.currentMonthlySales.toLocaleString('tr-TR')} TL</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${(stats.currentMonthlySales || 0).toLocaleString('tr-TR')} TL</span>
                                     <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${salesPercentage}%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
                                     <div style="width: ${salesPercentage}%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: ${(stats.monthlySalesTarget - stats.currentMonthlySales).toLocaleString('tr-TR')} TL</div>
+                            <div style="font-size: 0.875rem; color: #48bb78;">Kalan: ${((stats.monthlySalesTarget || 0) - (stats.currentMonthlySales || 0)).toLocaleString('tr-TR')} TL</div>
                         </div>
                         
                         <!-- Aylık Ziyaret Hedefi -->
@@ -708,20 +708,20 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <div>
                                     <h3 style="color: #2d3748; font-weight: 600; margin-bottom: 0.5rem;">Aylık Tahsilat Hedefi</h3>
-                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${stats.monthlyCollectionTarget.toLocaleString('tr-TR')} TL</p>
+                                    <p style="color: #718096; font-size: 0.875rem;">Hedef: ${(stats.monthlyCollectionTarget || 0).toLocaleString('tr-TR')} TL</p>
                                 </div>
                                 <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #ed8936, #dd6b20); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💳</div>
                             </div>
                             <div style="margin-bottom: 1rem;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${stats.currentMonthlyCollection.toLocaleString('tr-TR')} TL</span>
+                                    <span style="font-size: 0.875rem; color: #718096;">Gerçekleşen: ${(stats.currentMonthlyCollection || 0).toLocaleString('tr-TR')} TL</span>
                                     <span style="font-size: 0.875rem; color: #2d3748; font-weight: 600;">${collectionPercentage}%</span>
                                 </div>
                                 <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
                                     <div style="width: ${collectionPercentage}%; height: 100%; background: linear-gradient(90deg, #ed8936, #dd6b20); transition: width 0.3s ease;"></div>
                                 </div>
                             </div>
-                            <div style="font-size: 0.875rem; color: #ed8936;">Kalan: ${(stats.monthlyCollectionTarget - stats.currentMonthlyCollection).toLocaleString('tr-TR')} TL</div>
+                            <div style="font-size: 0.875rem; color: #ed8936;">Kalan: ${((stats.monthlyCollectionTarget || 0) - (stats.currentMonthlyCollection || 0)).toLocaleString('tr-TR')} TL</div>
                         </div>
                     </div>
                     
