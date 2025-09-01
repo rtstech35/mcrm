@@ -12,7 +12,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        /* Page-specific styles can go here if needed */
+        /* Mobile menu z-index fix */
+        .sidebar.mobile-open {
+            z-index: 10001;
+        }
+        .mobile-overlay.active {
+            z-index: 10000;
+        }
     </style>
 
 </head>

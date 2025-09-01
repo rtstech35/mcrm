@@ -24,6 +24,13 @@
         .modal-content { background: white; margin: 5% auto; padding: 2rem; width: 500px; border-radius: 8px; }
         .close { float: right; font-size: 1.5rem; cursor: pointer; }
         .invoice-card { border: 1px solid #ddd; padding: 1rem; margin: 0.5rem 0; border-radius: 8px; }
+        /* Mobile menu z-index fix */
+        .sidebar.mobile-open {
+            z-index: 10001;
+        }
+        .mobile-overlay.active {
+            z-index: 10000;
+        }
     </style>
 </head>
 <body class="accounting-page">
