@@ -3491,10 +3491,11 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
 
         // 2. Get user sales for the month
         const salesResult = await pool.query(`
-            SELECT COALESCE(SUM(total_amount), 0) as total
-            FROM orders
+            SELECT COALESCE(SUM(total_amount), 0) as total 
+            FROM orders 
             WHERE sales_rep_id = $1 
-              AND EXTRACT(YEAR FROM order_date) = $2
+              AND status NOT IN ('cancelled', 'iptal') -- İptal edilen siparişleri hariç tut
+              AND EXTRACT(YEAR FROM order_date) = $2 
               AND EXTRACT(MONTH FROM order_date) = $3
         `, [userId, currentYear, currentMonth]);
         const currentMonthlySales = parseFloat(salesResult.rows[0].total);
