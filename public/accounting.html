@@ -8,45 +8,10 @@
     <title>Muhasebe Paneli - Saha CRM</title>
     <link rel="stylesheet" href="/theme.css">
     <link rel="stylesheet" href="/mobile.css">
-    <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; }
-        .header { background: #dc3545; color: white; padding: 1rem; }
-        .nav { display: flex; gap: 1rem; margin-top: 1rem; }
-        .nav button { 
-            padding: 0.5rem 1rem; background: rgba(255,255,255,0.2); 
-            color: white; border: none; border-radius: 4px; cursor: pointer; 
-        }
-        .nav button:hover, .nav button.active { background: rgba(255,255,255,0.3); }        
-        .btn { background: #dc3545; }
-        .btn:hover { background: #c82333; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
-        .stat-card { background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center; }        
-        .modal-content { background: white; margin: 5% auto; padding: 2rem; width: 500px; border-radius: 8px; }
-        .close { float: right; font-size: 1.5rem; cursor: pointer; }
-        .invoice-card { border: 1px solid #ddd; padding: 1rem; margin: 0.5rem 0; border-radius: 8px; }
-    </style>
 </head>
 <body class="accounting-page">
     <button class="mobile-menu-toggle acc-theme" onclick="toggleMobileMenu()">☰</button>
     <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
-    <!-- User Profile Dropdown -->
-    <div class="user-profile-widget">
-        <div class="user-profile-header" onclick="toggleProfileMenu(this)">
-            <div class="user-profile-info">
-                <div id="userName" style="font-weight: 600; color: #2d3748; font-size: 0.9em;">Kullanıcı</div>
-                <div id="currentDateTime" style="font-size: 0.75em; color: #666; margin-top: 2px;">--</div>
-            </div>
-            <div class="user-profile-toggle-icon">▼</div>
-        </div>
-        <div id="profileMenu" class="user-profile-menu">
-            <a href="#" onclick="openProfile()">
-                <span>👤</span> Profil
-            </a>
-            <a href="#" onclick="logout()">
-                <span>🚪</span> Çıkış
-            </a>
-        </div>
-    </div>
     <div class="header">
         <h1>Muhasebe Paneli - Saha CRM</h1>
         <div class="nav">
@@ -56,6 +21,20 @@
             <button onclick="showAccounts()" data-key="accounting_accounts">Cari Hesap</button>
             <button onclick="showDeliveries()" data-key="accounting_delivery_notes">İrsaliyeler</button>
             <button onclick="logout()" data-key="logout">Çıkış</button>
+        </div>
+        <!-- User Profile Dropdown -->
+        <div class="user-profile-widget">
+            <div class="user-profile-header" onclick="toggleProfileMenu(this)">
+                <div class="user-profile-info">
+                    <div id="userName" style="font-weight: 600; color: #2d3748; font-size: 0.9em;">Kullanıcı</div>
+                    <div id="currentDateTime" style="font-size: 0.75em; color: #666; margin-top: 2px;">--</div>
+                </div>
+                <div class="user-profile-toggle-icon">▼</div>
+            </div>
+            <div id="profileMenu" class="user-profile-menu">
+                <a href="#" onclick="openProfile()"><span>👤</span> Profil</a>
+                <a href="#" onclick="logout()"><span>🚪</span> Çıkış</a>
+            </div>
         </div>
     </div>
 
@@ -79,13 +58,6 @@
         </div>
     </div>
 
-    <script>
-        function toggleProfileMenu(element) {
-            const widget = element.closest('.user-profile-widget');
-            widget.classList.toggle('open');
-            widget.querySelector('.user-profile-menu').style.display = widget.classList.contains('open') ? 'block' : 'none';
-        }
-    </script>
     <!-- Profile Modal -->
     <div id="profileModal" class="modal">
         <div class="modal-content">
@@ -179,12 +151,6 @@
     </div>
 
     <script>
-        // Global profile functions
-        window.toggleProfileMenu = function() {
-            const menu = document.getElementById('profileMenu');
-            if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        };
-
         window.updateDateTime = function() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('tr-TR');
@@ -212,7 +178,7 @@
             document.getElementById('profile_phone').value = currentUser.phone || '';
             modal.style.display = 'block';
 
-            toggleProfileMenu();
+            // toggleProfileMenu(); // No longer needed
         };
 
         document.getElementById('profileForm').addEventListener('submit', async (e) => {

@@ -78,9 +78,10 @@ function closeMobileMenu() {
 }
 
 // --- Profil Menüsü ---
-function toggleProfileMenu() {
-    const menu = document.getElementById('profileMenu');
-    if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+function toggleProfileMenu(element) {
+    const widget = element.closest('.user-profile-widget');
+    widget.classList.toggle('open');
+    widget.querySelector('.user-profile-menu').style.display = widget.classList.contains('open') ? 'block' : 'none';
 }
 
 function updateDateTime() {

@@ -605,6 +605,25 @@ body {
     font-size: 1.5rem;
 }
 
+/* Accounting Page Header Style */
+.accounting-page .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.accounting-page .header .nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.accounting-page .header .user-profile-widget {
+    position: relative; /* Override fixed positioning */
+    top: 0; right: 0;
+}
+
 /* --- Standart Desktop Layout --- */
 @media (min-width: 769px) {
     .container {

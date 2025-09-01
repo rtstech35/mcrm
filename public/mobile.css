@@ -256,7 +256,7 @@ body {
     z-index: 10000 !important;
 }
 
-/* Default Slide-in Menu */
+/* --- UNIFIED MOBILE MENU STYLES --- */
 @media (max-width: 768px) {
     .mobile-menu-toggle {
         display: flex !important; /* Use flex to center icon */
@@ -277,22 +277,29 @@ body {
         box-shadow: var(--shadow-lg);
     }
 
+    /* Default: Slide-in menu from left */
     .sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        width: 280px !important;
+        height: 100vh !important;
+        background: white; /* Default background */
         transform: translateX(-100%);
         transition: transform 0.3s ease-in-out;
+        box-shadow: var(--shadow-lg);
     }
     
     .sidebar.mobile-open {
         transform: translateX(0);
     }
     
-    .content, .main-content {
-        padding-top: 5rem !important; /* Adjust padding for fixed toggle */
+    .content {
+        margin-left: 0 !important;
+        padding: 5rem 1rem 1rem !important; /* Adjust padding for fixed toggle */
     }
-}
 
-/* Bottom Sheet Menu (for customer-detail.html) */
-@media (max-width: 768px) {
+    /* Special: Bottom Sheet Menu (for customer-detail.html) */
     .bottom-sheet-layout .mobile-menu-toggle {
         top: auto;
         bottom: 20px;

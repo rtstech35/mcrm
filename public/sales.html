@@ -475,12 +475,6 @@
         let currentBusinesses = [];
         let selectedDeliveries = [];
 
-        function toggleProfileMenu(element) {
-            const widget = element.closest('.user-profile-widget');
-            widget.classList.toggle('open');
-            widget.querySelector('.user-profile-menu').style.display = widget.classList.contains('open') ? 'block' : 'none';
-        };
-        
         window.updateDateTime = function() {
             const now = new Date();
             const dateStr = now.toLocaleDateString('tr-TR');
@@ -507,7 +501,7 @@
                 document.getElementById('profile_phone').value = currentUser.phone || '';
                 modal.style.display = 'block';
             }
-            toggleProfileMenu();
+            // toggleProfileMenu(document.querySelector('.user-profile-header')); // No longer needed
         };
         
         // Initialize on page load
