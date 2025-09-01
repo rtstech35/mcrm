@@ -3615,7 +3615,7 @@
                                 </div>
                             </td>
                             <td>
-                                <strong>${note.customer_name || 'Müşteri Bilgisi Yok'}</strong>
+                                <strong>${note.company_name || 'Müşteri Bilgisi Yok'}</strong>
                                 <div style="font-size: 0.75rem; color: var(--text-secondary);">
                                     ${note.delivery_address || '-'}
                                 </div>
@@ -3825,7 +3825,7 @@
                     <div style="text-align: center;">
                         <h4>İmza Bilgileri</h4>
                         <div style="margin: 1rem 0;">
-                            <strong>İmzalayan:</strong> ${note.customer_name || 'Bilinmiyor'}<br>
+                            <strong>İmzalayan:</strong> ${note.customer_name || 'Belirtilmemiş'}<br>
                             <strong>Unvan:</strong> ${note.customer_title || 'Belirtilmemiş'}<br>
                             <strong>Tarih:</strong> ${new Date(note.signature_date).toLocaleString('tr-TR')}<br>
                             <strong>IP Adresi:</strong> ${note.signature_ip || 'Bilinmiyor'}

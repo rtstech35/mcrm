@@ -1491,8 +1491,8 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
       // N+1 problemini çözmek için JOIN ve JSON Aggregation kullanan sorgu
       query = `
         SELECT 
-          dn.*,
-          c.company_name as customer_name,
+          dn.*, 
+          c.company_name,
           c.address as customer_address,
           c.latitude, 
           c.longitude,
@@ -1517,8 +1517,8 @@ app.get("/api/delivery-notes", authenticateToken, checkPermission('delivery.read
     } else {
       // Orijinal, daha basit sorgu
       query = `
-        SELECT dn.*,
-              c.company_name as customer_name,
+        SELECT dn.*, 
+              c.company_name,
               c.address as customer_address,
               c.latitude, 
               c.longitude,
@@ -3541,6 +3541,11 @@ app.get("/api/orders", authenticateToken, checkPermission('orders.read'), async 
       whereClauses.push(`o.customer_id = $${params.length}`);
     }
     
+    // Satış temsilcisine göre filtrele
+    if (req.query.sales_rep_id) {
+      whereClauses.push(`o.sales_rep_id = $${params.push(req.query.sales_rep_id)}`);
+    }
+
     // Yetkiye göre filtrele
     const { userId, permissions } = req.user;
     const orderPerms = permissions.orders || [];

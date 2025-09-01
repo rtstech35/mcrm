@@ -2152,7 +2152,7 @@
                                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                                                     <div>
                                                         <h4 style="margin-bottom: 0.5rem;">${dn.delivery_number}</h4>
-                                                        <p style="margin-bottom: 0.25rem;"><strong>Müşteri:</strong> ${dn.customer_name || 'Bilinmiyor'}</p>
+                                                        <p style="margin-bottom: 0.25rem;"><strong>Müşteri:</strong> ${dn.company_name || 'Bilinmiyor'}</p>
                                                         <p style="margin-bottom: 0.25rem;"><strong>Tarih:</strong> ${new Date(dn.delivery_date).toLocaleDateString('tr-TR')}</p>
                                                         <p style="margin-bottom: 0.25rem;"><strong>Durum:</strong> <span style="color: ${color}; font-weight: 600;">${statusNames[dn.status] || dn.status}</span></p>
                                                     </div>

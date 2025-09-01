@@ -1,5 +1,6 @@
 /* Mobil Optimizasyon CSS */
 
+@media (max-width: 768px) {
     .container {
         flex-direction: column;
         padding-bottom: 70px; /* Add padding to avoid overlap with bottom nav */
@@ -254,6 +255,7 @@ body {
 }
 .mobile-overlay.active {
     z-index: 10000 !important;
+}
 }
 
 /* --- UNIFIED MOBILE STYLES --- */
