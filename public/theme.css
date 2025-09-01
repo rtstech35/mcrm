@@ -114,6 +114,17 @@ body {
     border-right-color: var(--primary);
 }
 
+/* Clickable elements */
+.clickable {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
 /* Cards */
 .card {
     background: white;

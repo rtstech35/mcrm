@@ -633,32 +633,27 @@
         }
 
         function setupMenuVisibility() {
-            const userRole = currentUser.role_name || '';
             const permissions = currentUser.permissions || {};
             const menuItems = document.querySelectorAll('#salesMenu [data-key]');
 
-            console.log('Kullanıcı Rolü:', userRole);
             console.log('Yüklü Yetkiler:', JSON.stringify(permissions, null, 2));
 
-            // Geçici Düzeltme: Eğer rol "Satış" içeriyorsa ve yetkiler eksikse, menüyü yine de göster.
-            // Bu, veritabanındaki yetki tanımı eksik olsa bile arayüzün çalışmasını sağlar.
-            // İdeal çözüm, veritabanındaki "roles" tablosunda ilgili rolün "permissions" alanını kontrol etmektir.
-            if (userRole.includes('Satış')) {
-                console.warn('Satış rolü için menü görünürlüğü zorla etkinleştirildi. Lütfen veritabanı yetkilerini kontrol edin.');
-                menuItems.forEach(item => {
-                    item.style.display = ''; // Menü öğesini görünür yap
-                });
+            // Admin kullanıcısı (permissions.all: true) tüm menüleri görür.
+            if (permissions.all === true) {
                 return;
             }
 
-            // Standart Yetki Kontrolü (Admin ve diğer roller için)
-            if (permissions.all === true) return;
+            // Diğer roller için yetki kontrolü.
+            // Her menü elemanının data-key'i, kullanıcının yetkileri (permissions)
+            // objesinde bir anahtar olarak var mı diye kontrol edilir.
 
             menuItems.forEach(item => {
                 const key = item.dataset.key;
                 if (key !== 'logout' && !permissions[key]) {
                     console.log(`🚫 Menü gizleniyor (Yetki yok): ${key}`);
                     item.style.display = 'none';
+                } else {
+                    item.style.display = ''; // Yetki varsa görünür yap
                 }
             });
         }
@@ -929,6 +924,189 @@
             }
         }
 
+        // --- Tıklama Sorununu Çözen Yeniden Yazılmış Fonksiyonlar ---
+
+        function getOrderStatusText(status) {
+            const statusMap = {
+                'pending': 'Bekliyor',
+                'confirmed': 'Onaylandı',
+                'production': 'Üretimde',
+                'completed': 'Tamamlandı',
+                'ready_for_delivery': 'Teslimat Hazır',
+                'delivered': 'Teslim Edildi',
+                'cancelled': 'İptal Edildi'
+            };
+            return statusMap[status] || status;
+        }
+
+        async function showCustomers() {
+            try {
+                const content = document.getElementById('content');
+                content.innerHTML = '<div class="card"><div class="loading">Müşteriler yükleniyor...</div></div>';
+
+                const customersResponse = await apiCall('/api/customers');
+                const customers = customersResponse.customers || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const header = document.createElement('h2');
+                header.textContent = 'Müşterilerim';
+                card.appendChild(header);
+
+                const newCustomerBtn = document.createElement('button');
+                newCustomerBtn.className = 'btn';
+                newCustomerBtn.textContent = '+ Yeni Müşteri';
+                newCustomerBtn.style.marginBottom = '1rem';
+                newCustomerBtn.onclick = () => openCustomerModal();
+                card.appendChild(newCustomerBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
+
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Şirket Adı</th>
+                        <th>Yetkili</th>
+                        <th>Telefon</th>
+                        <th>Durum</th>
+                        <th>İşlemler</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
+                if (customers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">Müşteri bulunamadı.</td></tr>';
+                } else {
+                    customers.forEach(customer => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+                        tr.addEventListener('click', () => viewCustomerDetail(customer.id));
+
+                        tr.innerHTML = `
+                            <td>${customer.company_name}</td>
+                            <td>${customer.contact_person || '-'}</td>
+                            <td>${customer.phone || '-'}</td>
+                            <td>${getStatusText(customer.customer_status)}</td>
+                        `;
+
+                        const actionsTd = document.createElement('td');
+                        
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn';
+                        editBtn.textContent = 'Düzenle';
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            editCustomer(customer.id);
+                        });
+                        actionsTd.appendChild(editBtn);
+
+                        const visitBtn = document.createElement('button');
+                        visitBtn.className = 'btn';
+                        visitBtn.textContent = 'Ziyaret';
+                        visitBtn.style.marginLeft = '0.5rem';
+                        visitBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            visitCustomer(customer.id);
+                        });
+                        actionsTd.appendChild(visitBtn);
+
+                        tr.appendChild(actionsTd);
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                content.innerHTML = '';
+                content.appendChild(card);
+
+            } catch (error) {
+                console.error('Müşteriler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `<div class="card error"><strong>Müşteriler Yüklenemedi:</strong> ${error.message}</div>`;
+            }
+        }
+
+        async function showOrders() {
+            try {
+                const content = document.getElementById('content');
+                content.innerHTML = '<div class="card"><div class="loading">Siparişler yükleniyor...</div></div>';
+
+                const ordersResponse = await apiCall(`/api/orders?sales_rep_id=${currentUser.id}`);
+                const myOrders = ordersResponse.orders || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const header = document.createElement('h2');
+                header.textContent = 'Siparişlerim';
+                card.appendChild(header);
+
+                const newOrderBtn = document.createElement('button');
+                newOrderBtn.className = 'btn';
+                newOrderBtn.textContent = 'Yeni Sipariş';
+                newOrderBtn.style.marginBottom = '1rem';
+                newOrderBtn.onclick = () => openOrderModal();
+                card.appendChild(newOrderBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
+
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Sipariş No</th>
+                        <th>Müşteri</th>
+                        <th>Tarih</th>
+                        <th>Tutar</th>
+                        <th>Durum</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
+                if (myOrders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">Sipariş bulunamadı.</td></tr>';
+                } else {
+                    myOrders.forEach(order => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+                        tr.addEventListener('click', () => viewOrderDetail(order.id));
+
+                        tr.innerHTML = `
+                            <td>#${order.order_number}</td>
+                            <td>${order.company_name || 'Bilinmiyor'}</td>
+                            <td>${new Date(order.order_date).toLocaleDateString('tr-TR')}</td>
+                            <td>${order.total_amount} TL</td>
+                            <td>${getOrderStatusText(order.status)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                content.innerHTML = '';
+                content.appendChild(card);
+
+            } catch (error) {
+                console.error('Siparişler yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `<div class="card error"><strong>Siparişler Yüklenemedi:</strong> ${error.message}</div>`;
+            }
+        }
+
         async function showVisit() {
             try {
                 const customersResponse = await apiCall('/api/customers');
@@ -1089,6 +1267,106 @@
                 document.getElementById('visitModal').style.display = 'block';
             } catch (error) {
                 alert('Müşteriler yüklenemedi: ' + error.message);
+            }
+        }
+
+        async function showAppointments() {
+            try {
+                const content = document.getElementById('content');
+                content.innerHTML = '<div class="card"><div class="loading">Randevular yükleniyor...</div></div>';
+
+                const appointmentsResponse = await apiCall(`/api/appointments?assigned_to=${currentUser.id}`);
+                const appointments = appointmentsResponse.appointments || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                const header = document.createElement('h2');
+                header.textContent = '📅 Randevu & Görev Yönetimi';
+                card.appendChild(header);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.cssText = 'display: flex; gap: 1rem; margin-bottom: 2rem;';
+                actionsDiv.innerHTML = `
+                    <button class="btn" onclick="openAppointmentModal()">📅 Yeni Randevu</button>
+                    <button class="btn" onclick="openTaskModal()" style="background: #28a745;">✅ Yeni Görev</button>
+                `;
+                card.appendChild(actionsDiv);
+
+                const activitiesContainer = document.createElement('div');
+                activitiesContainer.id = 'activitiesContainer';
+                activitiesContainer.style.cssText = 'display: grid; gap: 1rem;';
+                card.appendChild(activitiesContainer);
+
+                if (appointments.length === 0) {
+                    activitiesContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">Aktivite bulunamadı.</p>';
+                } else {
+                    appointments.forEach(apt => {
+                        const typeNames = { 'appointment': 'Randevu', 'task': 'Görev', 'visit': 'Ziyaret', 'call': 'Arama', 'meeting': 'Toplantı' };
+                        const statusNames = { 'pending': 'Bekliyor', 'in_progress': 'Devam Ediyor', 'completed': 'Tamamlandı', 'cancelled': 'İptal Edildi' };
+                        const priorityColors = { 'low': '#6c757d', 'medium': '#007bff', 'high': '#ffc107', 'urgent': '#dc3545' };
+
+                        const aptCard = document.createElement('div');
+                        aptCard.className = 'activity-card';
+                        aptCard.style.cssText = `padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; border-left: 4px solid ${priorityColors[apt.priority] || '#6c757d'};`;
+                        aptCard.addEventListener('click', () => showAppointmentDetail(apt.id));
+
+                        const innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <h4 style="margin-bottom: 0.5rem;">${apt.title}</h4>
+                                    <p style="font-size: 0.875rem; color: #666;">
+                                        <span>${typeNames[apt.type] || apt.type}</span> | 
+                                        <span>${apt.customer_name || 'Genel'}</span> | 
+                                        <span>${new Date(apt.start_date).toLocaleDateString('tr-TR')} ${apt.start_time || ''}</span>
+                                    </p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="background: ${apt.status === 'completed' ? '#d4edda' : '#fff3cd'}; color: ${apt.status === 'completed' ? '#155724' : '#856404'}; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem;">
+                                        ${statusNames[apt.status] || apt.status}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                        aptCard.innerHTML = innerHTML;
+
+                        // Action buttons
+                        const actionsContainer = document.createElement('div');
+                        actionsContainer.style.cssText = 'margin-top: 0.5rem; text-align: right;';
+
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn';
+                        editBtn.textContent = 'Düzenle';
+                        editBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #ffc107;';
+                        editBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            editActivity(apt.type, apt.id);
+                        });
+                        actionsContainer.appendChild(editBtn);
+
+                        if (apt.status === 'pending') {
+                            const completeBtn = document.createElement('button');
+                            completeBtn.className = 'btn';
+                            completeBtn.textContent = 'Tamamla';
+                            completeBtn.style.cssText = 'padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #28a745; margin-left: 0.25rem;';
+                            completeBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                completeActivity(apt.type, apt.id);
+                            });
+                            actionsContainer.appendChild(completeBtn);
+                        }
+                        
+                        aptCard.querySelector('div').appendChild(actionsContainer);
+                        activitiesContainer.appendChild(aptCard);
+                    });
+                }
+
+                content.innerHTML = '';
+                content.appendChild(card);
+
+            } catch (error) {
+                console.error('Randevular yüklenemedi:', error);
+                document.getElementById('content').innerHTML = `<div class="card error"><strong>Randevular Yüklenemedi:</strong> ${error.message}</div>`;
             }
         }
 

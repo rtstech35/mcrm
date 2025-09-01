@@ -63,7 +63,7 @@
 
         <!-- Aylık Hedef ve Gerçekleşme -->
         <div class="targets-section">
-            <div class="target-card">
+            <div class="target-card clickable" onclick="showOrders('')">
                 <h3>Aylık Üretim Hedefi</h3>
                 <div class="target-progress">
                     <div class="target-numbers">
@@ -82,30 +82,7 @@
 
         <!-- Sipariş Durumları -->
         <div class="orders-status">
-            <!-- ... (mevcut status-card'lar) ... -->
-        </div>
-        <!-- Aylık Hedef ve Gerçekleşme -->
-        <div class="targets-section">
-            <div class="target-card">
-                <h3>Aylık Üretim Hedefi</h3>
-                <div class="target-progress">
-                    <div class="target-numbers">
-                        <span class="achieved" id="productionAchieved">0</span>
-                        <span class="separator">/</span>
-                        <span class="target" id="productionTarget">0</span>
-                        <span class="unit">adet</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="productionProgress"></div>
-                    </div>
-                    <div class="progress-text" id="productionPercentage">0%</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sipariş Durumları -->
-        <div class="orders-status">
-            <div class="status-card" onclick="showOrders('pending')">
+            <div class="status-card clickable" onclick="showOrders('pending')">
                 <div class="status-icon">⏳</div>
                 <div class="status-info">
                     <h4>Bekleyen Siparişler</h4>
@@ -113,7 +90,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showOrders('production')">
+            <div class="status-card clickable" onclick="showOrders('production')">
                 <div class="status-icon">🏭</div>
                 <div class="status-info">
                     <h4>Üretimdeki Siparişler</h4>
@@ -121,7 +98,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showOrders('completed')">
+            <div class="status-card clickable" onclick="showOrders('completed')">
                 <div class="status-icon">✅</div>
                 <div class="status-info">
                     <h4>Tamamlanan Siparişler</h4>
@@ -129,7 +106,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showOrders('ready_for_delivery')">
+            <div class="status-card clickable" onclick="showOrders('ready_for_delivery')">
                 <div class="status-icon">📦</div>
                 <div class="status-info">
                     <h4>Teslimat Bekleyenler</h4>
@@ -137,7 +114,7 @@
                 </div>
             </div>
             
-            <div class="status-card" onclick="showOrders('delivered')">
+            <div class="status-card clickable" onclick="showOrders('delivered')">
                 <div class="status-icon">✅</div>
                 <div class="status-info">
                     <h4>Müşteriye Teslim Edilen</h4>

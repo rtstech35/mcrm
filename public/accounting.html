@@ -18,8 +18,8 @@
         }
         .nav button:hover, .nav button.active { background: rgba(255,255,255,0.3); }        
         .btn { background: #dc3545; }
-        .btn:hover { background: #c82333; }        
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .btn:hover { background: #c82333; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin: 1.5rem 0; }
         .stat-card { background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center; }        
         .modal-content { background: white; margin: 5% auto; padding: 2rem; width: 500px; border-radius: 8px; }
         .close { float: right; font-size: 1.5rem; cursor: pointer; }
@@ -311,19 +311,19 @@
                         <p>Hoş geldiniz, ${currentUser.full_name}</p>
                         
                         <div class="stats-grid">
-                            <div class="stat-card">
+                            <div class="stat-card clickable" onclick="showInvoices()">
                                 <h3 style="color: #28a745;">${totalRevenue.toFixed(2)} TL</h3>
                                 <p>Toplam Ciro</p>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" onclick="showDeliveries()">
                                 <h3 style="color: #dc3545;">${deliveredOrders}</h3>
                                 <p>Teslim Edilen</p>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" onclick="showInvoices()">
                                 <h3 style="color: #ffc107;">${pendingInvoices}</h3>
                                 <p>Bekleyen Fatura</p>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card clickable" onclick="showCustomers()">
                                 <h3 style="color: #17a2b8;">${customers.length}</h3>
                                 <p>Toplam Müşteri</p>
                             </div>
