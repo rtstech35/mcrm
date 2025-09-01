@@ -3493,17 +3493,36 @@ app.get("/api/dashboard/stats", authenticateToken, async (req, res) => {
         stats.completedOrders = orderStatuses.completed || 0;
         stats.deliveredOrders = orderStatuses.delivered || 0;
 
-        // Financial stats
-        const financialStats = await Promise.all([
-            pool.query('SELECT COALESCE(SUM(total_amount), 0) as total FROM orders'),
-            pool.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2`, [currentYear, currentMonth]),
-            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM account_transactions WHERE transaction_type = 'credit'`),
-            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM account_transactions WHERE transaction_type = 'debit'`)
+        // --- HEDEFLER VE GERÇEKLEŞMELER ---
+
+        // 1. Bu ay için toplam hedefleri al
+        const targetsResult = await pool.query(`
+            SELECT 
+                COALESCE(SUM(sales_target), 0) as monthlySalesTarget,
+                COALESCE(SUM(visit_target), 0) as monthlyVisitTarget,
+                COALESCE(SUM(collection_target), 0) as monthlyCollectionTarget
+            FROM user_targets
+            WHERE target_year = $1 AND target_month = $2
+        `, [currentYear, currentMonth]);
+        
+        const monthlyTargets = targetsResult.rows[0] || {};
+        stats.monthlySalesTarget = parseFloat(monthlyTargets.monthlysalestarget);
+        stats.monthlyVisitTarget = parseInt(monthlyTargets.monthlyvisittarget);
+        stats.monthlyCollectionTarget = parseFloat(monthlyTargets.monthlycollectiontarget);
+
+        // 2. Bu ay için gerçekleşen değerleri al
+        const realizedValues = await Promise.all([
+            // Gerçekleşen Satış
+            pool.query(`SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE status NOT IN ('cancelled', 'iptal') AND EXTRACT(YEAR FROM order_date) = $1 AND EXTRACT(MONTH FROM order_date) = $2`, [currentYear, currentMonth]),
+            // Gerçekleşen Ziyaret
+            pool.query(`SELECT COUNT(*) as count FROM customer_visits WHERE EXTRACT(YEAR FROM visit_date) = $1 AND EXTRACT(MONTH FROM visit_date) = $2`, [currentYear, currentMonth]),
+            // Gerçekleşen Tahsilat
+            pool.query(`SELECT COALESCE(SUM(amount), 0) as total FROM account_transactions WHERE transaction_type = 'credit' AND EXTRACT(YEAR FROM transaction_date) = $1 AND EXTRACT(MONTH FROM transaction_date) = $2`, [currentYear, currentMonth])
         ]);
 
-        stats.totalRevenue = parseFloat(financialStats[0].rows[0].total);
-        stats.monthlyRevenue = parseFloat(financialStats[1].rows[0].total);
-        stats.accountBalance = parseFloat(financialStats[3].rows[0].total) - parseFloat(financialStats[2].rows[0].total);
+        stats.currentMonthlySales = parseFloat(realizedValues[0].rows[0].total);
+        stats.currentMonthlyVisits = parseInt(realizedValues[1].rows[0].count);
+        stats.currentMonthlyCollection = parseFloat(realizedValues[2].rows[0].total);
 
         res.json({ success: true, stats: stats });
     } catch (error) {

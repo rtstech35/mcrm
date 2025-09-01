@@ -41,6 +41,8 @@
     </style>
 </head>
 <body>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     <!-- User Profile Dropdown -->
     <div style="position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 200px;">
         <div onclick="toggleProfileMenu()" style="padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 8px;">
@@ -695,6 +697,27 @@
         updateDateTime();
         setupMenuVisibility();
         setInterval(updateDateTime, 60000);
+
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+        
+        // Menü linklerine tıklandığında mobil menüyü kapat
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
     </script>
 </body>
 </html>

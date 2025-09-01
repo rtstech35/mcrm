@@ -9,6 +9,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     <div class="container" style="min-height: 100vh; padding: 2rem;">
         <div class="sidebar">
             <div style="text-align: center; margin-bottom: 2rem;">
@@ -262,6 +264,27 @@
         function goBack() {
             window.location.href = '/visit-nearby.html';
         }
+
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+        
+        // Menü linklerine tıklandığında mobil menüyü kapat
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
 
         // Sayfa tamamen yüklendiğinde haritayı başlat
         document.addEventListener('DOMContentLoaded', function() {

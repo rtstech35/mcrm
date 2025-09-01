@@ -34,6 +34,8 @@
         </div>
     </div>
 <body>
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     <div class="header">
         <h1>Admin Panel - Saha CRM</h1>
     </div>
@@ -4801,6 +4803,27 @@
             
             // Tarih/saat bilgisini her saniye güncelle
             setInterval(updateDateTime, 1000);
+        });
+
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+        
+        // Menü linklerine tıklandığında mobil menüyü kapat
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
         });
     </script>
     <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">

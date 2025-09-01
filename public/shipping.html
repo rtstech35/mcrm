@@ -394,6 +394,7 @@
     </style>
 </head>
 <body>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     <div class="layout">
         <!-- Sol Menü -->
         <div class="sidebar">
@@ -999,6 +1000,26 @@
                 window.location.href = '/';
             }
         }
+
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+        }
+
+        // Menü linklerine tıklandığında mobil menüyü kapat
+        document.querySelectorAll('.sidebar-nav a').forEach(link => link.addEventListener('click', closeMobileMenu));
+
     </script>
 
     <style>
