@@ -1944,9 +1944,9 @@ async function sendDeliveryCompletionEmail(deliveryNoteId) {
             </div>
             
             <div class="company-info">
-                <h3>SAHA CRM SİSTEMİ</h3>
-                <p>Adres: Örnek Mahalle, Örnek Sokak No:1, İstanbul</p>
-                <p>Telefon: +90 212 555 0000 | Email: info@sahacrm.com</p>
+                <h3>MARUPAK</h3>
+                <p>Adres: Türkoba Mah.Eski Çatalca Yolu cd.No:5 Büyükçekmece/İstanbul</p>
+                <p>Telefon: +90 212 346 84 90 | Email: info@marupak.com</p>
             </div>
             
             <div class="delivery-info">
