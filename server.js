@@ -839,8 +839,8 @@ app.post("/api/roles", authenticateToken, checkPermission('roles.create'), async
     }
 
     const result = await pool.query(`
-      INSERT INTO roles (name, description, level, is_active)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO roles (name, description, level, is_active, permissions)
+      VALUES ($1, $2, $3, $4, '{}'::jsonb)
       RETURNING *
     `, [name, description, level || 2, is_active !== false]);
 
