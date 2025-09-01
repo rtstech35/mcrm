@@ -539,10 +539,16 @@ app.put("/api/users/:id", authenticateToken, checkPermission('users.update'), as
 app.delete("/api/users/:id", authenticateToken, checkPermission('users.delete'), async (req, res) => {
   try {
     const { id } = req.params;
+    if (id === '1') {
+        return res.status(403).json({ success: false, error: 'Admin kullanıcısı silinemez.' });
+    }
     const result = await pool.query(`DELETE FROM users WHERE id = $1 RETURNING *`, [id]);
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
     res.json({ success: true, message: 'Kullanıcı başarıyla silindi' });
   } catch (error) {
+    if (error.code === '23503') { // Foreign key violation
+        return res.status(409).json({ success: false, error: 'Bu kullanıcı başka kayıtlarda (sipariş, müşteri vb.) kullanıldığı için silinemez. Önce kullanıcıyı pasif hale getirmeyi deneyin.' });
+    }
     console.error('User delete hatası:', error);
     res.status(500).json({ success: false, error: error.message });
   }
