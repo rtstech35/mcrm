@@ -24,32 +24,25 @@
         .modal-content { background: white; margin: 5% auto; padding: 2rem; width: 500px; border-radius: 8px; }
         .close { float: right; font-size: 1.5rem; cursor: pointer; }
         .invoice-card { border: 1px solid #ddd; padding: 1rem; margin: 0.5rem 0; border-radius: 8px; }
-        /* Mobile menu z-index fix */
-        .sidebar.mobile-open {
-            z-index: 10001;
-        }
-        .mobile-overlay.active {
-            z-index: 10000;
-        }
     </style>
 </head>
 <body class="accounting-page">
     <button class="mobile-menu-toggle acc-theme" onclick="toggleMobileMenu()">☰</button>
     <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     <!-- User Profile Dropdown -->
-    <div style="position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 200px;">
-        <div onclick="toggleProfileMenu()" style="padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 8px;">
-            <div>
+    <div class="user-profile-widget">
+        <div class="user-profile-header" onclick="toggleProfileMenu(this)">
+            <div class="user-profile-info">
                 <div id="userName" style="font-weight: 600; color: #2d3748; font-size: 0.9em;">Kullanıcı</div>
                 <div id="currentDateTime" style="font-size: 0.75em; color: #666; margin-top: 2px;">--</div>
             </div>
-            <div style="color: #666; font-size: 0.8em;">▼</div>
+            <div class="user-profile-toggle-icon">▼</div>
         </div>
-        <div id="profileMenu" style="display: none; border-top: 1px solid #e2e8f0; padding: 8px 0;">
-            <a href="#" onclick="openProfile()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; text-decoration: none; color: #2d3748; font-size: 0.875em;">
+        <div id="profileMenu" class="user-profile-menu">
+            <a href="#" onclick="openProfile()">
                 <span>👤</span> Profil
             </a>
-            <a href="#" onclick="logout()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; text-decoration: none; color: #2d3748; font-size: 0.875em;">
+            <a href="#" onclick="logout()">
                 <span>🚪</span> Çıkış
             </a>
         </div>
@@ -86,6 +79,13 @@
         </div>
     </div>
 
+    <script>
+        function toggleProfileMenu(element) {
+            const widget = element.closest('.user-profile-widget');
+            widget.classList.toggle('open');
+            widget.querySelector('.user-profile-menu').style.display = widget.classList.contains('open') ? 'block' : 'none';
+        }
+    </script>
     <!-- Profile Modal -->
     <div id="profileModal" class="modal">
         <div class="modal-content">

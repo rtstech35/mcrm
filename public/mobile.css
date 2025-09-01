@@ -246,6 +246,69 @@ body {
     }
 }
 
+/* --- Added From Refactoring --- */
+
+/* Mobile Menu Z-index Fix */
+.sidebar.mobile-open {
+    z-index: 10001 !important;
+}
+.mobile-overlay.active {
+    z-index: 10000 !important;
+}
+
+/* Default Slide-in Menu */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex !important; /* Use flex to center icon */
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1002; /* Above content, below menu */
+        background: var(--primary);
+        color: white;
+        border: none;
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.5rem;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .content, .main-content {
+        padding-top: 5rem !important; /* Adjust padding for fixed toggle */
+    }
+}
+
+/* Bottom Sheet Menu (for customer-detail.html) */
+@media (max-width: 768px) {
+    .bottom-sheet-layout .mobile-menu-toggle {
+        top: auto;
+        bottom: 20px;
+        right: 20px;
+        left: auto;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+
+    .bottom-sheet-layout .sidebar.mobile-open {
+        transform: translateY(0);
+    }
+}
+
 /* --- Standart Mobil Menü --- */
 @media (max-width: 768px) {
     .container {

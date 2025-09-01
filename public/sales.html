@@ -474,13 +474,11 @@
         let orderProducts = [];
         let currentBusinesses = [];
         let selectedDeliveries = [];
-        
-        // Global profile functions
-        window.toggleProfileMenu = function() {
-            const menu = document.getElementById('profileMenu');
-            if (menu) {
-                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-            }
+
+        function toggleProfileMenu(element) {
+            const widget = element.closest('.user-profile-widget');
+            widget.classList.toggle('open');
+            widget.querySelector('.user-profile-menu').style.display = widget.classList.contains('open') ? 'block' : 'none';
         };
         
         window.updateDateTime = function() {
