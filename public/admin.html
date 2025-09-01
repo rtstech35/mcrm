@@ -16,7 +16,9 @@
 
 </head>
 <body class="admin-page">
-
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
+    
     <div class="container">
         <div class="sidebar">
             <h3>Yönetim Paneli</h3>
@@ -244,6 +246,7 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal('targetModal')">&times;</span>
             <h3 id="targetModalTitle">Hedef Düzenle</h3>
+            <input type="hidden" id="target_id">
             <form id="targetEditForm">
                 <div class="form-group">
                     <label>Kullanıcı:</label>
@@ -686,6 +689,7 @@
         </div>
     </div>
 
+    <script> let allTargets = []; </script>
     <script>
         // Global profile menu toggle function
         function toggleProfileMenu(element) {
@@ -2524,28 +2528,50 @@
                 setTimeout(() => {
                     document.getElementById('targetForm').addEventListener('submit', async (e) => {
                         e.preventDefault();
-                        
+
+                        const userId = document.getElementById('target_user_id').value;
+                        const targetType = document.getElementById('target_type').value;
+                        const targetValue = document.getElementById('target_value').value;
+                        const targetMonthYear = document.getElementById('target_month').value;
+                        const [year, month] = targetMonthYear.split('-');
+
+                        if (!userId || !targetType || !targetValue || !targetMonthYear) {
+                            return alert('Lütfen tüm alanları doldurun.');
+                        }
+
                         const formData = {
-                            user_id: document.getElementById('target_user_id').value,
-                            target_type: document.getElementById('target_type').value,
-                            target_value: document.getElementById('target_value').value,
-                            target_month: document.getElementById('target_month').value
+                            target_year: parseInt(year),
+                            target_month: parseInt(month)
                         };
-                        
+
+                        const targetFieldMap = {
+                            'sales': 'sales_target',
+                            'visits': 'visit_target',
+                            'production': 'production_target',
+                            'shipping': 'shipping_target',
+                            'revenue': 'revenue_target',
+                            'collection': 'collection_target'
+                        };
+                        const targetField = targetFieldMap[targetType];
+                        if (targetField) {
+                            formData[targetField] = parseFloat(targetValue);
+                        } else {
+                            return alert('Geçersiz hedef tipi!');
+                        }
+
                         try {
-                            await apiCall('/api/targets', {
-                                method: 'POST',
+                            await apiCall(`/api/user-targets/${userId}`, {
+                                method: 'PUT', // Use UPSERT logic
                                 body: JSON.stringify(formData)
                             });
                             
-                            alert('Hedef başarıyla belirlendi!');
+                            alert('Hedef başarıyla belirlendi/güncellendi!');
                             showTargets();
                         } catch (error) {
                             alert('Hata: ' + error.message);
                         }
                     });
                 }, 100);
-                
             } catch (error) {
                 console.error('Hedefler yüklenemedi:', error);
                 document.querySelector('.content-inner').innerHTML = `
@@ -3314,6 +3340,41 @@
             }
         }
 
+        async function editTarget(targetId, userId, year, month) {
+            if (!targetId) {
+                // Create new target
+                openTargetModal(userId, year, month);
+                return;
+            }
+
+            try {
+                const target = allTargets.find(t => t.id === targetId);
+                if (!target) {
+                    alert('Hedef bulunamadı!');
+                    return;
+                }
+
+                document.getElementById('target_id').value = target.id;
+                document.getElementById('target_user_name').value = target.full_name;
+                document.getElementById('target_monthly_sales').value = target.sales_target || 0;
+                document.getElementById('target_monthly_production').value = target.production_target || 0;
+                document.getElementById('target_monthly_revenue').value = target.revenue_target || 0;
+                // Add other target fields to the modal form if they exist
+
+                document.getElementById('targetModal').style.display = 'block';
+            } catch (error) {
+                alert('Hedef bilgileri yüklenemedi: ' + error.message);
+            }
+        }
+
+        function filterTargets() {
+            const year = document.getElementById('targetYearFilter').value;
+            const month = document.getElementById('targetMonthFilter').value;
+            if (year && month) {
+                loadTargetsForMonth(parseInt(year), parseInt(month));
+            }
+        }
+
         // Hedef yönetimi
         async function showTargets() {
             try {
@@ -3373,8 +3434,8 @@
                                             <th>Departman</th>
                                             <th>Satış Hedefi</th>
                                             <th>Ziyaret Hedefi</th>
-                                            <th>Üretim Hedefi</th>
-                                            <th>Ciro Hedefi</th>
+                                    <th>Üretim/Sevkiyat</th>
+                                    <th>Gelir/Tahsilat</th>
                                             <th>Durum</th>
                                             <th>İşlemler</th>
                                         </tr>
@@ -3409,6 +3470,7 @@
             try {
                 const targetsResponse = await apiCall(`/api/user-targets?year=${year}&month=${month}`);
                 const targets = targetsResponse.targets || [];
+                allTargets = targets; // Store for editing
 
                 const usersResponse = await apiCall('/api/users');
                 const users = usersResponse.users || [];
