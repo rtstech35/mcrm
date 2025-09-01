@@ -160,34 +160,49 @@
     <div id="visitModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('visitModal')">&times;</span>
-            <h3>Müşteri Ziyareti</h3>
+            <h3>Yeni Ziyaret / Görüşme Kaydı</h3>
             <form id="visitForm">
+                <input type="hidden" id="visit_customer_id">
                 <div class="form-group">
                     <label>Müşteri:</label>
-                    <select id="customer_id" required></select>
+                    <input type="text" id="visit_customer_name" readonly style="background: #f8f9fa;">
                 </div>
                 <div class="form-group">
-                    <label>Ziyaret Tipi:</label>
+                    <label>Görüşme Tipi:</label>
                     <select id="visit_type" required>
                         <option value="visit">Ziyaret</option>
                         <option value="call">Telefon</option>
+                        <option value="online">Online Toplantı</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Sonuç:</label>
-                    <select id="result" required>
+                    <select id="visit_result" required onchange="toggleNextAction(this.value, 'visitNextActionSection')">
                         <option value="sale">Satış Yapıldı</option>
                         <option value="potential">Potansiyel</option>
+                        <option value="follow_up">Takip Gerekli</option>
                         <option value="not_interested">İlgilenmiyor</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Notlar:</label>
-                    <textarea id="notes" rows="3"></textarea>
+                    <textarea id="visit_notes" rows="3" placeholder="Görüşme detayları, müşteri talepleri..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Sonraki İletişim Tarihi:</label>
-                    <input type="date" id="next_contact_date">
+
+                <!-- Sonraki İşlem Bölümü -->
+                <div id="visitNextActionSection" style="display: none; border-top: 1px solid #ddd; margin-top: 1rem; padding-top: 1rem;">
+                    <h4 style="margin-bottom: 1rem;">Sonraki Adım Planla</h4>
+                    <div class="form-group">
+                        <label>Sonraki İşlem:</label>
+                        <select id="visit_next_action" onchange="toggleNextActionDate(this.value, 'visitNextDateSection', 'visitNextTimeSection')">
+                            <option value="">Seçiniz</option>
+                            <option value="appointment">Randevu Planla</option>
+                            <option value="call">Telefon Görüşmesi Planla</option>
+                            <option value="visit">Tekrar Ziyaret Planla</option>
+                        </select>
+                    </div>
+                    <input type="date" id="visit_next_date" style="display: none; width: 48%; margin-right: 4%;">
+                    <input type="time" id="visit_next_time" style="display: none; width: 48%;">
                 </div>
                 <button type="submit" class="btn">Kaydet</button>
             </form>
@@ -636,6 +651,27 @@
             });
         }
 
+        function toggleNextAction(result, sectionId) {
+            const nextActionSection = document.getElementById(sectionId);
+            if (result === 'potential' || result === 'follow_up') {
+                nextActionSection.style.display = 'block';
+            } else {
+                nextActionSection.style.display = 'none';
+            }
+        }
+
+        function toggleNextActionDate(action, dateId, timeId) {
+            const dateSection = document.getElementById(dateId);
+            const timeSection = document.getElementById(timeId);
+            if (action) {
+                dateSection.style.display = 'inline-block';
+                timeSection.style.display = 'inline-block';
+            } else {
+                dateSection.style.display = 'none';
+                timeSection.style.display = 'none';
+            }
+        }
+
         async function showDashboard() {
             try {
                 const statsResponse = await apiCall(`/api/sales/dashboard/${currentUser.id}`);
@@ -1004,11 +1040,25 @@
             event.target.closest('.customer-card').classList.add('active');
         }
 
-        function visitCustomer(customerId) {
-            openVisitModal();
-            document.getElementById('customer_id').value = customerId;
+        async function visitCustomer(customerId) {
+            try {
+                const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                const customer = customerResponse.customer;
+
+                document.getElementById('visit_customer_id').value = customer.id;
+                document.getElementById('visit_customer_name').value = customer.company_name;
+                
+                // Reset and hide the next action section
+                document.getElementById('visitForm').reset();
+                document.getElementById('visitNextActionSection').style.display = 'none';
+                toggleNextActionDate('', 'visitNextDateSection', 'visitNextTimeSection');
+
+                document.getElementById('visitModal').style.display = 'block';
+            } catch (error) {
+                alert('Müşteri bilgileri yüklenemedi: ' + error.message);
+            }
         }
-        
+
         function viewCustomerDetail(customerId) {
             window.location.href = `/customer-detail.html?id=${customerId}`;
         }
@@ -1159,61 +1209,71 @@
         document.getElementById('orderForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (orderProducts.length === 0) {
-                alert('Lütfen en az bir ürün ekleyin!');
-                return;
-            }
-            
+            if (orderProducts.length === 0) { alert('Lütfen en az bir ürün ekleyin!'); return; }
             const total = orderProducts.reduce((sum, product) => sum + (product.price * product.quantity), 0);
-            
-            const formData = {
-                customer_id: document.getElementById('order_customer_id').value,
-                order_date: document.getElementById('order_date').value,
-                delivery_date: document.getElementById('order_delivery_date').value,
-                total_amount: total,
-                notes: document.getElementById('order_notes').value,
-                items: orderProducts
-            };
-            
+            const formData = { customer_id: document.getElementById('order_customer_id').value, order_date: document.getElementById('order_date').value, delivery_date: document.getElementById('order_delivery_date').value, total_amount: total, notes: document.getElementById('order_notes').value, items: orderProducts };
             try {
-                const result = await apiCall('/api/orders', {
-                    method: 'POST',
-                    body: JSON.stringify(formData)
-                });
-                
+                const result = await apiCall('/api/orders', { method: 'POST', body: JSON.stringify(formData) });
                 const orderNumber = result.order?.order_number || result.order_number || 'SIP' + Date.now();
                 alert(`Sipariş başarıyla oluşturuldu! Sipariş No: ${orderNumber}`);
                 document.getElementById('orderForm').reset();
                 orderProducts = [];
                 closeModal('orderModal');
                 showOrders();
-            } catch (error) {
-                alert('Hata: ' + error.message);
-            }
+            } catch (error) { alert('Hata: ' + error.message); }
         });
         
         document.getElementById('visitForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = {
-                customer_id: document.getElementById('customer_id').value,
+            const customerId = document.getElementById('visit_customer_id').value;
+            const customerName = document.getElementById('visit_customer_name').value;
+
+            const visitData = {
+                customer_id: customerId,
                 visit_type: document.getElementById('visit_type').value,
-                result: document.getElementById('result').value,
-                notes: document.getElementById('notes').value,
-                next_contact_date: document.getElementById('next_contact_date').value,
-                visit_date: new Date().toISOString()
+                result: document.getElementById('visit_result').value,
+                notes: document.getElementById('visit_notes').value,
+                visit_date: new Date().toISOString(),
+                next_contact_date: document.getElementById('visit_next_date').value || null
             };
             
+            const nextActionData = {
+                action: document.getElementById('visit_next_action').value,
+                date: document.getElementById('visit_next_date').value,
+                time: document.getElementById('visit_next_time').value
+            };
+
             try {
+                // 1. Ziyareti kaydet
                 await apiCall('/api/visits', {
                     method: 'POST',
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(visitData)
                 });
                 
-                alert('Ziyaret kaydı başarıyla oluşturuldu!');
+                // 2. Gerekliyse takip randevusu oluştur
+                if ((visitData.result === 'potential' || visitData.result === 'follow_up') && nextActionData.action && nextActionData.date) {
+                    await apiCall('/api/appointments', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            title: `${nextActionData.action} - ${customerName}`,
+                            description: `Önceki ziyaret sonrası takip.`,
+                            type: nextActionData.action,
+                            priority: 'medium',
+                            start_date: nextActionData.date,
+                            start_time: nextActionData.time || null,
+                            assigned_to: currentUser.id,
+                            customer_id: customerId
+                        })
+                    });
+                    alert('Ziyaret kaydedildi ve takip randevusu oluşturuldu!');
+                } else {
+                    alert('Ziyaret kaydı başarıyla oluşturuldu!');
+                }
+                
                 document.getElementById('visitForm').reset();
                 closeModal('visitModal');
-                showVisit();
+                showDashboard(); // Dashboard'u yenile
             } catch (error) {
                 alert('Hata: ' + error.message);
             }
