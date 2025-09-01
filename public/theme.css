@@ -375,13 +375,11 @@ body {
 
 /* User Profile Widget */
 .user-profile-widget {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
+    position: relative; /* Changed from fixed to be part of the header flow */
+    z-index: 110; /* Ensure it's above other header content */
     background: white;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow);
     min-width: 200px;
     border: 1px solid var(--border);
 }
@@ -419,6 +417,13 @@ body {
 
 .user-profile-menu {
     display: none;
+    position: absolute; /* Position it relative to the widget */
+    top: calc(100% + 5px); /* Position it below the header part */
+    right: 0;
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
     border-top: 1px solid #e2e8f0;
     padding: 8px 0;
 }

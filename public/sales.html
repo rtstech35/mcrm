@@ -18,21 +18,6 @@
 
     <button class="mobile-menu-toggle sales-theme" onclick="toggleMobileMenu()">☰</button>
     <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
-    
-    <!-- User Profile Dropdown -->
-    <div class="user-profile-widget">
-        <div class="user-profile-header" onclick="toggleProfileMenu(this)">
-            <div class="user-profile-info">
-                <div id="userName">Kullanıcı</div>
-                <div id="currentDateTime">--</div>
-            </div>
-            <div class="user-profile-toggle-icon">▼</div>
-        </div>
-        <div id="profileMenu" class="user-profile-menu">
-            <a href="#" onclick="openProfile()"><span>👤</span> Profil</a>
-            <a href="#" onclick="logout()"><span>🚪</span> Çıkış</a>
-        </div>
-    </div>
 
     <div class="container">
         <div class="sidebar">
@@ -58,6 +43,20 @@
         <div class="content" id="content">
             <header class="main-header">
                 <h1>Satış Paneli</h1>
+                <!-- User Profile Dropdown -->
+                <div class="user-profile-widget">
+                    <div class="user-profile-header" onclick="toggleProfileMenu(this)">
+                        <div class="user-profile-info">
+                            <div id="userName">Kullanıcı</div>
+                            <div id="currentDateTime">--</div>
+                        </div>
+                        <div class="user-profile-toggle-icon">▼</div>
+                    </div>
+                    <div id="profileMenu" class="user-profile-menu">
+                        <a href="#" onclick="openProfile()"><span>👤</span> Profil</a>
+                        <a href="#" onclick="logout()"><span>🚪</span> Çıkış</a>
+                    </div>
+                </div>
             </header>
             <div class="content-inner">
                 <!-- Dashboard content will be loaded here by JS -->

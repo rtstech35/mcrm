@@ -35,26 +35,26 @@
 
         <!-- Ana İçerik -->
         <div class="content">
-            <!-- User Profile Dropdown -->
-            <div class="user-profile-widget">
-                <div class="user-profile-header" onclick="toggleProfileMenu(this)">
-                    <div class="user-profile-info">
-                        <div id="userName" style="font-weight: 600; color: #2d3748; font-size: 0.9em;">Kullanıcı</div>
-                        <div id="currentDateTime" style="font-size: 0.75em; color: #666; margin-top: 2px;">--</div>
-                    </div>
-                    <div class="user-profile-toggle-icon">▼</div>
-                </div>
-                <div id="profileMenu" class="user-profile-menu">
-                    <a href="#" onclick="openProfile()">
-                        <span>👤</span> Profil
-                    </a>
-                    <a href="#" onclick="logout()">
-                        <span>🚪</span> Çıkış
-                    </a>
-                </div>
-            </div>
             <header class="main-header">
                 <h1>Sevkiyat Dashboard</h1>
+                <!-- User Profile Dropdown -->
+                <div class="user-profile-widget">
+                    <div class="user-profile-header" onclick="toggleProfileMenu(this)">
+                        <div class="user-profile-info">
+                            <div id="userName">Kullanıcı</div>
+                            <div id="currentDateTime">--</div>
+                        </div>
+                        <div class="user-profile-toggle-icon">▼</div>
+                    </div>
+                    <div id="profileMenu" class="user-profile-menu">
+                        <a href="#" onclick="openProfile()">
+                            <span>👤</span> Profil
+                        </a>
+                        <a href="#" onclick="logout()">
+                            <span>🚪</span> Çıkış
+                        </a>
+                    </div>
+                </div>
             </header>
             <div class="content-inner">
                 <!-- Aylık Sevkiyat Hedefi -->
