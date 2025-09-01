@@ -12,31 +12,6 @@
 <body class="accounting-page">
     <button class="mobile-menu-toggle acc-theme" onclick="toggleMobileMenu()">☰</button>
     <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
-    <div class="header">
-        <h1>Muhasebe Paneli - Saha CRM</h1>
-        <div class="nav">
-            <button onclick="showDashboard()" class="active" data-key="accounting_dashboard">Dashboard</button>
-            <button onclick="showCustomers()" data-key="accounting_customers">Müşteriler</button>
-            <button onclick="showInvoices()" data-key="accounting_invoices">Faturalar</button>
-            <button onclick="showAccounts()" data-key="accounting_accounts">Cari Hesap</button>
-            <button onclick="showDeliveries()" data-key="accounting_delivery_notes">İrsaliyeler</button>
-            <button onclick="logout()" data-key="logout">Çıkış</button>
-        </div>
-        <!-- User Profile Dropdown -->
-        <div class="user-profile-widget">
-            <div class="user-profile-header" onclick="toggleProfileMenu(this)">
-                <div class="user-profile-info">
-                    <div id="userName" style="font-weight: 600; color: #2d3748; font-size: 0.9em;">Kullanıcı</div>
-                    <div id="currentDateTime" style="font-size: 0.75em; color: #666; margin-top: 2px;">--</div>
-                </div>
-                <div class="user-profile-toggle-icon">▼</div>
-            </div>
-            <div id="profileMenu" class="user-profile-menu">
-                <a href="#" onclick="openProfile()"><span>👤</span> Profil</a>
-                <a href="#" onclick="logout()"><span>🚪</span> Çıkış</a>
-            </div>
-        </div>
-    </div>
 
     <div class="container">
         <div class="sidebar">
@@ -50,10 +25,33 @@
             </ul>
         </div>
 
-        <div class="content" id="content">
-            <div class="card">
-                <h2>Muhasebe Dashboard</h2>
-                <p>Muhasebe paneline hoş geldiniz!</p>
+        <div class="content">
+            <!-- User Profile Dropdown -->
+            <div class="user-profile-widget">
+                <div class="user-profile-header" onclick="toggleProfileMenu(this)">
+                    <div class="user-profile-info">
+                        <div id="userName">Kullanıcı</div>
+                        <div id="currentDateTime">--</div>
+                    </div>
+                    <div class="user-profile-toggle-icon">▼</div>
+                </div>
+                <div id="profileMenu" class="user-profile-menu">
+                    <a href="#" onclick="openProfile()"><span>👤</span> Profil</a>
+                    <a href="#" onclick="logout()"><span>🚪</span> Çıkış</a>
+                </div>
+            </div>
+            <header class="main-header">
+                <h1>Muhasebe Paneli</h1>
+                <div class="nav">
+                    <button onclick="showDashboard()" class="active" data-key="accounting_dashboard">Dashboard</button>
+                    <button onclick="showCustomers()" data-key="accounting_customers">Müşteriler</button>
+                    <button onclick="showInvoices()" data-key="accounting_invoices">Faturalar</button>
+                    <button onclick="showAccounts()" data-key="accounting_accounts">Cari Hesap</button>
+                    <button onclick="showDeliveries()" data-key="accounting_delivery_notes">İrsaliyeler</button>
+                </div>
+            </header>
+            <div class="content-inner" id="content-inner">
+                <!-- Dashboard content will be loaded here by JS -->
             </div>
         </div>
     </div>

@@ -34,11 +34,6 @@
             </a>
         </div>
     </div>
-    <button class="mobile-menu-toggle admin-theme" onclick="toggleMobileMenu()">☰</button>
-    <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
-    <div class="header">
-        <h1>Admin Panel - Saha CRM</h1>
-    </div>
 
     <div class="container">
         <div class="sidebar">
@@ -79,9 +74,11 @@
         </div>
 
         <div class="content" id="content">
-            <div class="card">
-                <h2>Dashboard</h2>
-                <p>Admin paneline hoş geldiniz!</p>
+            <header class="main-header">
+                <h1>Admin Panel - Saha CRM</h1>
+            </header>
+            <div class="content-inner">
+                <!-- Dashboard content will be loaded here by JS -->
             </div>
         </div>
     </div>
@@ -1227,7 +1224,7 @@
                 
             } catch (error) {
                 console.error('Dashboard yüklenemedi:', error);
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card">
                         <h2>📊 Dashboard</h2>
                         <p>Hoş geldiniz, ${currentUser.full_name}</p>
@@ -1251,7 +1248,7 @@
 
         async function showUsers() {
             try {
-                const content = document.getElementById('content');
+                const content = document.querySelector('.content-inner');
                 content.innerHTML = '<div class="card"><div class="loading">Kullanıcılar yükleniyor...</div></div>';
 
                 const usersResponse = await apiCall('/api/users');
@@ -1306,7 +1303,7 @@
                 
             } catch (error) {
                 console.error('Kullanıcılar yüklenemedi:', error.message);
-                document.getElementById('content').innerHTML = `
+                content.innerHTML = `
                     <div class="card error">
                         <strong>Kullanıcılar Yüklenemedi:</strong> ${error.message}
                     </div>
@@ -1357,11 +1354,11 @@
                 });
                 
                 html += '</tbody></table></div>';
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Müşteriler yüklenemedi:', error.message);
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card error">
                         <strong>Müşteriler Yüklenemedi:</strong> ${error.message}
                     </div>
@@ -2019,8 +2016,8 @@
                 const transactionsResponse = await apiCall('/api/account-transactions');
                 const transactions = transactionsResponse.transactions || [];
                 console.log('Cari hesap işlem sayısı:', transactions.length);
-                
-                document.getElementById('content').innerHTML = `
+
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card">
                         <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
                         <button class="btn" onclick="openTransactionModal()" style="margin-bottom: 1rem;">Yeni İşlem</button>
@@ -2061,7 +2058,7 @@
                 
             } catch (error) {
                 console.error('Cari hesap verileri yüklenemedi:', error);
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card">
                         <h2>Cari Hesap Yönetimi</h2>
                         <p style="color: red;">Veriler yüklenemedi: ${error.message}</p>
@@ -2693,11 +2690,11 @@
                 }
 
                 html += '</tbody></table></div></div>';
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Ürünler yüklenemedi:', error.message);
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card error">
                         <strong>Ürünler Yüklenemedi:</strong> ${error.message}
                     </div>
@@ -2783,7 +2780,7 @@
                 // Targets API'si henüz yok, varsayılan değerler kullan
                 const targets = [];
                 
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card">
                         <h2>Hedef Yönetimi</h2>
                         <p>Kullanıcıların aylık hedeflerini belirleyin</p>
@@ -2882,7 +2879,7 @@
                 
             } catch (error) {
                 console.error('Hedefler yüklenemedi:', error);
-                document.getElementById('content').innerHTML = `
+                document.querySelector('.content-inner').innerHTML = `
                     <div class="card">
                         <h2>Hedef Yönetimi</h2>
                         <p style="color: red;">Hedefler yüklenemedi: ${error.message}</p>

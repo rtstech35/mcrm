@@ -57,68 +57,66 @@
                 <h1>Sevkiyat Dashboard</h1>
             </header>
             <div class="content-inner">
-
-        <!-- Aylık Sevkiyat Hedefi -->
-        <div class="targets-section">
-            <div class="target-card">
-                <h3>Aylık Sevkiyat Hedefi</h3>
-                <div class="target-progress">
-                    <div class="target-numbers">
-                        <span class="achieved" id="shippingAchieved">0</span>
-                        <span class="separator">/</span>
-                        <span class="target" id="shippingTarget">0</span>
-                        <span class="unit">teslimat</span>
+                <!-- Aylık Sevkiyat Hedefi -->
+                <div class="targets-section">
+                    <div class="target-card">
+                        <h3>Aylık Sevkiyat Hedefi</h3>
+                        <div class="target-progress">
+                            <div class="target-numbers">
+                                <span class="achieved" id="shippingAchieved">0</span>
+                                <span class="separator">/</span>
+                                <span class="target" id="shippingTarget">0</span>
+                                <span class="unit">teslimat</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="shippingProgress" style="width: 0%;"></div>
+                            </div>
+                            <div class="progress-text" id="shippingPercentage">0%</div>
+                        </div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="shippingProgress" style="width: 0%;"></div>
+                </div>
+
+                <!-- Teslimat Durumları -->
+                <div class="delivery-status">
+                    <div class="status-card" onclick="showDeliveryNotes('pending')" title="Sevkiyat bekleyen siparişleri görüntüle">
+                        <div class="status-icon">📦</div>
+                        <div class="status-info">
+                            <h4>Sevkiyat Bekleyen Siparişler</h4>
+                            <span class="status-count" id="readyCount">0</span>
+                            <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
+                        </div>
                     </div>
-                    <div class="progress-text" id="shippingPercentage">0%</div>
+                    
+                    <div class="status-card" onclick="showDeliveryNotes('in_transit')" title="Sevkiyatını aldığı siparişleri görüntüle">
+                        <div class="status-icon">🚚</div>
+                        <div class="status-info">
+                            <h4>Sevkiyatını Aldığı Siparişler</h4>
+                            <span class="status-count" id="transitCount">0</span>
+                            <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card" onclick="showDeliveryNotes('delivered')" title="Tamamlanan sevkiyatları görüntüle">
+                        <div class="status-icon">✅</div>
+                        <div class="status-info">
+                            <h4>Sevkiyatı Tamamlanan Ürünler</h4>
+                            <span class="status-count" id="deliveredCount">0</span>
+                            <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Teslimat Durumları -->
-        <div class="delivery-status">
-            <div class="status-card" onclick="showDeliveryNotes('pending')" title="Sevkiyat bekleyen siparişleri görüntüle">
-                <div class="status-icon">📦</div>
-                <div class="status-info">
-                    <h4>Sevkiyat Bekleyen Siparişler</h4>
-                    <span class="status-count" id="readyCount">0</span>
-                    <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
+                <!-- Müşteri Haritası -->
+                <div class="map-section">
+                    <h3>Müşteri Haritası</h3>
+                    <div class="map-container" id="customerMap">
+                        <div class="map-placeholder">
+                            <div class="map-icon">🗺️</div>
+                            <p>Müşteri konumları haritada gösterilecek</p>
+                            <button onclick="loadCustomerMap()" class="btn btn-primary">Haritayı Yükle</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="status-card" onclick="showDeliveryNotes('in_transit')" title="Sevkiyatını aldığı siparişleri görüntüle">
-                <div class="status-icon">🚚</div>
-                <div class="status-info">
-                    <h4>Sevkiyatını Aldığı Siparişler</h4>
-                    <span class="status-count" id="transitCount">0</span>
-                    <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
-                </div>
-            </div>
-            
-            <div class="status-card" onclick="showDeliveryNotes('delivered')" title="Tamamlanan sevkiyatları görüntüle">
-                <div class="status-icon">✅</div>
-                <div class="status-info">
-                    <h4>Sevkiyatı Tamamlanan Ürünler</h4>
-                    <span class="status-count" id="deliveredCount">0</span>
-                    <small style="color: #666; font-size: 12px;">Tıkla ve detayları gör</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Müşteri Haritası -->
-        <div class="map-section">
-            <h3>Müşteri Haritası</h3>
-            <div class="map-container" id="customerMap">
-                <div class="map-placeholder">
-                    <div class="map-icon">🗺️</div>
-                    <p>Müşteri konumları haritada gösterilecek</p>
-                    <button onclick="loadCustomerMap()" class="btn btn-primary">Haritayı Yükle</button>
-                </div>
-            </div>
-        </div>
-
             </div>
         </div>
     </div>
