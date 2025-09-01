@@ -2131,7 +2131,7 @@ app.get("/api/appointments", authenticateToken, checkPermission('appointments.re
     const { userId, role } = req.user;
 
     let query = `
-      SELECT a.*,
+      SELECT a.id, a.title, a.description, a.type, a.priority, a.start_date, a.start_time, a.status,
              u.id as user_id,
              u.full_name as assigned_to_name,
              r.name as assigned_to_role,
@@ -2163,26 +2163,19 @@ app.get("/api/appointments", authenticateToken, checkPermission('appointments.re
       whereClauses.push(`a.start_date = $${params.push(start_date)}`);
     }
 
-    // Admin tüm randevuları görebilir, diğerleri sadece kendininkini
-    if (role !== 'Yönetici') {
-      whereClauses.push(`a.assigned_to = $${params.push(userId)}`);
-    } else if (assigned_to) { // Admin ise ve belirli bir kullanıcıyı filtrelemek istiyorsa
+    // Yetkiye göre filtrele
+    const appointmentPerms = permissions.appointments || [];
+    if (appointmentPerms.includes('read_own') && !appointmentPerms.includes('read') && !permissions.all) {
+        whereClauses.push(`a.assigned_to = $${params.push(userId)}`);
+    } else if (assigned_to) { // Yönetici/Admin belirli bir kullanıcıyı filtreleyebilir
       whereClauses.push(`a.assigned_to = $${params.push(parseInt(assigned_to))}`);
     }
 
     if (whereClauses.length > 0) {
       query += ` WHERE ${whereClauses.join(' AND ')}`;
     }
-
     query += ` ORDER BY a.start_date ASC, a.start_time ASC`;
-
     const result = await pool.query(query, params);
-
-    // Eğer whereClauses boşsa ve rol admin değilse, yine de filtrele
-    if (whereClauses.length === 0 && role !== 'Yönetici') {
-        const filteredResults = result.rows.filter(apt => apt.user_id === userId);
-        return res.json({ success: true, appointments: filteredResults });
-    }
 
     console.log('Appointments API - Bulunan randevu sayısı:', result.rows.length);
 
@@ -2447,48 +2440,6 @@ app.get("/api/accounting/history/:customerId", authenticateToken, checkPermissio
   }
 });
 
-// ---------------- ZİYARETLER API ---------------- //
-app.post("/api/visits", authenticateToken, async (req, res) => {
-  try {
-    const { customer_id, visit_type, result, notes, next_contact_date, visit_date } = req.body;
-    const sales_rep_id = req.user.userId;
-    console.log('📝 Yeni ziyaret kaydı:', req.body);
-
-    // customer_visits tablosu yoksa oluştur
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS customer_visits (
-        id SERIAL PRIMARY KEY,
-        customer_id INTEGER REFERENCES customers(id),
-        sales_rep_id INTEGER REFERENCES users(id),
-        visit_date TIMESTAMP NOT NULL,
-        visit_type VARCHAR(50),
-        result VARCHAR(50),
-        notes TEXT,
-        next_contact_date DATE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    const newVisit = await pool.query(
-      `INSERT INTO customer_visits (customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [customer_id, sales_rep_id, visit_date, visit_type, result, notes, next_contact_date || null]
-    );
-
-    res.status(201).json({
-      success: true,
-      visit: newVisit.rows[0]
-    });
-  } catch (error) {
-    console.error('Visit create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 app.get("/api/visits", authenticateToken, checkPermission('visits.read'), async (req, res) => {
   try {
     const result = await pool.query(`
@@ -2522,6 +2473,21 @@ app.post("/api/visits", authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // UYARI: Bu tablo oluşturma işlemi migration dosyasına taşınmalıdır.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS customer_visits (
+        id SERIAL PRIMARY KEY,
+        customer_id INTEGER REFERENCES customers(id),
+        sales_rep_id INTEGER REFERENCES users(id),
+        visit_date TIMESTAMP NOT NULL,
+        visit_type VARCHAR(50),
+        result VARCHAR(50),
+        notes TEXT,
+        next_contact_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
     const { customer_id, visit_type, result, notes, next_contact_date, visit_date } = req.body;
     const sales_rep_id = req.user.userId;
     console.log('📝 Yeni ziyaret kaydı:', req.body);
@@ -2646,54 +2612,6 @@ app.post("/api/customers", authenticateToken, checkPermission('customers.create'
   }
 });
 
-app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT c.*, u.full_name as sales_rep_name FROM customers c
-      LEFT JOIN users u ON c.assigned_sales_rep = u.id
-      WHERE c.id = $1
-    `, [id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
-    res.json({ success: true, customer: result.rows[0] });
-  } catch (error) {
-    console.error('Customer get hatası:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, latitude, longitude, customer_status } = req.body;
-    const finalLatitude = latitude === '' ? null : latitude;
-    const finalLongitude = longitude === '' ? null : longitude;
-    const result = await pool.query(`
-      UPDATE customers SET
-        company_name = $1, contact_person = $2, phone = $3, mobile_phone = $4, email = $5, address = $6,
-        assigned_sales_rep = $7, latitude = $8, longitude = $9, customer_status = $10, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11 RETURNING *
-    `, [company_name, contact_person, phone, mobile_phone, email, address, assigned_sales_rep, finalLatitude, finalLongitude, customer_status, id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
-    res.json({ success: true, customer: result.rows[0] });
-  } catch (error) {
-    console.error('Customer update hatası:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.delete("/api/customers/:id", authenticateToken, checkPermission('customers.delete'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`DELETE FROM customers WHERE id = $1 RETURNING *`, [id]);
-    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
-    res.json({ success: true, message: 'Müşteri başarıyla silindi' });
-  } catch (error) {
-    console.error('Customer delete hatası:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // ---------------- FATURALAR API ---------------- //
 app.get("/api/invoices", authenticateToken, checkPermission('accounting.read'), async (req, res) => {
   try {
@@ -2701,31 +2619,8 @@ app.get("/api/invoices", authenticateToken, checkPermission('accounting.read'), 
     const tableExists = await checkTableExists('invoices');
     
     if (!tableExists) {
-      console.log('⚠️ Invoices tablosu bulunamadı, oluşturuluyor...');
-      
-      // Tabloyu oluştur
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS invoices (
-            id SERIAL PRIMARY KEY,
-            invoice_number VARCHAR(50) UNIQUE NOT NULL,
-            customer_id INTEGER REFERENCES customers(id),
-            delivery_note_id INTEGER,
-            subtotal DECIMAL(12,2) DEFAULT 0,
-            vat_amount DECIMAL(12,2) DEFAULT 0,
-            total_amount DECIMAL(12,2) NOT NULL,
-            paid_amount DECIMAL(12,2) DEFAULT 0,
-            remaining_amount DECIMAL(12,2),
-            status VARCHAR(20) DEFAULT 'draft',
-            invoice_date DATE DEFAULT CURRENT_DATE,
-            due_date DATE,
-            paid_date DATE,
-            delivery_note_ids JSONB,
-            consolidated_items JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      
-      console.log('✅ Invoices tablosu oluşturuldu');
+      console.log('⚠️ Invoices tablosu bulunamadı. Lütfen migration çalıştırın.');
+      return res.json({ success: true, invoices: [] });
     }
     
     const { customer_id } = req.query;
@@ -3098,26 +2993,6 @@ app.put("/api/orders/:id/production-complete", authenticateToken, checkPermissio
         res.status(500).json({ success: false, error: error.message });
     }
 });
-
-// Üretimi tamamla
-app.put("/api/orders/:id/production-complete", authenticateToken, checkPermission('orders.update'), async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await pool.query(
-            `UPDATE orders SET status = 'production_ready', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
-            [id]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, error: 'Sipariş bulunamadı' });
-        }
-
-        res.json({ success: true, message: 'Üretim tamamlandı, sipariş sevkiyata hazır.', order: result.rows[0] });
-    } catch (error) {
-        console.error('Production complete error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 // Siparişten irsaliye oluştur
 app.post("/api/delivery-notes/from-order/:orderId", authenticateToken, checkPermission('delivery.create'), async (req, res) => {
     const client = await pool.connect();
@@ -3247,37 +3122,6 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
   }
 });
 
-// Tek müşteri getir
-app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query(`
-      SELECT c.*, u.full_name as sales_rep_name
-      FROM customers c
-      LEFT JOIN users u ON c.assigned_sales_rep = u.id
-      WHERE c.id = $1
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Müşteri bulunamadı'
-      });
-    }
-
-    res.json({
-      success: true,
-      customer: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Customer get hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
 // Müşteri güncelle
 app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
   try {
@@ -3375,50 +3219,6 @@ app.get("/api/products", authenticateToken, checkPermission('products.read'), as
       success: false,
       error: "Ürünler yüklenirken bir veritabanı hatası oluştu.",
       details: error.message
-    });
-  }
-});
-
-app.post("/api/products", authenticateToken, checkPermission('products.create'), async (req, res) => {
-  try {
-    const { name, description, unit_price, vat_rate, price_with_vat, unit } = req.body;
-
-    console.log('Ürün ekleme isteği:', req.body);
-
-    // Önce vat_rate ve price_with_vat kolonları var mı kontrol et
-    const columnsResult = await pool.query(`
-      SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'products' AND column_name IN ('vat_rate', 'price_with_vat')
-    `);
-
-    const hasVatColumns = columnsResult.rows.length === 2;
-    let result;
-
-    if (hasVatColumns) {
-      // KDV kolonları varsa tam insert
-      result = await pool.query(`
-        INSERT INTO products (name, description, unit_price, vat_rate, price_with_vat, unit, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, true)
-        RETURNING *
-      `, [name, description, parseFloat(unit_price), parseFloat(vat_rate), parseFloat(price_with_vat), unit]);
-    } else {
-      // KDV kolonları yoksa basit insert
-      result = await pool.query(`
-        INSERT INTO products (name, description, unit_price, unit, is_active)
-        VALUES ($1, $2, $3, $4, true)
-        RETURNING *
-      `, [name, description, parseFloat(unit_price), unit]);
-    }
-
-    res.json({
-      success: true,
-      product: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Product create hatası:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
     });
   }
 });
