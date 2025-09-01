@@ -52,6 +52,7 @@
                 <li class="menu-header">Satış Yönetimi</li>
                 <li data-key="admin_customers"><a href="#" onclick="showCustomers()">🏢 Müşteriler</a></li>
                 <li data-key="admin_appointments"><a href="#" onclick="showAppointments()">📅 Randevular</a></li>
+                <li data-key="admin_targets"><a href="#" onclick="showTargets()">🎯 Hedef Yönetimi</a></li>
                 <li data-key="admin_map"><a href="/map.html">🗺️ Harita</a></li>
 
                 <li class="menu-header">Üretim Yönetimi</li>
@@ -204,6 +205,9 @@
                 <!-- Hedef Bilgileri -->
                 <div id="targetSection" style="border-top: 1px solid #ddd; margin-top: 20px; padding-top: 20px; display: none;">
                     <h4>📊 Aylık Hedefler (Mevcut Ay)</h4>
+                    <p style="font-size: 0.8em; color: #666; margin-top: -10px; margin-bottom: 15px; background: #f8f9fa; padding: 0.5rem; border-radius: 4px;">
+                        <strong>Not:</strong> Buradan girilen hedefler sadece <strong>içinde bulunduğumuz ay</strong> için geçerlidir. Farklı aylar için hedef belirlemek veya tüm hedefleri görmek için ana menüdeki <strong>🎯 Hedef Yönetimi</strong> sayfasını kullanın.
+                    </p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group">
                             <label>Satış Hedefi (₺):</label>
@@ -1019,6 +1023,7 @@
                 modules: {
                     'customers': { name: 'Müşteriler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
                     'products': { name: 'Ürünler', actions: ['create', 'read', 'update', 'delete'] },
+                    'admin_targets': { name: 'Hedef Yönetimi (Menü)', isFlag: true },
                     'orders': { name: 'Siparişler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
                     'delivery': { name: 'İrsaliyeler', actions: ['create', 'read', 'update', 'delete', 'read_own'] },
                     'appointments': { name: 'Randevular', actions: ['create', 'read', 'update', 'delete', 'read_own'] },

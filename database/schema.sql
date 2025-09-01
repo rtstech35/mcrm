@@ -212,27 +212,21 @@ CREATE TABLE IF NOT EXISTS user_targets (
 
     -- Satış hedefleri
     sales_target DECIMAL(12,2) DEFAULT 0, -- Aylık satış hedefi (TL)
-    sales_achieved DECIMAL(12,2) DEFAULT 0, -- Gerçekleşen satış
 
     -- Ziyaret hedefleri
     visit_target INTEGER DEFAULT 0, -- Aylık ziyaret hedefi
-    visit_achieved INTEGER DEFAULT 0, -- Gerçekleşen ziyaret
 
     -- Üretim hedefleri (üretim personeli için)
     production_target INTEGER DEFAULT 0, -- Aylık üretim hedefi (adet)
-    production_achieved INTEGER DEFAULT 0, -- Gerçekleşen üretim
 
     -- Sevkiyat hedefleri (sevkiyat personeli için)
     shipping_target INTEGER DEFAULT 0, -- Aylık sevkiyat hedefi (adet)
-    shipping_achieved INTEGER DEFAULT 0, -- Gerçekleşen sevkiyat
 
     -- Ciro hedefleri
     revenue_target DECIMAL(12,2) DEFAULT 0, -- Aylık ciro hedefi (TL)
-    revenue_achieved DECIMAL(12,2) DEFAULT 0, -- Gerçekleşen ciro
 
     -- Tahsilat hedefleri (muhasebe için)
     collection_target DECIMAL(12,2) DEFAULT 0, -- Aylık tahsilat hedefi (TL)
-    collection_achieved DECIMAL(12,2) DEFAULT 0, -- Gerçekleşen tahsilat
 
     -- Meta bilgiler
     notes TEXT, -- Hedef notları

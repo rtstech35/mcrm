@@ -1,5 +1,6 @@
 console.log('🚀 Server başlatılıyor...');
 
+const setupDatabase = require('./setup-database.js');
 require("dotenv").config();
 console.log('✅ Environment variables yüklendi');
 
@@ -108,22 +109,41 @@ async function ensureOrderItemsTable() {
 
 // Bağlantıyı test et ve database setup yap
 if (pool && pool.connect) {
-  pool.connect()
-    .then(async () => {
-      console.log("✅ PostgreSQL bağlantısı başarılı");
+    pool.connect()
+        .then(async (client) => {
+            try {
+                console.log("✅ PostgreSQL bağlantısı başarılı");
 
-      // Veritabanı migration'larını çalıştır (Production için güvenli)
-      await runMigrations();
-      
-      // Order items tablosunu kontrol et
-      await ensureOrderItemsTable();
+                // 1. Check if the database is already set up by looking for a key table.
+                const checkResult = await client.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' AND table_name = 'roles'
+                    );
+                `);
+                const isSetupNeeded = !checkResult.rows[0].exists;
 
-      console.log("✅ Production ortamı, otomatik database setup atlandı. Kurulum için 'npm run setup-db' komutunu kullanın.");
-    })
-    .catch(err => {
-      console.error("❌ PostgreSQL bağlantı hatası:", err);
-      console.log("⚠️ Server database olmadan devam ediyor...");
-    });
+                if (isSetupNeeded) {
+                    console.log("🚀 Veritabanı kurulumu gerekli. Kurulum script'i otomatik olarak çalıştırılıyor...");
+                    await setupDatabase();
+                    console.log("🎉 Veritabanı kurulumu tamamlandı. Sunucu normal şekilde devam ediyor.");
+                } else {
+                    console.log("✅ Veritabanı zaten kurulu. Migration'lar kontrol ediliyor...");
+                    await runMigrations();
+                }
+
+                await ensureOrderItemsTable();
+            } catch (setupError) {
+                console.error("❌ Veritabanı kurulumu veya migration sırasında kritik hata:", setupError);
+                process.exit(1); // Exit if setup fails
+            } finally {
+                client.release();
+            }
+        })
+        .catch(err => {
+            console.error("❌ PostgreSQL bağlantı veya kurulum hatası:", err);
+            process.exit(1); // Kritik hatada sunucuyu durdur
+        });
 } else {
   console.log("⚠️ Database pool oluşturulamadı, server database olmadan çalışacak");
 }
