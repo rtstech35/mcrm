@@ -433,6 +433,67 @@ body {
     }
 }
 
+/* --- Standart Desktop Layout --- */
+@media (min-width: 769px) {
+    .container {
+        display: flex;
+    }
+
+    /* Default sidebar for pages like sales, production, accounting */
+    .sidebar {
+        width: 250px;
+        min-height: 100vh;
+        padding: 1rem;
+        background: #343a40; /* A default dark theme */
+        color: white;
+    }
+    
+    .sidebar a {
+        color: #e9ecef;
+    }
+
+    .content, .main-content {
+        flex: 1;
+        padding: 2rem;
+    }
+
+    /* Specific override for admin.html which has a fixed sidebar */
+    .admin-page .sidebar {
+        position: fixed;
+        width: 280px;
+        height: 100vh;
+        overflow-y: auto;
+        background: #007bff; /* Admin theme color */
+    }
+
+    .admin-page .content {
+        margin-left: 280px;
+    }
+
+    /* Specific override for production.html */
+    .production-page .sidebar {
+        position: fixed;
+        width: 250px;
+        height: 100vh;
+        overflow-y: auto;
+        background: #2c3e50; /* Production theme color */
+    }
+    .production-page .main-content {
+        margin-left: 250px;
+    }
+
+    /* Specific override for sales.html */
+    .sales-page .sidebar {
+        background: #28a745; /* Sales theme color */
+    }
+}
+
+/* Mobile Toggle Button Themes */
+.mobile-menu-toggle.sales-theme { background-color: #28a745; }
+.mobile-menu-toggle.admin-theme { background-color: #007bff; }
+.mobile-menu-toggle.prod-theme { background-color: #2c3e50; }
+.mobile-menu-toggle.acc-theme { background-color: #dc3545; }
+
 @media (max-width: 480px) {
     .content {
         padding: 0.5rem !important;

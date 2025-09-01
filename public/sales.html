@@ -12,43 +12,14 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        @media (max-width: 768px) {
-            .mobile-menu-toggle {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                width: 56px;
-                height: 56px;
-                background-color: #28a745; /* Sales Panel Theme Color */
-                color: white;
-                border: none;
-                border-radius: 50%;
-                font-size: 24px;
-                z-index: 1002;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-                transition: transform 0.3s ease, background-color 0.3s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .mobile-menu-toggle.active {
-                background-color: #6c757d;
-                transform: rotate(45deg);
-            }
-            .sidebar.mobile-open {
-                transform: translateY(0);
-                border-top-left-radius: 16px;
-                border-top-right-radius: 16px;
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-            }
-        }
+        /* Page-specific styles can go here if needed */
     </style>
 
 </head>
-<body>
+<body class="sales-page">
 
 
-    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <button class="mobile-menu-toggle sales-theme" onclick="toggleMobileMenu()">☰</button>
     <div class="mobile-overlay" onclick="closeMobileMenu()"></div>
     
     <!-- User Profile Dropdown -->
@@ -71,7 +42,7 @@
     </div>
 
     <div class="container">
-        <div class="sidebar" id="sidebar">
+        <div class="sidebar">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <h2 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Saha CRM</h2>
                 <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Satış Paneli</p>

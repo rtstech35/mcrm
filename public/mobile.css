@@ -1,22 +1,12 @@
 /* Mobil Optimizasyon CSS */
 
-/* Genel mobil ayarları */
-@media (max-width: 768px) {
-    /* Hide desktop sidebar on mobile */
-    .sidebar {
-        display: none;
-    }
-
-    .main-content {
-        margin-left: 0; /* Remove sidebar margin */
-    }
-
     .container {
         flex-direction: column;
         padding-bottom: 70px; /* Add padding to avoid overlap with bottom nav */
     }
     
     .content {
+        margin-left: 0 !important;
         order: 1;
         padding: 1rem;
     }
@@ -253,5 +243,76 @@ body {
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
     select {
         background-image: none;
+    }
+}
+
+/* --- Standart Mobil Menü --- */
+@media (max-width: 768px) {
+    .container {
+        display: block; /* Ensure container stacks vertically */
+    }
+
+    .content, .main-content {
+        margin-left: 0 !important; /* Override fixed sidebar margin */
+        padding: 1rem;
+        padding-bottom: 80px; /* Space for the toggle button */
+    }
+
+    .sidebar {
+        display: block !important; /* Ensure it's not hidden by other rules */
+        position: fixed !important; /* Override other positionings */
+        bottom: 0;
+        left: 0;
+        width: 100% !important; /* Override fixed widths */
+        height: auto !important;
+        min-height: auto !important;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: #343a40 !important; /* Dark theme for mobile menu, important to override inline styles */
+        color: white !important;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1001;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+        padding: 1rem;
+        padding-bottom: 2rem; /* Extra space at the bottom */
+    }
+
+    .sidebar.mobile-open {
+        transform: translateY(0);
+    }
+
+    .sidebar a {
+        color: #e9ecef !important;
+    }
+    
+    .sidebar h3 {
+        color: white !important;
+    }
+
+    .mobile-menu-toggle {
+        display: flex !important; /* Ensure it's always visible on mobile */
+    }
+
+    .mobile-menu-toggle.active {
+        background-color: #6c757d !important;
+        transform: rotate(45deg);
+    }
+
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+    }
+
+    .mobile-overlay.active {
+        display: block;
     }
 }
