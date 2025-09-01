@@ -613,6 +613,28 @@
             }
         }
 
+        function setupMenuVisibility() {
+            const permissions = currentUser.permissions || {};
+
+            // Admin (permissions.all: true) her şeyi görür
+            if (permissions.all === true) {
+                console.log('Admin kullanıcısı, tüm menüler gösteriliyor.');
+                return;
+            }
+
+            console.log('Kullanıcı yetkileri kontrol ediliyor:', permissions);
+            const menuItems = document.querySelectorAll('#salesMenu [data-key]');
+
+            menuItems.forEach(item => {
+                const key = item.dataset.key;
+                // 'logout' gibi anahtar kelimeleri her zaman göster
+                if (key && key !== 'logout' && !permissions[key]) {
+                    console.log(`🚫 Menü gizleniyor: ${key}`);
+                    item.style.display = 'none';
+                }
+            });
+        }
+
         async function showDashboard() {
             try {
                 const statsResponse = await apiCall(`/api/sales/dashboard/${currentUser.id}`);
