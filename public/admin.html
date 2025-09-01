@@ -862,7 +862,7 @@
                         </div>
                     </div>
                 `;
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
             } catch (error) {
                 alert('Roller yüklenemedi: ' + error.message);
             }
@@ -2554,7 +2554,7 @@
                 });
                 
                 html += '</div>';
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Satış hedefleri yüklenemedi:', error);
@@ -2615,11 +2615,11 @@
             });
             
             html += '</div>';
-            document.getElementById('content').innerHTML = html;
+            document.querySelector('.content-inner').innerHTML = html;
         }
         
         async function showProductionTargets() {
-            document.getElementById('content').innerHTML = `
+            document.querySelector('.content-inner').innerHTML = `
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2>Üretim Hedefleri ve Kapasite Kullanımı</h2>
@@ -2645,7 +2645,7 @@
         }
         
         async function showCollectionRates() {
-            document.getElementById('content').innerHTML = `
+            document.querySelector('.content-inner').innerHTML = `
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2>Tahsilat Oranları ve Performans</h2>
@@ -2828,7 +2828,7 @@
                 });
                 
                 html += '</tbody></table></div></div>';
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Cari hesap verileri yüklenemedi:', error.message);
@@ -3074,7 +3074,7 @@
                 });
 
                 html += '</tbody></table></div></div>';
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
 
             } catch (error) {
                 console.error('Roller yüklenemedi:', error);
@@ -3568,7 +3568,7 @@
                     </div>
                 `;
 
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
 
                 // İrsaliyeleri yükle
                 await loadDeliveryNotes();
@@ -3929,7 +3929,7 @@
                     </div>
                 `;
 
-                document.getElementById('content').innerHTML = html;
+                document.querySelector('.content-inner').innerHTML = html;
 
                 // Randevuları yükle
                 await loadAppointments();

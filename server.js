@@ -3128,6 +3128,39 @@ app.put("/api/orders/:id/status", authenticateToken, checkPermission('orders.upd
   }
 });
 
+app.get("/api/customers/:id", authenticateToken, checkPermission('customers.read'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, permissions } = req.user;
+
+    const query = `
+      SELECT c.*, u.full_name as sales_rep_name
+      FROM customers c
+      LEFT JOIN users u ON c.assigned_sales_rep = u.id
+      WHERE c.id = $1
+    `;
+    const result = await pool.query(query, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Müşteri bulunamadı' });
+    }
+
+    const customer = result.rows[0];
+
+    const customerPerms = permissions.customers || [];
+    if (customerPerms.includes('read_own') && !customerPerms.includes('read') && !permissions.all) {
+      if (customer.assigned_sales_rep !== userId) {
+        return res.status(403).json({ success: false, error: 'Bu müşteriyi görüntüleme yetkiniz yok.' });
+      }
+    }
+
+    res.json({ success: true, customer: customer });
+  } catch (error) {
+    console.error(`Customer get (ID: ${req.params.id}) hatası:`, error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Müşteri güncelle
 app.put("/api/customers/:id", authenticateToken, checkPermission('customers.update'), async (req, res) => {
   try {
