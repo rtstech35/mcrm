@@ -3489,7 +3489,7 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
         `, [userId, currentYear, currentMonth]);
         const targets = targetsResult.rows[0] || {};
 
-        // 2. Get user sales for the month
+        // 2. Get user sales for the month and parse safely
         const salesResult = await pool.query(`
             SELECT COALESCE(SUM(total_amount), 0) as total 
             FROM orders 
@@ -3498,9 +3498,9 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
               AND EXTRACT(YEAR FROM order_date) = $2 
               AND EXTRACT(MONTH FROM order_date) = $3
         `, [userId, currentYear, currentMonth]);
-        const currentMonthlySales = parseFloat(salesResult.rows[0].total);
+        const currentMonthlySales = parseFloat(salesResult.rows[0]?.total || 0);
 
-        // 3. Get user visits for the month
+        // 3. Get user visits for the month and parse safely
         const visitsResult = await pool.query(`
             SELECT COUNT(*) as count
             FROM customer_visits
@@ -3508,9 +3508,9 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
               AND EXTRACT(YEAR FROM visit_date) = $2
               AND EXTRACT(MONTH FROM visit_date) = $3
         `, [userId, currentYear, currentMonth]);
-        const currentMonthlyVisits = parseInt(visitsResult.rows[0].count);
+        const currentMonthlyVisits = parseInt(visitsResult.rows[0]?.count || 0);
 
-        // 4. Get user collections for the month
+        // 4. Get user collections for the month and parse safely
         const collectionsResult = await pool.query(`
             SELECT COALESCE(SUM(at.amount), 0) as total
             FROM account_transactions at
@@ -3520,16 +3520,16 @@ app.get("/api/sales/dashboard/:userId", authenticateToken, async (req, res) => {
               AND EXTRACT(YEAR FROM at.transaction_date) = $2
               AND EXTRACT(MONTH FROM at.transaction_date) = $3
         `, [userId, currentYear, currentMonth]);
-        const currentMonthlyCollection = parseFloat(collectionsResult.rows[0].total);
+        const currentMonthlyCollection = parseFloat(collectionsResult.rows[0]?.total || 0);
 
         res.json({
             success: true,
             stats: {
-                monthlySalesTarget: parseFloat(targets.sales_target) || 0,
+                monthlySalesTarget: parseFloat(targets.sales_target || 0),
                 currentMonthlySales: currentMonthlySales,
-                monthlyVisitTarget: parseInt(targets.visit_target) || 0,
+                monthlyVisitTarget: parseInt(targets.visit_target || 0),
                 currentMonthlyVisits: currentMonthlyVisits,
-                monthlyCollectionTarget: parseFloat(targets.collection_target) || 0,
+                monthlyCollectionTarget: parseFloat(targets.collection_target || 0),
                 currentMonthlyCollection: currentMonthlyCollection,
             }
         });
