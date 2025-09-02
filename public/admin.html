@@ -4515,27 +4515,29 @@
 
         // Sayfa yüklendiğinde yapılacaklar
         document.addEventListener('DOMContentLoaded', () => {
-            if (!authToken) return;
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                console.warn("admin.html: No auth token found. Aborting page-specific setup. Let app.js handle redirect.");
+                return;
+            }
+
             try {
                 setupMenuVisibility();
                 setInterval(updateDateTime, 1000); // Start the clock
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const action = urlParams.get('action');
-                const customerId = urlParams.get('id');
+                const id = urlParams.get('id');
 
-                if (action === 'editCustomer' && customerId) {
+                if (action === 'editCustomer' && id) {
                     // Remove the query params from URL to avoid re-triggering on refresh
                     history.replaceState(null, '', window.location.pathname); 
-                    
-                    showCustomers().then(() => {
-                        openCustomerModal(customerId);
-                    });
+                    openCustomerModal(id);
                 } else {
                     // Default action
                     showDashboard();
                 }
-            } catch (e) { console.error("Initialization error:", e); showDashboard(); }
+            } catch (e) { console.error("Initialization error in admin.html:", e); showDashboard(); }
         });
     </script>
     <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">
