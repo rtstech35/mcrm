@@ -1235,7 +1235,7 @@
                 const newCustomerBtn = document.createElement('button');
                 newCustomerBtn.className = 'btn';
                 newCustomerBtn.textContent = 'Yeni Müşteri';
-                newCustomerBtn.onclick = openCustomerModal;
+                newCustomerBtn.onclick = () => openCustomerModal();
                 card.appendChild(newCustomerBtn);
 
                 const tableResponsive = document.createElement('div');
@@ -1261,7 +1261,7 @@
                     const actionsTd = document.createElement('td');
                     const editBtn = document.createElement('button');
                     editBtn.className = 'btn'; editBtn.textContent = 'Düzenle';
-                    editBtn.onclick = (e) => { e.stopPropagation(); editCustomer(customer.id); };
+                    editBtn.onclick = (e) => { e.stopPropagation(); openCustomerModal(customer.id); };
                     const deleteBtn = document.createElement('button');
                     deleteBtn.className = 'btn btn-danger'; deleteBtn.textContent = 'Sil'; deleteBtn.style.marginLeft = '0.5rem';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteCustomer(customer.id); };
@@ -1280,81 +1280,49 @@
             }
         }
 
-        async function editCustomer(customerId) {
-            try {
-                // Open the modal and populate sales reps first
-                await openCustomerModal();
+        async function openCustomerModal(customerId = null) {
+            const form = document.getElementById('customerForm');
+            const modalTitle = document.querySelector('#customerModal h3');
 
-                // Fetch the specific customer's data
-                const customerResponse = await apiCall(`/api/customers/${customerId}`);
-                const customer = customerResponse.customer || customerResponse;
-
-                // Populate the form fields
-                document.getElementById('customer_company_name').value = customer.company_name || '';
-                document.getElementById('customer_contact_person').value = customer.contact_person || '';
-                document.getElementById('customer_phone').value = customer.phone || '';
-                document.getElementById('customer_mobile_phone').value = customer.mobile_phone || '';
-                document.getElementById('customer_email').value = customer.email || '';
-                document.getElementById('customer_address').value = customer.address || '';
-                document.getElementById('customer_sales_rep').value = customer.assigned_sales_rep || '';
-
-                // Set the customer ID on the form for the submit handler to know it's an edit
-                document.getElementById('customerForm').setAttribute('data-customer-id', customerId);
-
-            } catch (error) {
-                console.error('Müşteri düzenleme hatası:', error.message);
-                alert('Müşteri bilgileri yüklenirken hata oluştu: ' + error.message);
+            // Reset form and title for new customer
+            if (!customerId) {
+                modalTitle.textContent = 'Yeni Müşteri';
+                form.reset();
+                form.removeAttribute('data-customer-id');
+            } else {
+                modalTitle.textContent = 'Müşteri Düzenle';
+                form.setAttribute('data-customer-id', customerId);
             }
-        }
 
-        async function openUserModal() {
             try {
-                const [departmentsResponse, rolesResponse] = await Promise.all([
-                    apiCall('/api/departments'),
-                    apiCall('/api/roles')
-                ]);
+                // Always populate sales reps
+                const usersResponse = await apiCall('/api/users');
+                const users = usersResponse.users || [];
+                const salesRepSelect = document.getElementById('customer_sales_rep');
+                salesRepSelect.innerHTML = '<option value="">Seçiniz</option>';
+                users.forEach(user => {
+                    salesRepSelect.innerHTML += `<option value="${user.id}">${user.full_name || user.username}</option>`;
+                });
 
-                window.departmentsData = departmentsResponse.departments || [];
-                window.rolesData = rolesResponse.roles || [];
+                // If editing, fetch and populate data
+                if (customerId) {
+                    const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                    const customer = customerResponse.customer || customerResponse;
 
-                const departmentSelect = document.getElementById('department_id');
-                const roleSelect = document.getElementById('role_id');
-
-                departmentSelect.innerHTML = '';
-                departmentSelect.add(new Option('Seçiniz', ''));
-
-                if (window.departmentsData && window.departmentsData.length > 0) {
-                    window.departmentsData.forEach(dept => {
-                        departmentSelect.add(new Option(dept.name, dept.id));
-                    });
-                } else {
-                    departmentSelect.add(new Option('Satış Departmanı', '1'));
-                    departmentSelect.add(new Option('Üretim Departmanı', '2'));
-                    departmentSelect.add(new Option('Sevkiyat Departmanı', '3'));
-                    departmentSelect.add(new Option('Muhasebe Departmanı', '4'));
-                    departmentSelect.add(new Option('IT Departmanı', '5'));
+                    document.getElementById('customer_company_name').value = customer.company_name || '';
+                    document.getElementById('customer_contact_person').value = customer.contact_person || '';
+                    document.getElementById('customer_phone').value = customer.phone || '';
+                    document.getElementById('customer_mobile_phone').value = customer.mobile_phone || '';
+                    document.getElementById('customer_email').value = customer.email || '';
+                    document.getElementById('customer_address').value = customer.address || '';
+                    salesRepSelect.value = customer.assigned_sales_rep || '';
                 }
 
-                roleSelect.innerHTML = '';
-                roleSelect.add(new Option('Seçiniz', ''));
+                document.getElementById('customerModal').style.display = 'block';
 
-                if (window.rolesData && window.rolesData.length > 0) {
-                    window.rolesData.forEach(role => {
-                        roleSelect.add(new Option(role.name, role.id));
-                    });
-                } else {
-                    roleSelect.add(new Option('Yönetici', '1'));
-                    roleSelect.add(new Option('Satış Temsilcisi', '2'));
-                    roleSelect.add(new Option('Üretim Personeli', '3'));
-                    roleSelect.add(new Option('Sevkiyat Personeli', '4'));
-                    roleSelect.add(new Option('Muhasebe Personeli', '5'));
-                }
-
-                document.getElementById('userModal').style.display = 'block';
-                showTargetFields();
             } catch (error) {
-                console.error('Modal açılırken hata:', error.message);
-                alert('Departman ve rol verileri yüklenirken hata oluştu: ' + error.message);
+                console.error('Müşteri modal açılırken hata:', error.message);
+                alert('Müşteri modalı açılırken bir hata oluştu: ' + error.message);
             }
         }
 
