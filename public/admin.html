@@ -1220,48 +1220,55 @@
 
         async function showCustomers() {
             try {
+                const content = document.querySelector('.content-inner');
+                content.innerHTML = '<div class="card"><div class="loading">Müşteriler yükleniyor...</div></div>';
+
                 const customersResponse = await apiCall('/api/customers');
                 const customers = customersResponse.customers || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                content.innerHTML = ''; // Clear loading
+                content.appendChild(card);
+
+                card.innerHTML = `<h2>Müşteri Yönetimi</h2>`;
+                const newCustomerBtn = document.createElement('button');
+                newCustomerBtn.className = 'btn';
+                newCustomerBtn.textContent = 'Yeni Müşteri';
+                newCustomerBtn.onclick = openCustomerModal;
+                card.appendChild(newCustomerBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
                 
-                let html = `
-                    <div class="card">
-                        <h2>Müşteri Yönetimi</h2>
-                        <button class="btn" onclick="openCustomerModal()">Yeni Müşteri</button>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Şirket Adı</th>
-                                        <th>Yetkili</th>
-                                        <th>Telefon</th>
-                                        <th>Satış Temsilcisi</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-                
+                table.innerHTML = `<thead><tr><th>ID</th><th>Şirket Adı</th><th>Yetkili</th><th>Telefon</th><th>Satış Temsilcisi</th><th>Durum</th><th>İşlemler</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
                 customers.forEach(customer => {
-                    html += `
-                        <tr onclick="viewCustomerDetail(${customer.id})" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fa'" onmouseout="this.style.backgroundColor=''">
-                            <td>${customer.id}</td>
-                            <td>${customer.company_name}</td>
-                            <td>${customer.contact_person || '-'}</td>
-                            <td>${customer.phone || '-'}</td>
-                            <td>${customer.sales_rep_name || '-'}</td>
-                            <td>${customer.customer_status}</td>
-                            <td>
-                                <button class="btn" onclick="event.stopPropagation(); editCustomer(${customer.id})">Düzenle</button>
-                                <button class="btn btn-danger" onclick="event.stopPropagation(); deleteCustomer(${customer.id})">Sil</button>
-                            </td>
-                        </tr>
-                    `;
+                    const tr = document.createElement('tr');
+                    tr.style.cursor = 'pointer';
+                    tr.onclick = () => viewCustomerDetail(customer.id);
+                    tr.onmouseover = () => tr.style.backgroundColor='#f8f9fa';
+                    tr.onmouseout = () => tr.style.backgroundColor='';
+
+                    tr.innerHTML = `<td>${customer.id}</td><td>${customer.company_name}</td><td>${customer.contact_person || '-'}</td><td>${customer.phone || '-'}</td><td>${customer.sales_rep_name || '-'}</td><td>${customer.customer_status}</td>`;
+                    const actionsTd = document.createElement('td');
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn'; editBtn.textContent = 'Düzenle';
+                    editBtn.onclick = (e) => { e.stopPropagation(); editCustomer(customer.id); };
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger'; deleteBtn.textContent = 'Sil'; deleteBtn.style.marginLeft = '0.5rem';
+                    deleteBtn.onclick = (e) => { e.stopPropagation(); deleteCustomer(customer.id); };
+                    actionsTd.append(editBtn, deleteBtn);
+                    tr.appendChild(actionsTd);
+                    tbody.appendChild(tr);
                 });
-                
-                html += '</tbody></table></div>';
-                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Müşteriler yüklenemedi:', error.message);
@@ -1270,6 +1277,33 @@
                         <strong>Müşteriler Yüklenemedi:</strong> ${error.message}
                     </div>
                 `;
+            }
+        }
+
+        async function editCustomer(customerId) {
+            try {
+                // Open the modal and populate sales reps first
+                await openCustomerModal();
+
+                // Fetch the specific customer's data
+                const customerResponse = await apiCall(`/api/customers/${customerId}`);
+                const customer = customerResponse.customer || customerResponse;
+
+                // Populate the form fields
+                document.getElementById('customer_company_name').value = customer.company_name || '';
+                document.getElementById('customer_contact_person').value = customer.contact_person || '';
+                document.getElementById('customer_phone').value = customer.phone || '';
+                document.getElementById('customer_mobile_phone').value = customer.mobile_phone || '';
+                document.getElementById('customer_email').value = customer.email || '';
+                document.getElementById('customer_address').value = customer.address || '';
+                document.getElementById('customer_sales_rep').value = customer.assigned_sales_rep || '';
+
+                // Set the customer ID on the form for the submit handler to know it's an edit
+                document.getElementById('customerForm').setAttribute('data-customer-id', customerId);
+
+            } catch (error) {
+                console.error('Müşteri düzenleme hatası:', error.message);
+                alert('Müşteri bilgileri yüklenirken hata oluştu: ' + error.message);
             }
         }
 
@@ -1416,6 +1450,31 @@
             document.getElementById('productModal').style.display = 'block';
         }
         
+        async function editProduct(productId) {
+            try {
+                const productResponse = await apiCall(`/api/products/${productId}`);
+                const product = productResponse.product || productResponse;
+
+                // Populate the form
+                document.getElementById('product_name').value = product.name || '';
+                document.getElementById('product_description').value = product.description || '';
+                document.getElementById('product_unit_price').value = product.unit_price || '';
+                document.getElementById('vat_rate').value = product.vat_rate || '20';
+                document.getElementById('price_with_vat').value = product.price_with_vat || '';
+                document.getElementById('product_unit').value = product.unit || 'adet';
+
+                // Set product ID for the submit handler
+                document.getElementById('productForm').setAttribute('data-product-id', productId);
+                
+                // Open modal
+                openProductModal();
+                document.querySelector('#productModal h3').textContent = 'Ürün Düzenle';
+
+            } catch (error) {
+                alert('Ürün bilgileri yüklenemedi: ' + error.message);
+            }
+        }
+
         // KDV hesaplama fonksiyonu
         function calculateVAT() {
             const price = parseFloat(document.getElementById('product_unit_price').value) || 0;
@@ -1427,6 +1486,10 @@
         document.getElementById('productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const form = e.target;
+            const productId = form.getAttribute('data-product-id');
+            const isEdit = !!productId;
+
             const formData = {
                 name: document.getElementById('product_name').value,
                 description: document.getElementById('product_description').value,
@@ -1437,20 +1500,24 @@
             };
             
             try {
-                const result = await apiCall('/api/products', {
-                    method: 'POST',
-                    body: JSON.stringify(formData)
-                });
+                if (isEdit) {
+                    await apiCall(`/api/products/${productId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Ürün başarıyla güncellendi!');
+                } else {
+                    await apiCall('/api/products', {
+                        method: 'POST',
+                        body: JSON.stringify(formData)
+                    });
+                    alert('Ürün başarıyla oluşturuldu!');
+                }
 
-                console.log('Ürün ekleme sonucu:', result);
-                alert('Ürün başarıyla oluşturuldu!');
-                document.getElementById('productForm').reset();
+                form.reset();
+                form.removeAttribute('data-product-id');
                 closeModal('productModal');
-
-                // Kısa bir gecikme sonrası listeyi yenile
-                setTimeout(() => {
-                    showProducts();
-                }, 500);
+                showProducts();
             } catch (error) {
                 console.error('Ürün ekleme hatası:', error.message);
                 alert('Hata: ' + error.message);
@@ -2364,64 +2431,68 @@
         
         async function showProducts() {
             try {
-                const productsResponse = await apiCall('/api/products');
-                console.log('Products API response:', productsResponse);
-                const products = productsResponse.products || [];
-                console.log('Products array:', products);
+                const content = document.querySelector('.content-inner');
+                content.innerHTML = '<div class="card"><div class="loading">Ürünler yükleniyor...</div></div>';
 
-                let html = `
-                    <div class="card">
-                        <h2>Ürün Yönetimi</h2>
-                        <button class="btn" onclick="openProductModal()">Yeni Ürün</button>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Ürün Adı</th>
-                                        <th>Açıklama</th>
-                                        <th>Fiyat (KDV Hariç)</th>
-                                        <th>KDV %</th>
-                                        <th>Fiyat (KDV Dahil)</th>
-                                        <th>Birim</th>
-                                        <th>Durum</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
+                const productsResponse = await apiCall('/api/products');
+                const products = productsResponse.products || [];
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                content.innerHTML = ''; // Clear loading
+                content.appendChild(card);
+
+                card.innerHTML = `<h2>Ürün Yönetimi</h2>`;
+                const newProductBtn = document.createElement('button');
+                newProductBtn.className = 'btn';
+                newProductBtn.textContent = 'Yeni Ürün';
+                newProductBtn.onclick = openProductModal;
+                card.appendChild(newProductBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
+                
+                table.innerHTML = `<thead><tr><th>ID</th><th>Ürün Adı</th><th>Açıklama</th><th>Fiyat (KDV Hariç)</th><th>KDV %</th><th>Fiyat (KDV Dahil)</th><th>Birim</th><th>Durum</th><th>İşlemler</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
 
                 if (products.length === 0) {
-                    html += `
-                        <tr>
-                            <td colspan="9" style="text-align: center; padding: 2rem; color: #666;">
-                                Henüz ürün eklenmemiş. "Yeni Ürün" butonunu kullanarak ürün ekleyebilirsiniz.
-                            </td>
-                        </tr>
-                    `;
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #666;">Henüz ürün eklenmemiş.</td></tr>`;
                 } else {
                     products.forEach(product => {
-                        html += `
-                            <tr>
-                                <td>${product.id}</td>
-                                <td>${product.name}</td>
-                                <td>${product.description || '-'}</td>
-                                <td>${product.unit_price} TL</td>
-                                <td>${product.vat_rate ? '%' + product.vat_rate : '-'}</td>
-                                <td>${product.price_with_vat ? product.price_with_vat + ' TL' : '-'}</td>
-                                <td>${product.unit}</td>
-                                <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
-                                <td>
-                                    <button class="btn" onclick="editProduct(${product.id})">Düzenle</button>
-                                    <button class="btn" onclick="deleteProduct(${product.id})" style="background: #dc3545; margin-left: 0.5rem;">Sil</button>
-                                </td>
-                            </tr>
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${product.id}</td>
+                            <td>${product.name}</td>
+                            <td>${product.description || '-'}</td>
+                            <td>${product.unit_price} TL</td>
+                            <td>${product.vat_rate ? '%' + product.vat_rate : '-'}</td>
+                            <td>${product.price_with_vat ? product.price_with_vat + ' TL' : '-'}</td>
+                            <td>${product.unit}</td>
+                            <td>${product.is_active ? 'Aktif' : 'Pasif'}</td>
                         `;
+                        const actionsTd = document.createElement('td');
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn';
+                        editBtn.textContent = 'Düzenle';
+                        editBtn.onclick = () => editProduct(product.id);
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-danger';
+                        deleteBtn.textContent = 'Sil';
+                        deleteBtn.style.marginLeft = '0.5rem';
+                        deleteBtn.onclick = () => deleteProduct(product.id);
+
+                        actionsTd.append(editBtn, deleteBtn);
+                        tr.appendChild(actionsTd);
+                        tbody.appendChild(tr);
                     });
                 }
-
-                html += '</tbody></table></div></div>';
-                document.querySelector('.content-inner').innerHTML = html;
                 
             } catch (error) {
                 console.error('Ürünler yüklenemedi:', error.message);
@@ -3022,44 +3093,50 @@
                 const transactions = transactionsResponse.transactions || [];
                 console.log('Cari hesap işlem sayısı:', transactions.length);
 
-                document.querySelector('.content-inner').innerHTML = `
-                    <div class="card">
-                        <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
-                        <button class="btn" onclick="openTransactionModal()" style="margin-bottom: 1rem;">Yeni İşlem</button>
+                const content = document.querySelector('.content-inner');
+                content.innerHTML = '';
 
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Tarih</th>
-                                        <th>Müşteri</th>
-                                        <th>İşlem Tipi</th>
-                                        <th>Tutar</th>
-                                        <th>Açıklama</th>
-                                        <th>Referans No</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                ${transactions.map(transaction => `
-                                    <tr>
-                                        <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
-                                        <td>${transaction.customer_name || '-'}</td>
-                                        <td>
-                                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;
-                                                  background: ${transaction.transaction_type === 'debit' ? '#f8d7da' : '#d4edda'};
-                                                  color: ${transaction.transaction_type === 'debit' ? '#721c24' : '#155724'};">
-                                                ${transaction.transaction_type === 'debit' ? 'Borç' : 'Alacak'}
-                                            </span>
-                                        </td>
-                                        <td>${transaction.amount.toFixed(2)} ₺</td>
-                                        <td>${transaction.description || '-'}</td>
-                                        <td>${transaction.reference_number || '-'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody></table>
-                        </div>
-                    </div>
-                `;
+                const card = document.createElement('div');
+                card.className = 'card';
+                content.appendChild(card);
+
+                card.innerHTML = `<h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>`;
+                const newTransactionBtn = document.createElement('button');
+                newTransactionBtn.className = 'btn';
+                newTransactionBtn.textContent = 'Yeni İşlem';
+                newTransactionBtn.style.marginBottom = '1rem';
+                newTransactionBtn.onclick = openTransactionModal;
+                card.appendChild(newTransactionBtn);
+
+                const tableResponsive = document.createElement('div');
+                tableResponsive.className = 'table-responsive';
+                card.appendChild(tableResponsive);
+
+                const table = document.createElement('table');
+                table.className = 'table';
+                tableResponsive.appendChild(table);
+
+                table.innerHTML = `<thead><tr><th>Tarih</th><th>Müşteri</th><th>İşlem Tipi</th><th>Tutar</th><th>Açıklama</th><th>Referans</th><th>İşlemler</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
+                transactions.forEach(transaction => {
+                    const tr = document.createElement('tr');
+                    const typeClass = transaction.transaction_type === 'debit' ? 'danger' : 'success';
+                    const typeText = transaction.transaction_type === 'debit' ? 'Borç' : 'Alacak';
+                    tr.innerHTML = `
+                        <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
+                        <td>${transaction.customer_name || '-'}</td>
+                        <td><span class="status-badge ${typeClass}">${typeText}</span></td>
+                        <td>${transaction.amount.toFixed(2)} ₺</td>
+                        <td>${transaction.description || '-'}</td>
+                        <td>${transaction.reference_number || '-'}</td>
+                    `;
+                    const actionsTd = document.createElement('td');
+                    actionsTd.innerHTML = `<button class="btn btn-sm" onclick="editTransaction(${transaction.id})">Düzenle</button>`;
+                    tr.appendChild(actionsTd);
+                    tbody.appendChild(tr);
+                });
                 
             } catch (error) {
                 console.error('Cari hesap verileri yüklenemedi:', error);
@@ -3131,6 +3208,11 @@
                     </div>
                 `;
             }
+        }
+
+        // İrsaliye modal fonksiyonları
+        function editDeliveryNote(deliveryNoteId) {
+            openDeliveryNoteModal(deliveryNoteId);
         }
 
         // Rol yönetimi fonksiyonları
@@ -3690,6 +3772,11 @@
             }
         }
 
+        // İrsaliye modal fonksiyonları
+        function editDeliveryNote(deliveryNoteId) {
+            openDeliveryNoteModal(deliveryNoteId);
+        }
+
         // İrsaliye yönetimi fonksiyonları
         async function showDeliveryNotes() {
             try {
@@ -3842,7 +3929,7 @@
                             <td>
                                 <div style="display: flex; gap: 0.5rem;">
                                     <button class="btn btn-sm btn-secondary" onclick="viewDeliveryNote(${note.id})">
-                                        👁️ Görüntüle
+                                        👁️ Detay
                                     </button>
                                     ${note.status === 'pending' ? `
                                         <button class="btn btn-sm btn-primary" onclick="editDeliveryNote(${note.id})">
