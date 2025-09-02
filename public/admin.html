@@ -1246,27 +1246,41 @@
                 table.className = 'table';
                 tableResponsive.appendChild(table);
                 
-                table.innerHTML = `<thead><tr><th>ID</th><th>Şirket Adı</th><th>Yetkili</th><th>Telefon</th><th>Satış Temsilcisi</th><th>Durum</th><th>İşlemler</th></tr></thead>`;
+                table.innerHTML = `<thead><tr><th>ID</th><th>İşlemler</th><th>Şirket Adı</th><th>Yetkili</th><th>Telefon</th><th>Satış Temsilcisi</th><th>Durum</th></tr></thead>`;
                 const tbody = document.createElement('tbody');
                 table.appendChild(tbody);
 
                 customers.forEach(customer => {
                     const tr = document.createElement('tr');
-                    tr.style.cursor = 'pointer';
-                    tr.onclick = () => viewCustomerDetail(customer.id);
                     tr.onmouseover = () => tr.style.backgroundColor='#f8f9fa';
                     tr.onmouseout = () => tr.style.backgroundColor='';
 
-                    tr.innerHTML = `<td>${customer.id}</td><td>${customer.company_name}</td><td>${customer.contact_person || '-'}</td><td>${customer.phone || '-'}</td><td>${customer.sales_rep_name || '-'}</td><td>${customer.customer_status}</td>`;
+                    const createClickableCell = (content) => {
+                        const td = document.createElement('td');
+                        td.innerHTML = content;
+                        td.style.cursor = 'pointer';
+                        td.onclick = () => viewCustomerDetail(customer.id);
+                        return td;
+                    };
+
+                    tr.appendChild(createClickableCell(customer.id));
+
                     const actionsTd = document.createElement('td');
                     const editBtn = document.createElement('button');
-                    editBtn.className = 'btn'; editBtn.textContent = 'Düzenle';
+                    editBtn.className = 'btn btn-sm'; editBtn.textContent = 'Düzenle';
                     editBtn.onclick = (e) => { e.stopPropagation(); openCustomerModal(customer.id); };
                     const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn btn-danger'; deleteBtn.textContent = 'Sil'; deleteBtn.style.marginLeft = '0.5rem';
+                    deleteBtn.className = 'btn btn-sm btn-danger'; deleteBtn.textContent = 'Sil'; deleteBtn.style.marginLeft = '0.5rem';
                     deleteBtn.onclick = (e) => { e.stopPropagation(); deleteCustomer(customer.id); };
                     actionsTd.append(editBtn, deleteBtn);
                     tr.appendChild(actionsTd);
+
+                    tr.appendChild(createClickableCell(customer.company_name));
+                    tr.appendChild(createClickableCell(customer.contact_person || '-'));
+                    tr.appendChild(createClickableCell(customer.phone || '-'));
+                    tr.appendChild(createClickableCell(customer.sales_rep_name || '-'));
+                    tr.appendChild(createClickableCell(customer.customer_status));
+
                     tbody.appendChild(tr);
                 });
                 
@@ -4583,13 +4597,26 @@
         // Sayfa yüklendiğinde yapılacaklar
         document.addEventListener('DOMContentLoaded', () => {
             if (!authToken) return;
-            setupMenuVisibility();
+            try {
+                setupMenuVisibility();
+                setInterval(updateDateTime, 1000); // Start the clock
 
-            // Dashboard'u göster
-            showDashboard();
-            
-            // Tarih/saat bilgisini her saniye güncelle
-            setInterval(updateDateTime, 1000);
+                const urlParams = new URLSearchParams(window.location.search);
+                const action = urlParams.get('action');
+                const customerId = urlParams.get('id');
+
+                if (action === 'editCustomer' && customerId) {
+                    // Remove the query params from URL to avoid re-triggering on refresh
+                    history.replaceState(null, '', window.location.pathname); 
+                    
+                    showCustomers().then(() => {
+                        openCustomerModal(customerId);
+                    });
+                } else {
+                    // Default action
+                    showDashboard();
+                }
+            } catch (e) { console.error("Initialization error:", e); showDashboard(); }
         });
     </script>
     <div id="adminInfo" style="position: fixed; top: 1rem; right: 1rem; background: rgba(0, 123, 255, 0.9); padding: 0.75rem; border-radius: 8px; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; min-width: 180px; font-size: 0.85rem;">

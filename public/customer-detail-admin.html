@@ -186,6 +186,24 @@
             return response.json();
         }
 
+        function editCustomerInAdmin(customerId) {
+            // Redirect to admin panel and trigger the edit modal
+            window.location.href = `/admin.html?action=editCustomer&id=${customerId}`;
+        }
+
+        async function deleteCustomer(customerId) {
+            if (confirm('Bu müşteriyi ve ilgili tüm verilerini (siparişler, ziyaretler vb.) silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+                try {
+                    await apiCall(`/api/customers/${customerId}`, { method: 'DELETE' });
+                    alert('Müşteri başarıyla silindi!');
+                    window.location.href = '/admin.html'; // Redirect to customer list
+                } catch (error) {
+                    console.error('Müşteri silme hatası:', error);
+                    alert('Hata: ' + error.message);
+                }
+            }
+        }
+
         function getCustomerIdFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             customerId = urlParams.get('id');
@@ -211,33 +229,39 @@
                 
                 // Müşteri bilgilerini göster
                 document.getElementById('customerInfo').innerHTML = `
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Firma Adı:</strong> ${customer.company_name}
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 1.5rem;">
+                        <button class="btn btn-warning" onclick="editCustomerInAdmin(${customer.id})">✏️ Düzenle</button>
+                        <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})">🗑️ Sil</button>
+                    </div>
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Firma Adı:</strong> ${customer.company_name}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Yetkili Kişi:</strong> ${customer.contact_person || 'Belirtilmemiş'}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Telefon:</strong> ${customer.phone || 'Belirtilmemiş'}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>E-posta:</strong> ${customer.email || 'Belirtilmemiş'}
+                                </div>
                             </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Yetkili Kişi:</strong> ${customer.contact_person || 'Belirtilmemiş'}
-                            </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Telefon:</strong> ${customer.phone || 'Belirtilmemiş'}
-                            </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>E-posta:</strong> ${customer.email || 'Belirtilmemiş'}
-                            </div>
-                        </div>
-                        <div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Müşteri Durumu:</strong> ${customer.customer_status}
-                            </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Satış Temsilcisi:</strong> ${customer.sales_rep_name || 'Atanmamış'}
-                            </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Kayıt Tarihi:</strong> ${new Date(customer.created_at).toLocaleDateString('tr-TR')}
-                            </div>
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Adres:</strong> ${customer.address || 'Belirtilmemiş'}
+                            <div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Müşteri Durumu:</strong> ${customer.customer_status}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Satış Temsilcisi:</strong> ${customer.sales_rep_name || 'Atanmamış'}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Kayıt Tarihi:</strong> ${new Date(customer.created_at).toLocaleDateString('tr-TR')}
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <strong>Adres:</strong> ${customer.address || 'Belirtilmemiş'}
+                                </div>
                             </div>
                         </div>
                     </div>
