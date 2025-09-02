@@ -303,6 +303,10 @@
                     <label>Satış Temsilcisi:</label>
                     <select id="customer_sales_rep"></select>
                 </div>
+                <div>
+                    <input type="hidden" id="customer_latitude">
+                    <input type="hidden" id="customer_longitude">
+                </div>
                 <button type="submit" class="btn">Kaydet</button>
             </form>
         </div>
@@ -1330,6 +1334,8 @@
                     document.getElementById('customer_email').value = customer.email || '';
                     document.getElementById('customer_address').value = customer.address || '';
                     salesRepSelect.value = customer.assigned_sales_rep || '';
+                    document.getElementById('customer_latitude').value = customer.latitude || '';
+                    document.getElementById('customer_longitude').value = customer.longitude || '';
                 }
 
                 document.getElementById('customerModal').style.display = 'block';
@@ -1583,7 +1589,9 @@
                 mobile_phone: document.getElementById('customer_mobile_phone').value,
                 email: document.getElementById('customer_email').value,
                 address: document.getElementById('customer_address').value,
-                assigned_sales_rep: document.getElementById('customer_sales_rep').value || null
+                assigned_sales_rep: document.getElementById('customer_sales_rep').value || null,
+                latitude: document.getElementById('customer_latitude').value,
+                longitude: document.getElementById('customer_longitude').value
             };
 
             try {
