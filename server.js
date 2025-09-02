@@ -5,9 +5,10 @@ require("dotenv").config();
 console.log('✅ Environment variables yüklendi');
 
 const express = require("express");
-const cors =require("cors");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const cors = require("cors");
+// bcrypt ve jwt artık rota dosyalarında ve middleware'de kullanılıyor.
+// const bcrypt = require("bcryptjs");
+// const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
 const fs = require("fs");
@@ -48,6 +49,26 @@ app.use('/api/*', (req, res, next) => {
   console.log('🔗 API isteği:', req.method, req.url);
   next();
 });
+
+// ---------------- ROTA DOSYALARINI YÜKLE ---------------- //
+const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
+const productsRoutes = require('./routes/products');
+const customersRoutes = require('./routes/customers');
+const ordersRoutes = require('./routes/orders');
+const deliveryNotesRoutes = require('./routes/deliveryNotes');
+const rolesRoutes = require('./routes/roles');
+const departmentsRoutes = require('./routes/departments');
+const appointmentsRoutes = require('./routes/appointments');
+const visitsRoutes = require('./routes/visits');
+const accountingRoutes = require('./routes/accounting');
+const invoicesRoutes = require('./routes/invoices');
+const dashboardRoutes = require('./routes/dashboard');
+const mailRoutes = require('./routes/mail');
+const systemRoutes = require('./routes/system');
+const profileRoutes = require('./routes/profile');
+const targetsRoutes = require('./routes/targets');
+console.log('✅ Tüm rota modülleri yüklendi');
 
 // ---------------- POSTGRESQL BAĞLANTI ---------------- //
 console.log('💾 Database bağlantısı yapılandırılıyor...');
@@ -191,6 +212,25 @@ async function runMigrations() {
     client.release();
   }
 }
+
+// ---------------- ROTALARI KULLAN ---------------- //
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/customers', customersRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/delivery-notes', deliveryNotesRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/departments', departmentsRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/visits', visitsRoutes);
+app.use('/api/accounting', accountingRoutes);
+app.use('/api/invoices', invoicesRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/mail', mailRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/user-targets', targetsRoutes);
 
 // ---------------- YARDIMCI FONKSİYONLAR ---------------- //
 

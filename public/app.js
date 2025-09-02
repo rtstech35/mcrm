@@ -31,7 +31,11 @@ async function apiCall(url, options = {}) {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const response = await fetch(url, { ...options, headers });
+        const response = await fetch(url, {
+            ...options,
+            headers: headers,
+            cache: 'reload' // 304 Not Modified hatasını önlemek için önbelleği atla
+        });
 
         if (!response.ok) {
             let errorMessage = `API hatası: ${response.status}`;
