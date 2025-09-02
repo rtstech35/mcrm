@@ -1816,22 +1816,11 @@ app.put("/api/delivery-notes/:id/status", authenticateToken, checkPermission('de
         `, [id]);
         
         if (customerResult.rows.length > 0 && customerResult.rows[0].email) {
-          try {
-            await fetch('/api/mail/delivery-completed', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': req.headers.authorization
-              },
-              body: JSON.stringify({
-                delivery_note_id: id,
-                customer_email: customerResult.rows[0].email
-              })
+            // Hatalı fetch çağrısı yerine doğrudan fonksiyonu çağır
+            console.log(`İrsaliye teslim maili gönderim süreci başlatılıyor...`);
+            sendDeliveryCompletionEmail(id).catch(mailError => {
+                console.error('Asenkron mail gönderme hatası:', mailError.message);
             });
-            console.log('İrsaliye teslim maili gönderildi');
-          } catch (mailError) {
-            console.error('İrsaliye mail gönderme hatası:', mailError.message);
-          }
         }
       } catch (orderUpdateError) {
         console.error('Sipariş durumu güncellenemedi:', orderUpdateError.message);
