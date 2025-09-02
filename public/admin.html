@@ -2056,26 +2056,6 @@
                 alert('Müşteri silinirken hata oluştu: ' + error.message);
             }
         }
-        
-        async function openCustomerModal() {
-            try {
-                const usersResponse = await apiCall('/api/users');
-                const users = usersResponse.users || [];
-                
-                const salesRepSelect = document.getElementById('customer_sales_rep');
-                salesRepSelect.innerHTML = '';
-                salesRepSelect.add(new Option('Satış Temsilcisi Seçiniz', ''));
-                
-                users.forEach(user => {
-                    salesRepSelect.add(new Option(`${user.full_name} (${user.role_name || 'Rol Yok'})`, user.id));
-                });
-                
-                document.getElementById('customerModal').style.display = 'block';
-            } catch (error) {
-                console.error('Müşteri modal açılırken hata:', error.message);
-                alert('Kullanıcı verileri yüklenirken hata oluştu: ' + error.message);
-            }
-        }
 
         // Grafik çizim fonksiyonları
         function drawSalesChart(current, target) {
@@ -3119,67 +3099,6 @@
                     tr.appendChild(actionsTd);
                     tbody.appendChild(tr);
                 });
-                
-            } catch (error) {
-                console.error('Cari hesap verileri yüklenemedi:', error);
-                document.querySelector('.content-inner').innerHTML = `
-                    <div class="card">
-                        <h2>Cari Hesap Yönetimi</h2>
-                        <p style="color: red;">Veriler yüklenemedi: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-
-        function viewOrderDetail(orderId) {
-            window.location.href = `/order-detail-admin.html?id=${orderId}`;
-        }
-        
-        async function showCariHesap() {
-            try {
-                console.log('Cari hesap verileri yüklenmeye başlanıyor...');
-                const transactionsResponse = await apiCall('/api/account-transactions');
-                const transactions = transactionsResponse.transactions || [];
-                console.log('Cari hesap işlem sayısı:', transactions.length);
-
-                document.querySelector('.content-inner').innerHTML = `
-                    <div class="card">
-                        <h2 style="color: #2d3748; margin-bottom: 2rem;">Cari Hesap Yönetimi</h2>
-                        <button class="btn" onclick="openTransactionModal()" style="margin-bottom: 1rem;">Yeni İşlem</button>
-
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Tarih</th>
-                                        <th>Müşteri</th>
-                                        <th>İşlem Tipi</th>
-                                        <th>Tutar</th>
-                                        <th>Açıklama</th>
-                                        <th>Referans No</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                ${transactions.map(transaction => `
-                                    <tr>
-                                        <td>${new Date(transaction.transaction_date).toLocaleDateString('tr-TR')}</td>
-                                        <td>${transaction.customer_name || '-'}</td>
-                                        <td>
-                                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;
-                                                  background: ${transaction.transaction_type === 'debit' ? '#f8d7da' : '#d4edda'};
-                                                  color: ${transaction.transaction_type === 'debit' ? '#721c24' : '#155724'};">
-                                                ${transaction.transaction_type === 'debit' ? 'Borç' : 'Alacak'}
-                                            </span>
-                                        </td>
-                                        <td>${transaction.amount.toFixed(2)} ₺</td>
-                                        <td>${transaction.description || '-'}</td>
-                                        <td>${transaction.reference_number || '-'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody></table>
-                        </div>
-                    </div>
-                `;
                 
             } catch (error) {
                 console.error('Cari hesap verileri yüklenemedi:', error);
